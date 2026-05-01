@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Noto_Sans_KR, Outfit } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { siteConfig } from "@/lib/config/site";
 import "./globals.css";
 
@@ -41,7 +42,10 @@ export default function RootLayout({
       lang="ko"
       className={`${notoSansKr.variable} ${cormorant.variable} ${outfit.variable} h-full`}
     >
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }
