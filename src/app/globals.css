@@ -1084,8 +1084,8 @@ a {
     top: auto;
     bottom: 15px;
     left: 15px;
-    width: 70%;
-    max-width: 600px;
+    width: 60%;
+    max-width: none;
     padding: 15px;
     padding-left: 40px;
     transform: scale(0.5);
