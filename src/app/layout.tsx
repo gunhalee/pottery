@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Noto_Sans_KR, Outfit } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { siteConfig } from "@/lib/config/site";
 import "./globals.css";
 
@@ -45,6 +46,7 @@ export default function RootLayout({
       <body className="min-h-full">
         {children}
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
