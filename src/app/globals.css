@@ -230,7 +230,12 @@ a {
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(135deg, #ff6b6b, #ffa94d, #ffd43b, #69db7c, #4dabf7, #7950f2, #e64980);
+  background: var(--bg2);
+}
+
+.hero-image {
+  object-fit: cover;
+  object-position: center;
 }
 
 .hero-overlay {

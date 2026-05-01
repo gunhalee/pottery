@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLink,
@@ -13,7 +14,16 @@ export default function HomePage() {
   return (
     <>
       <section className="home-hero">
-        <div className="hero-bg" />
+        <div className="hero-bg">
+          <Image
+            src="/asset/hero-image.jpg"
+            alt="Brown pottery cups on a bright surface"
+            fill
+            priority
+            sizes="100vw"
+            className="hero-image"
+          />
+        </div>
         <div className="hero-overlay">
           <div className="hero-eyebrow">{homeHero.eyebrow}</div>
           <h1 className="hero-title">
