@@ -1,42 +1,112 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import Image from "next/image";
 import Link from "next/link";
+import heroPoster from "../../../public/asset/hero-image.jpg";
 import {
   ArrowLink,
-  ButtonLink,
   PlaceholderFrame,
   Section,
   SectionTitle,
   WorkGrid,
 } from "@/components/site/primitives";
-import { homeHero, homeQuickLinks, homeWorks } from "@/lib/content/site-content";
+import { homeWorks } from "@/lib/content/site-content";
+
+const homeEntryCards = [
+  {
+    description: "현재 소장 가능한 작품들",
+    href: "/shop",
+    label: "Shop",
+    title: "작품 소장",
+  },
+  {
+    description: "원데이 · 정기 클래스",
+    href: "/class",
+    label: "Class",
+    title: "직접 해보기",
+  },
+  {
+    description: "작업 과정과 완성작",
+    href: "/gallery",
+    label: "Gallery",
+    title: "작품 아카이브",
+  },
+  {
+    description: "일정 · 신작 · 작업 일지",
+    href: "/news",
+    label: "News",
+    title: "공방 소식",
+  },
+] as const;
+
+const heroVideoSrc = existsSync(
+  join(process.cwd(), "public", "asset", "hero-video.mp4"),
+)
+  ? "/asset/hero-video.mp4"
+  : null;
 
 export default function HomePage() {
   return (
     <>
       <section className="home-hero">
-        <div className="hero-bg">
+        <div className="hero-bg" aria-hidden="true">
           <Image
-            src="/asset/hero-image.jpg"
-            alt="Brown pottery cups on a bright surface"
+            src={heroPoster}
+            alt=""
             fill
             priority
+            placeholder="blur"
             sizes="100vw"
-            className="hero-image"
+            className="hero-poster"
           />
+          {heroVideoSrc ? (
+            <video
+              className="hero-video"
+              autoPlay
+              loop
+              muted
+              playsInline
+              poster={heroPoster.src}
+              preload="metadata"
+            >
+              <source src={heroVideoSrc} type="video/mp4" />
+            </video>
+          ) : null}
         </div>
         <div className="hero-overlay">
-          <div className="hero-eyebrow">{homeHero.eyebrow}</div>
-          <h1 className="hero-title">
-            {homeHero.title}
-            <br />
-            <em>{homeHero.titleEmphasis}</em>
-          </h1>
-          <p className="hero-copy">{homeHero.description}</p>
+          <h1 className="hero-title">Headline Text Here</h1>
           <div className="hero-cta">
-            <ButtonLink href="/shop">Shop</ButtonLink>
-            <ArrowLink href="/intro">Our Story</ArrowLink>
+            <Link
+              href="/shop"
+              className="hero-button hero-button-primary"
+              prefetch={false}
+            >
+              Shop
+            </Link>
+            <Link
+              href="/class"
+              className="hero-button hero-button-ghost"
+              prefetch={false}
+            >
+              Class
+            </Link>
           </div>
         </div>
+      </section>
+
+      <section className="home-entry-grid fade-in" aria-label="Quick links">
+        {homeEntryCards.map((item) => (
+          <Link
+            href={item.href}
+            className="home-entry-card"
+            key={item.href}
+            prefetch={false}
+          >
+            <div className="small-caps">{item.label}</div>
+            <h2 className="card-title">{item.title}</h2>
+            <p>{item.description}</p>
+          </Link>
+        ))}
       </section>
 
       <Section className="split">
@@ -57,17 +127,6 @@ export default function HomePage() {
           <ArrowLink href="/shop">View All</ArrowLink>
         </div>
         <WorkGrid items={homeWorks} />
-      </Section>
-
-      <Section className="quick-grid">
-        {homeQuickLinks.map((item) => (
-          <Link href={item.href} className="quick-card" key={item.href}>
-            <div className="small-caps">{item.eyebrow}</div>
-            <h3 className="card-title">{item.title}</h3>
-            <p className="body-copy">{item.description}</p>
-            <span className="link-arrow">View</span>
-          </Link>
-        ))}
       </Section>
     </>
   );

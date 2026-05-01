@@ -1,6 +1,9 @@
 import {
+  ArrowLink,
+  BottomNav,
   PageIntro,
   QuoteBand,
+  Section,
   SplitFeature,
 } from "@/components/site/primitives";
 import { introFeatures, paletteLabels } from "@/lib/content/site-content";
@@ -33,6 +36,18 @@ export default function IntroPage() {
       </div>
 
       <SplitFeature {...introFeatures[2]} />
+      <Section className="intro-gallery-cta">
+        <div className="intro-cta-card">
+          <p className="body-copy">작품을 직접 보고 싶다면</p>
+          <ArrowLink href="/gallery">작품 보기</ArrowLink>
+        </div>
+      </Section>
+      <BottomNav
+        links={[
+          { href: "/gallery", label: "작품 보기" },
+          { href: "/news", label: "소식" },
+        ]}
+      />
     </>
   );
 }

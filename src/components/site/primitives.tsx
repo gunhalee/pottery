@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
+import { siteConfig } from "@/lib/config/site";
 import type { FeatureSection, WorkItem } from "@/lib/content/site-content";
 
 type LinkHref = ComponentProps<typeof Link>["href"];
@@ -16,7 +17,7 @@ export function ButtonLink({
   href: LinkHref;
 }) {
   return (
-    <Link href={href} className="button-primary">
+    <Link href={href} className="button-primary" prefetch={false}>
       {children}
     </Link>
   );
@@ -30,7 +31,12 @@ export function ExternalButtonLink({
   href: string;
 }) {
   return (
-    <a className="button-primary" href={href}>
+    <a
+      className="button-primary"
+      href={href}
+      rel="noopener noreferrer"
+      target="_blank"
+    >
       {children}
     </a>
   );
@@ -44,7 +50,7 @@ export function ArrowLink({
   href: LinkHref;
 }) {
   return (
-    <Link href={href} className="link-arrow">
+    <Link href={href} className="link-arrow" prefetch={false}>
       {children}
     </Link>
   );
@@ -166,7 +172,13 @@ export function SplitFeature({
   );
 }
 
-export function WorkGrid({ items }: { items: WorkItem[] }) {
+export function WorkGrid({
+  inquiryHref,
+  items,
+}: {
+  inquiryHref?: string;
+  items: WorkItem[];
+}) {
   return (
     <div className="grid-3">
       {items.map((item) => {
@@ -180,11 +192,26 @@ export function WorkGrid({ items }: { items: WorkItem[] }) {
             <div className="work-name">{item.title}</div>
             <div className="work-sub">{item.description}</div>
             {item.price ? <div className="work-price">{item.price}</div> : null}
+            {inquiryHref ? (
+              <a
+                className="work-inquiry link-arrow"
+                href={inquiryHref}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                문의하기
+              </a>
+            ) : null}
           </>
         );
 
         return item.href ? (
-          <Link href={item.href} className="work-card" key={item.placeholder}>
+          <Link
+            href={item.href}
+            className="work-card"
+            key={item.placeholder}
+            prefetch={false}
+          >
             {card}
           </Link>
         ) : (
@@ -194,6 +221,85 @@ export function WorkGrid({ items }: { items: WorkItem[] }) {
         );
       })}
     </div>
+  );
+}
+
+export function FollowCTA({ title }: { title: string }) {
+  return (
+    <div className="follow-cta">
+      <h2 className="follow-cta-title">{title}</h2>
+      <div className="follow-links">
+        <a
+          className="follow-link"
+          href={siteConfig.instagramUrl}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          Instagram
+        </a>
+        <a
+          className="follow-link"
+          href={siteConfig.kakaoChannelUrl}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          카카오채널
+        </a>
+      </div>
+    </div>
+  );
+}
+
+export function PageLinkCards({
+  cards,
+}: {
+  cards: ReadonlyArray<{
+    description: string;
+    href: LinkHref;
+    label: string;
+    title: string;
+  }>;
+}) {
+  return (
+    <div className="page-link-cards">
+      {cards.map((card) => (
+        <Link
+          className="page-link-card"
+          href={card.href}
+          key={card.label}
+          prefetch={false}
+        >
+          <div className="small-caps">{card.label}</div>
+          <h2 className="card-title">{card.title}</h2>
+          <p className="body-copy">{card.description}</p>
+          <span className="link-arrow">{card.label}하기</span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+export function BottomNav({
+  links,
+}: {
+  links: ReadonlyArray<{
+    href: LinkHref;
+    label: string;
+  }>;
+}) {
+  return (
+    <nav className="bottom-nav" aria-label="Related pages">
+      {links.map((link) => (
+        <Link
+          className="bottom-nav-link link-arrow"
+          href={link.href}
+          key={link.label}
+          prefetch={false}
+        >
+          {link.label}
+        </Link>
+      ))}
+    </nav>
   );
 }
 
