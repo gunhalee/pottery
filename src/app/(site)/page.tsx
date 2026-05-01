@@ -27,10 +27,6 @@ export default function HomePage() {
             <ArrowLink href="/intro">Our Story</ArrowLink>
           </div>
         </div>
-        <div className="hero-scroll">
-          <div className="scroll-line" />
-          <span>Scroll</span>
-        </div>
       </section>
 
       <Section className="split">
