@@ -18,8 +18,7 @@ export default async function ClassDetailPage({
         <h1 className="section-title">클래스 상세 스캐폴드</h1>
         <p className="body-copy">
           현재 slug는 <span className="inline-code">{slug}</span>입니다. 추후
-          Notion 클래스 소개, DB 세션 조회, 예약/결제 흐름을
-          연결합니다.
+          클래스 소개, 세션 조회, 예약·결제 흐름을 연결합니다.
         </p>
       </div>
     </PageShell>
