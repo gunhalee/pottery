@@ -59,19 +59,19 @@ export default function HomePage() {
             sizes="100vw"
             className="hero-poster"
           />
-          {heroVideoSrc ? (
-            <video
-              className="hero-video"
-              autoPlay
-              loop
-              muted
-              playsInline
-              poster={heroPoster.src}
-              preload="metadata"
-            >
+          <video
+            className="hero-video"
+            autoPlay
+            loop
+            muted
+            playsInline
+            poster="/asset/hero-image.jpg"
+            preload="metadata"
+          >
+            {heroVideoSrc ? (
               <source src={heroVideoSrc} type="video/mp4" />
-            </video>
-          ) : null}
+            ) : null}
+          </video>
         </div>
         <div className="hero-overlay">
           <h1 className="hero-title">Headline Text Here</h1>
@@ -94,7 +94,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="home-entry-grid fade-in" aria-label="Quick links">
+      <section className="home-entry-grid fade-in" aria-label="주요 페이지">
         {homeEntryCards.map((item) => (
           <Link
             href={item.href}
