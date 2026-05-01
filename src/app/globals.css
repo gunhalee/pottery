@@ -1084,11 +1084,15 @@ a {
     top: auto;
     bottom: 15px;
     left: 15px;
-    width: 60%;
+    width: 30%;
     max-width: none;
     padding: 15px;
-    padding-left: 40px;
-    transform: scale(0.5);
+    padding-left: 20px;
+    transform: none;
     transform-origin: left bottom;
+  }
+
+  .hero-title {
+    font-size: clamp(28px, 3vw, 42px);
   }
 }
