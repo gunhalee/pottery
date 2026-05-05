@@ -11,17 +11,21 @@ type ProductActionHref = {
 };
 
 export {
+  appendProductSyncLog,
   createProductDraft,
+  deleteProduct,
   getProductById,
   getProductBySlug,
   getProductSlugs,
   getPublishedProducts,
   normalizeSlug,
+  readProductSyncLogs,
   readProducts,
   updateProduct,
   updateProductCafe24Mapping,
   writeProducts,
   type ProductDraftInput,
+  type ProductSyncLogInput,
   type ProductUpdateInput,
 } from "./product-store";
 
@@ -184,5 +188,7 @@ export type {
   ProductCtaKind,
   ProductImage,
   ProductKind,
+  ProductSyncLog,
+  ProductSyncLogStatus,
   RestockCtaType,
 } from "./product-model";

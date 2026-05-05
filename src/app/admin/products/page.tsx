@@ -6,6 +6,7 @@ import { formatProductPrice, readProducts, type ConsepotProduct } from "@/lib/sh
 
 type AdminProductsPageProps = {
   searchParams: Promise<{
+    deleted?: string;
     missing?: string;
   }>;
 };
@@ -48,6 +49,9 @@ export default async function AdminProductsPage({
         <div className="admin-alert admin-alert-danger">
           상품을 찾을 수 없습니다.
         </div>
+      ) : null}
+      {params.deleted ? (
+        <div className="admin-alert">상품을 삭제했습니다.</div>
       ) : null}
 
       <section className="admin-panel">

@@ -39,6 +39,13 @@ export function getCafe24Config(): Cafe24Config {
   };
 }
 
+export function getCafe24ConfigStatus() {
+  return {
+    accessToken: Boolean(process.env.CAFE24_ACCESS_TOKEN),
+    mallId: Boolean(process.env.CAFE24_MALL_ID),
+  };
+}
+
 function requiredEnv(name: string) {
   const value = process.env[name];
 

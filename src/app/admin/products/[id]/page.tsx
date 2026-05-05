@@ -1,12 +1,20 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
+  deleteProductAction,
   logoutAdminAction,
+  saveCafe24MappingAction,
   syncProductToCafe24Action,
   updateProductAction,
 } from "../../actions";
 import { isAdminAuthenticated } from "@/lib/admin/auth";
-import { getProductById } from "@/lib/shop";
+import {
+  getProductById,
+  readProductSyncLogs,
+  type ConsepotProduct,
+  type ProductSyncLog,
+} from "@/lib/shop";
+import { buildCafe24SyncPreview } from "@/lib/cafe24/product-sync";
 
 type AdminProductEditPageProps = {
   params: Promise<{
@@ -14,6 +22,8 @@ type AdminProductEditPageProps = {
   }>;
   searchParams: Promise<{
     created?: string;
+    delete_error?: string;
+    mapping_saved?: string;
     saved?: string;
     sync_error?: string;
     synced?: string;
@@ -42,6 +52,10 @@ export default async function AdminProductEditPage({
     notFound();
   }
 
+  const preview = buildCafe24SyncPreview(product);
+  const syncLogs = await readProductSyncLogs(product.id);
+  const adminWarnings = getAdminWarnings(product, preview.warnings);
+
   return (
     <main className="admin-page">
       <header className="admin-header">
@@ -67,12 +81,28 @@ export default async function AdminProductEditPage({
 
       {flags.created ? <div className="admin-alert">초안을 만들었습니다.</div> : null}
       {flags.saved ? <div className="admin-alert">저장했습니다.</div> : null}
+      {flags.mapping_saved ? (
+        <div className="admin-alert">Cafe24 매핑 정보를 저장했습니다.</div>
+      ) : null}
       {flags.synced ? (
         <div className="admin-alert">Cafe24 상품 동기화를 완료했습니다.</div>
       ) : null}
       {flags.sync_error ? (
         <div className="admin-alert admin-alert-danger">
           Cafe24 동기화 실패: {flags.sync_error}
+        </div>
+      ) : null}
+      {flags.delete_error ? (
+        <div className="admin-alert admin-alert-danger">
+          삭제 확인 문구가 상품 slug와 일치하지 않습니다.
+        </div>
+      ) : null}
+      {adminWarnings.length > 0 ? (
+        <div className="admin-alert admin-alert-warning">
+          <strong>확인할 항목</strong>
+          {adminWarnings.map((warning) => (
+            <span key={warning}>{warning}</span>
+          ))}
         </div>
       ) : null}
 
@@ -260,52 +290,171 @@ export default async function AdminProductEditPage({
 
         <aside className="admin-panel admin-sync-panel">
           <h2>Cafe24 동기화</h2>
-          <dl className="admin-sync-list">
-            <div>
-              <dt>상품번호</dt>
-              <dd>{product.cafe24.productNo ?? "미연결"}</dd>
-            </div>
-            <div>
-              <dt>품목코드</dt>
-              <dd>{product.cafe24.variantCode ?? "미확인"}</dd>
-            </div>
-            <div>
-              <dt>상태</dt>
-              <dd>{product.cafe24.mappingStatus}</dd>
-            </div>
-            <div>
-              <dt>마지막 동기화</dt>
-              <dd>{product.cafe24.lastSyncedAt ?? "없음"}</dd>
-            </div>
-          </dl>
-          {product.cafe24.productUrl ? (
-            <a
-              className="admin-text-button"
-              href={product.cafe24.productUrl}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              Cafe24 상품 보기
-            </a>
-          ) : null}
-          <p>
-            동기화는 상품명, 가격, 판매 상태, 최소 설명, 재고를 Cafe24로
-            보냅니다. 이미지는 Cafe24 경로가 있는 최소 이미지만 후속 단계에서
-            붙입니다.
-          </p>
-          <form action={syncProductToCafe24Action}>
+
+          <section className="admin-sync-block">
+            <h3>전송 미리보기</h3>
+            <dl className="admin-sync-list">
+              {preview.requestSummary.map((item) => (
+                <div key={item.label}>
+                  <dt>{item.label}</dt>
+                  <dd>{item.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          <form action={syncProductToCafe24Action} className="admin-sync-form">
             <input name="id" type="hidden" value={product.id} />
-            <button className="button-primary" type="submit">
+            <button
+              className="button-primary"
+              disabled={!preview.canSync}
+              type="submit"
+            >
               Cafe24 동기화
             </button>
           </form>
-          {product.cafe24.lastSyncError ? (
-            <div className="admin-alert admin-alert-danger">
-              {product.cafe24.lastSyncError}
-            </div>
-          ) : null}
+
+          <section className="admin-sync-block">
+            <h3>매핑 정보</h3>
+            <form action={saveCafe24MappingAction} className="admin-form">
+              <input name="id" type="hidden" value={product.id} />
+              <label>
+                <span>상품번호</span>
+                <input name="productNo" defaultValue={product.cafe24.productNo ?? ""} />
+              </label>
+              <label>
+                <span>품목코드</span>
+                <input
+                  name="variantCode"
+                  defaultValue={product.cafe24.variantCode ?? ""}
+                />
+              </label>
+              <div className="admin-form-grid">
+                <label>
+                  <span>카테고리 번호</span>
+                  <input
+                    min="1"
+                    name="categoryNo"
+                    type="number"
+                    defaultValue={product.cafe24.categoryNo ?? ""}
+                  />
+                </label>
+                <label>
+                  <span>진열 그룹</span>
+                  <input
+                    min="1"
+                    name="displayGroup"
+                    type="number"
+                    defaultValue={product.cafe24.displayGroup ?? ""}
+                  />
+                </label>
+              </div>
+              <label>
+                <span>상품 URL</span>
+                <input name="productUrl" defaultValue={product.cafe24.productUrl ?? ""} />
+              </label>
+              <label>
+                <span>주문 URL</span>
+                <input
+                  name="checkoutUrl"
+                  defaultValue={product.cafe24.checkoutUrl ?? ""}
+                />
+              </label>
+              <button className="admin-secondary-button" type="submit">
+                매핑 저장
+              </button>
+            </form>
+          </section>
+
+          <section className="admin-sync-block">
+            <h3>최근 로그</h3>
+            {syncLogs.length > 0 ? (
+              <div className="admin-sync-log-list">
+                {syncLogs.map((log) => (
+                  <SyncLogItem key={log.id} log={log} />
+                ))}
+              </div>
+            ) : (
+              <p className="admin-empty-text">아직 동기화 로그가 없습니다.</p>
+            )}
+          </section>
+          <section className="admin-sync-block admin-danger-zone">
+            <h3>상품 삭제</h3>
+            <p>
+              삭제하면 Consepot 상품 원장과 연결된 이미지, Cafe24 매핑, 동기화
+              로그가 함께 삭제됩니다. 실행하려면 아래 입력칸에{" "}
+              <strong>{product.slug}</strong>를 그대로 입력해 주세요.
+            </p>
+            <form action={deleteProductAction} className="admin-form">
+              <input name="id" type="hidden" value={product.id} />
+              <label>
+                <span>삭제 확인</span>
+                <input
+                  autoComplete="off"
+                  name="confirmSlug"
+                  placeholder={product.slug}
+                  required
+                />
+              </label>
+              <button className="admin-danger-button" type="submit">
+                상품 삭제
+              </button>
+            </form>
+          </section>
         </aside>
       </div>
     </main>
   );
+}
+
+function getAdminWarnings(product: ConsepotProduct, previewWarnings: string[]) {
+  const warnings = [...previewWarnings];
+
+  if (
+    product.commerce.availabilityStatus === "available" &&
+    !product.cafe24.productNo
+  ) {
+    warnings.push("판매중 상품이지만 Cafe24 상품번호가 아직 없습니다.");
+  }
+
+  if (product.published && product.commerce.price === null) {
+    warnings.push("공개 상품이지만 가격이 비어 있습니다.");
+  }
+
+  return [...new Set(warnings)];
+}
+
+function SyncLogItem({ log }: { log: ProductSyncLog }) {
+  return (
+    <article className={`admin-sync-log admin-sync-log-${log.status}`}>
+      <div>
+        <strong>{syncLogStatusLabel(log)}</strong>
+        <span>{formatDateTime(log.createdAt)}</span>
+      </div>
+      {log.message ? <p>{log.message}</p> : null}
+    </article>
+  );
+}
+
+function syncLogStatusLabel(log: ProductSyncLog) {
+  const action = {
+    manual_mapping: "수동 매핑",
+    preview: "미리보기",
+    sync: "동기화",
+  }[log.action];
+
+  const status = {
+    failed: "실패",
+    preview: "확인",
+    success: "성공",
+  }[log.status];
+
+  return `${action} ${status}`;
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("ko-KR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
 }

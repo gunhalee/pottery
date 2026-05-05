@@ -2,7 +2,7 @@ import "server-only";
 
 import type { Cafe24ProductMapping, ConsepotProduct } from "@/lib/shop";
 import { cafe24Fetch } from "./client";
-import { getCafe24Config } from "./config";
+import { getCafe24Config, getCafe24ConfigStatus } from "./config";
 
 type Cafe24ProductPayload = {
   add_category_no?: Array<{
@@ -36,6 +36,89 @@ type Cafe24VariantInventoryPayload = {
   shop_no: number;
   use_inventory: "T";
 };
+
+export type Cafe24SyncPreview = {
+  canSync: boolean;
+  payload: Cafe24ProductPayload | null;
+  requestSummary: Array<{
+    label: string;
+    value: string;
+  }>;
+  warnings: string[];
+};
+
+export function buildCafe24SyncPreview(
+  product: ConsepotProduct,
+): Cafe24SyncPreview {
+  const configStatus = getCafe24ConfigStatus();
+  const warnings: string[] = [];
+  const categoryNo = product.cafe24.categoryNo ?? getDefaultCategoryNo();
+  const shopNo = getDefaultShopNo();
+
+  if (!configStatus.mallId) {
+    warnings.push("CAFE24_MALL_ID 환경 변수가 필요합니다.");
+  }
+
+  if (!configStatus.accessToken) {
+    warnings.push("CAFE24_ACCESS_TOKEN 환경 변수가 필요합니다.");
+  }
+
+  if (product.commerce.price === null) {
+    warnings.push("Cafe24 동기화에는 가격 입력이 필요합니다.");
+  }
+
+  if (product.commerce.stockQuantity === null) {
+    warnings.push("재고가 비어 있으면 Cafe24 재고 동기화는 건너뜁니다.");
+  }
+
+  if (!categoryNo) {
+    warnings.push("Cafe24 기본 카테고리 번호가 필요합니다.");
+  }
+
+  let payload: Cafe24ProductPayload | null = null;
+
+  if (product.commerce.price !== null) {
+    payload = toCafe24ProductPayload(product, {
+      categoryNo,
+      shopNo,
+    });
+  }
+
+  return {
+    canSync:
+      configStatus.mallId &&
+      configStatus.accessToken &&
+      product.commerce.price !== null,
+    payload,
+    requestSummary: [
+      { label: "동작", value: product.cafe24.productNo ? "상품 수정" : "상품 생성" },
+      { label: "상품명", value: product.titleKo },
+      {
+        label: "판매 상태",
+        value:
+          product.commerce.availabilityStatus === "available"
+            ? "판매중"
+            : "판매중 아님",
+      },
+      {
+        label: "가격",
+        value:
+          product.commerce.price === null
+            ? "미입력"
+            : `${product.commerce.price.toLocaleString("ko-KR")}원`,
+      },
+      {
+        label: "재고",
+        value:
+          product.commerce.stockQuantity === null
+            ? "미입력"
+            : `${product.commerce.stockQuantity}`,
+      },
+      { label: "카테고리", value: categoryNo ? `${categoryNo}` : "미입력" },
+    ],
+    warnings,
+  };
+}
 
 export async function syncProductToCafe24(product: ConsepotProduct) {
   const config = getCafe24Config();
@@ -99,6 +182,18 @@ export async function syncProductToCafe24(product: ConsepotProduct) {
     productUrl,
     variantCode: variantCode ?? product.cafe24.variantCode,
   } satisfies Cafe24ProductMapping;
+}
+
+export function buildCafe24SyncRequestSnapshot(product: ConsepotProduct) {
+  const preview = buildCafe24SyncPreview(product);
+
+  return {
+    mapping: product.cafe24,
+    payload: preview.payload,
+    productId: product.id,
+    slug: product.slug,
+    warnings: preview.warnings,
+  };
 }
 
 function toCafe24ProductPayload(
@@ -283,4 +378,14 @@ function escapeHtml(value: string) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function getDefaultCategoryNo() {
+  const value = process.env.CAFE24_DEFAULT_CATEGORY_NO;
+  return value ? Number(value) : 29;
+}
+
+function getDefaultShopNo() {
+  const value = process.env.CAFE24_SHOP_NO;
+  return value ? Number(value) : 1;
 }

@@ -1102,6 +1102,12 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   color: #6f342b;
 }
 
+.admin-alert-warning {
+  border-color: #a18a52;
+  background: #f1ead8;
+  color: #6d5621;
+}
+
 .admin-edit-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
@@ -1145,6 +1151,143 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 .admin-sync-list dd {
   color: var(--tx2);
   overflow-wrap: anywhere;
+}
+
+.admin-sync-block {
+  padding-top: 22px;
+  margin-top: 22px;
+  border-top: 0.5px solid var(--brd);
+}
+
+.admin-sync-block:first-of-type {
+  padding-top: 0;
+  margin-top: 0;
+  border-top: 0;
+}
+
+.admin-sync-block h3 {
+  margin: 0 0 14px;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.admin-sync-form {
+  display: grid;
+  margin-top: 18px;
+}
+
+.admin-secondary-button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 18px;
+  border: 0.5px solid var(--tx);
+  background: transparent;
+  color: var(--tx);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.admin-secondary-button:hover {
+  background: var(--tx);
+  color: var(--bg);
+}
+
+.admin-danger-zone {
+  padding: 18px;
+  border: 0.5px solid #9f6a5f;
+  background: #f2e6e3;
+}
+
+.admin-danger-zone p {
+  margin-bottom: 18px;
+  color: #6f342b;
+}
+
+.admin-danger-zone strong {
+  color: #4f211b;
+  font-weight: 400;
+}
+
+.admin-danger-button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 18px;
+  border: 0;
+  background: #6f342b;
+  color: var(--bg);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.admin-danger-button:hover {
+  background: #4f211b;
+  transform: translateY(-1px);
+}
+
+.admin-sync-log-list {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-sync-log {
+  padding: 12px;
+  border: 0.5px solid var(--brd);
+  background: var(--bg);
+}
+
+.admin-sync-log > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-sync-log strong {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.admin-sync-log span {
+  color: var(--tx3);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.admin-sync-log p,
+.admin-empty-text {
+  margin: 8px 0 0;
+  color: var(--tx2);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.admin-sync-log-failed {
+  border-color: #9f6a5f;
+  background: #f2e6e3;
+}
+
+.admin-sync-log-success {
+  border-color: color-mix(in srgb, var(--tx) 18%, var(--brd));
+}
+
+.button-primary:disabled,
+.button-primary:disabled:hover {
+  background: var(--tx3);
+  cursor: not-allowed;
+  opacity: 0.58;
+  transform: none;
 }
 
 .class-grid {

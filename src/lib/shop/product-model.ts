@@ -113,3 +113,17 @@ export type ProductCta = {
   kind: ProductCtaKind;
   label: string;
 };
+
+export type ProductSyncLogStatus = "success" | "failed" | "preview";
+
+export type ProductSyncLog = {
+  action: "preview" | "sync" | "manual_mapping";
+  createdAt: string;
+  id: number;
+  message: string | null;
+  productId: string;
+  provider: "cafe24";
+  requestPayload: unknown;
+  responsePayload: unknown;
+  status: ProductSyncLogStatus;
+};

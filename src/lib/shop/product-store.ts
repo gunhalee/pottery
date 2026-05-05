@@ -12,6 +12,7 @@ import type {
   Cafe24ProductMapping,
   ConsepotProduct,
   LimitedType,
+  ProductSyncLog,
   ProductKind,
   RestockCtaType,
 } from "./product-model";
@@ -65,6 +66,18 @@ type Cafe24MappingRow = {
   product_no: string | null;
   product_url: string | null;
   variant_code: string | null;
+};
+
+type ProductSyncLogRow = {
+  action: ProductSyncLog["action"];
+  created_at: string;
+  id: number;
+  message: string | null;
+  product_id: string;
+  provider: "cafe24";
+  request_payload: unknown;
+  response_payload: unknown;
+  status: ProductSyncLog["status"];
 };
 
 type ProductSelectRow = ProductRow & {
@@ -165,6 +178,15 @@ export type ProductUpdateInput = {
   usageNote?: string;
 };
 
+export type ProductSyncLogInput = {
+  action: ProductSyncLog["action"];
+  message?: string | null;
+  productId: string;
+  requestPayload?: unknown;
+  responsePayload?: unknown;
+  status: ProductSyncLog["status"];
+};
+
 export async function readProducts(): Promise<ConsepotProduct[]> {
   if (isSupabaseConfigured()) {
     return readProductsFromSupabase();
@@ -229,6 +251,63 @@ export async function updateProductCafe24Mapping(
   }
 
   return updateProductCafe24MappingInJson(id, cafe24);
+}
+
+export async function deleteProduct(id: string) {
+  if (isSupabaseConfigured()) {
+    return deleteProductInSupabase(id);
+  }
+
+  return deleteProductInJson(id);
+}
+
+export async function readProductSyncLogs(productId: string, limit = 8) {
+  if (!isSupabaseConfigured()) {
+    return [] satisfies ProductSyncLog[];
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("shop_product_sync_logs")
+    .select("*")
+    .eq("product_id", productId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(`Supabase 동기화 로그 조회 실패: ${error.message}`);
+  }
+
+  return (data ?? []).map((row) =>
+    fromSupabaseSyncLogRow(row as ProductSyncLogRow),
+  );
+}
+
+export async function appendProductSyncLog(input: ProductSyncLogInput) {
+  if (!isSupabaseConfigured()) {
+    return null;
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("shop_product_sync_logs")
+    .insert({
+      action: input.action,
+      message: input.message ?? null,
+      product_id: input.productId,
+      provider: "cafe24",
+      request_payload: input.requestPayload ?? null,
+      response_payload: input.responsePayload ?? null,
+      status: input.status,
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(`Supabase 동기화 로그 저장 실패: ${error.message}`);
+  }
+
+  return fromSupabaseSyncLogRow(data as ProductSyncLogRow);
 }
 
 export function normalizeSlug(slug: string) {
@@ -395,6 +474,23 @@ async function updateProductCafe24MappingInSupabase(
   return getProductById(id);
 }
 
+async function deleteProductInSupabase(id: string) {
+  const current = await getProductById(id);
+
+  if (!current) {
+    throw new Error("상품을 찾을 수 없습니다.");
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { error } = await supabase.from("shop_products").delete().eq("id", id);
+
+  if (error) {
+    throw new Error(`Supabase 상품 삭제 실패: ${error.message}`);
+  }
+
+  return current;
+}
+
 async function readProductsFromJson() {
   try {
     const file = await readFile(dataFilePath, "utf8");
@@ -546,6 +642,18 @@ async function updateProductCafe24MappingInJson(
   return nextProducts.find((product) => product.id === id) ?? null;
 }
 
+async function deleteProductInJson(id: string) {
+  const products = await readProductsFromJson();
+  const current = products.find((product) => product.id === id);
+
+  if (!current) {
+    throw new Error("상품을 찾을 수 없습니다.");
+  }
+
+  await writeJsonProducts(products.filter((product) => product.id !== id));
+  return current;
+}
+
 async function writeJsonProducts(products: ConsepotProduct[]) {
   const parsed = productListSchema.parse(products);
   await mkdir(path.dirname(dataFilePath), { recursive: true });
@@ -656,6 +764,20 @@ function fromSupabaseRow(row: ProductSelectRow): ConsepotProduct {
     updatedAt: row.updated_at,
     usageNote: row.usage_note ?? undefined,
   });
+}
+
+function fromSupabaseSyncLogRow(row: ProductSyncLogRow): ProductSyncLog {
+  return {
+    action: row.action,
+    createdAt: row.created_at,
+    id: row.id,
+    message: row.message,
+    productId: row.product_id,
+    provider: row.provider,
+    requestPayload: row.request_payload,
+    responsePayload: row.response_payload,
+    status: row.status,
+  };
 }
 
 function toSupabaseProductRow(product: ConsepotProduct) {
