@@ -21,9 +21,9 @@ export function ProductFixedCta({ product }: { product: ConsepotProduct }) {
         product={product}
       />
       {cta.kind === "buy" && action.href ? (
-        <p>안전한 결제를 위해 Cafe24 주문 화면으로 이동합니다.</p>
+        <p>Cafe24 장바구니에 담은 뒤 주문 화면으로 이동합니다.</p>
       ) : cta.kind === "buy" ? (
-        <p>Cafe24 상품 동기화 후 구매 버튼이 주문 화면으로 연결됩니다.</p>
+        <p>Cafe24 상품 동기화 후 구매 버튼이 활성화됩니다.</p>
       ) : (
         <p>카카오채널에서 입고와 비슷한 작품 소식을 안내합니다.</p>
       )}

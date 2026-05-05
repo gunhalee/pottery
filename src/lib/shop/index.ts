@@ -51,11 +51,7 @@ export function getProductCta(product: ConsepotProduct): ProductCta {
 
     return {
       kind: "buy",
-      label: purchaseHref
-        ? product.cafe24.checkoutUrl
-          ? "Cafe24 주문서로 이동"
-          : "Cafe24 구매 페이지로 이동"
-        : "Cafe24 구매 링크 준비 중",
+      label: purchaseHref ? "구매하기" : "Cafe24 구매 준비 중",
     };
   }
 
@@ -95,7 +91,7 @@ export function getProductActionHref(
 ): ProductActionHref {
   if (product.commerce.availabilityStatus === "available") {
     return {
-      external: true,
+      external: false,
       href: getProductPurchaseHref(product),
     };
   }
@@ -117,15 +113,40 @@ export function getProductActionHref(
 }
 
 export function getProductPurchaseHref(product: ConsepotProduct) {
-  const href = product.cafe24.checkoutUrl ?? product.cafe24.productUrl;
+  if (!product.cafe24.productNo || !product.cafe24.variantCode) {
+    return null;
+  }
 
-  if (!href) {
+  return `/checkout/cafe24/${product.slug}`;
+}
+
+export function getCafe24ProductHref(product: ConsepotProduct) {
+  if (!product.cafe24.productUrl) {
     return null;
   }
 
   return resolveExternalHref(
-    href,
+    product.cafe24.productUrl,
     process.env.NEXT_PUBLIC_CAFE24_SHOP_BASE_URL,
+  );
+}
+
+export function getCafe24CheckoutHref(product: ConsepotProduct) {
+  const href =
+    product.cafe24.checkoutUrl ||
+    process.env.NEXT_PUBLIC_CAFE24_CHECKOUT_BASE_URL;
+
+  if (href) {
+    return resolveExternalHref(
+      href,
+      process.env.NEXT_PUBLIC_CAFE24_SHOP_BASE_URL,
+    );
+  }
+
+  return resolveExternalHref(
+    "/order/basket.html",
+    process.env.NEXT_PUBLIC_CAFE24_SHOP_BASE_URL ||
+      buildDefaultCafe24ShopBaseUrl(),
   );
 }
 
@@ -172,6 +193,12 @@ function resolveExternalHref(href: string, baseHref?: string) {
   }
 
   return new URL(href, baseHref).toString();
+}
+
+function buildDefaultCafe24ShopBaseUrl() {
+  const mallId =
+    process.env.NEXT_PUBLIC_CAFE24_MALL_ID || process.env.CAFE24_MALL_ID;
+  return mallId ? `https://${mallId}.cafe24.com` : undefined;
 }
 
 export type {

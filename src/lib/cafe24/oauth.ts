@@ -8,7 +8,7 @@ import {
 
 export const cafe24OAuthStateCookieName = "consepot_cafe24_oauth_state";
 
-const defaultScopes = "mall.read_product mall.write_product";
+const defaultScopes = "mall.read_product mall.write_product mall.write_personal";
 const tokenRefreshBufferMs = 5 * 60 * 1000;
 
 export type Cafe24TokenResponse = {

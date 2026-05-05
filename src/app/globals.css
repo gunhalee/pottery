@@ -853,6 +853,66 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   line-height: 1.5;
 }
 
+.checkout-bridge-page {
+  display: grid;
+  min-height: calc(100svh - var(--nav-offset));
+  place-items: center;
+  padding: 64px 24px 96px;
+}
+
+.checkout-bridge-panel {
+  display: grid;
+  width: min(100%, 520px);
+  gap: 18px;
+  padding: 36px;
+  border: 0.5px solid var(--brd);
+  background: var(--white);
+}
+
+.checkout-bridge-panel h1 {
+  margin: 0;
+  font-family: var(--font-cormorant), ui-serif, Georgia, serif;
+  font-size: clamp(34px, 5vw, 54px);
+  font-weight: 300;
+  letter-spacing: 0;
+  line-height: 1.05;
+}
+
+.checkout-bridge-panel p {
+  margin: 0;
+  color: var(--tx2);
+  font-size: 13px;
+  line-height: 1.8;
+  word-break: keep-all;
+}
+
+.checkout-bridge-status {
+  padding: 12px 14px;
+  border: 0.5px solid var(--brd);
+  background: var(--bg2);
+  color: var(--tx2);
+  font-size: 12px;
+}
+
+.checkout-bridge-status-error {
+  border-color: #9f6a5f;
+  background: #f2e6e3;
+  color: #6f342b;
+}
+
+.checkout-bridge-status-success {
+  border-color: #6f7d5e;
+  background: #edf0e8;
+  color: #4f5a40;
+}
+
+.checkout-bridge-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
 .admin-page {
   width: min(100% - 64px, 1180px);
   margin: 0 auto;
