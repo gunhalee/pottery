@@ -157,9 +157,6 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   background: rgba(247, 247, 245, 0.94);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  box-shadow:
-    0 12px 28px rgba(26, 26, 24, 0.16),
-    0 2px 8px rgba(26, 26, 24, 0.08);
   color: var(--tx);
   cursor: pointer;
   font-family: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
@@ -177,9 +174,6 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   border-color: color-mix(in srgb, var(--tx) 16%, var(--brd));
   background: var(--white);
   opacity: 1;
-  box-shadow:
-    0 16px 34px rgba(26, 26, 24, 0.18),
-    0 4px 12px rgba(26, 26, 24, 0.1);
   transform: translateY(-2px);
 }
 
