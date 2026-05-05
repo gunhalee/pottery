@@ -6,9 +6,9 @@ export const siteConfig = {
   kakaoChannelUrl:
     process.env.NEXT_PUBLIC_KAKAO_CHANNEL_URL || "https://pf.kakao.com/",
   navigation: [
-    { href: "/intro", label: "우리소개" },
-    { href: "/news", label: "우리소식" },
-    { href: "/gallery", label: "우리작품" },
+    { href: "/intro", label: "소개" },
+    { href: "/news", label: "소식" },
+    { href: "/gallery", label: "작품" },
     { href: "/class", label: "함께하기" },
     { href: "/shop", label: "소장하기" },
   ],

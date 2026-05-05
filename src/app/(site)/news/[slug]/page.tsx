@@ -1,4 +1,9 @@
-import { PageShell } from "@/components/site/primitives";
+import { notFound } from "next/navigation";
+import { ContentDetailPage } from "@/components/content/content-detail-page";
+import {
+  getContentEntryBySlug,
+  getPublishedContentSlugs,
+} from "@/lib/content-manager/content-store";
 
 type NewsDetailPageProps = {
   params: Promise<{
@@ -6,21 +11,18 @@ type NewsDetailPageProps = {
   }>;
 };
 
-export default async function NewsDetailPage({
-  params,
-}: NewsDetailPageProps) {
-  const { slug } = await params;
+export async function generateStaticParams() {
+  const slugs = await getPublishedContentSlugs("news");
+  return slugs.map((slug) => ({ slug }));
+}
 
-  return (
-    <PageShell className="detail-shell">
-      <div className="placeholder-panel">
-        <div className="small-caps">News Detail</div>
-        <h1 className="section-title">게시글 상세 스캐폴드</h1>
-        <p className="body-copy">
-          현재 slug는 <span className="inline-code">{slug}</span>입니다. 추후
-          추후 상세 본문과 SEO 메타데이터를 연결합니다.
-        </p>
-      </div>
-    </PageShell>
-  );
+export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
+  const { slug } = await params;
+  const entry = await getContentEntryBySlug("news", slug);
+
+  if (!entry) {
+    notFound();
+  }
+
+  return <ContentDetailPage entry={entry} />;
 }

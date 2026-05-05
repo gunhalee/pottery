@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   ArrowLink,
   BottomNav,
@@ -5,9 +6,12 @@ import {
   PageShell,
 } from "@/components/site/primitives";
 import { siteConfig } from "@/lib/config/site";
-import { newsItems, scheduleItems } from "@/lib/content/site-content";
+import { scheduleItems } from "@/lib/content/site-content";
+import { getPublishedContentEntries } from "@/lib/content-manager/content-store";
 
-export default function NewsPage() {
+export default async function NewsPage() {
+  const newsItems = await getPublishedContentEntries("news");
+
   return (
     <>
       <PageShell>
@@ -19,16 +23,33 @@ export default function NewsPage() {
               <br />
               Updates
             </h1>
-            {newsItems.map((item) => (
-              <article className="news-item" key={item.title}>
-                <div className="news-date">{item.date}</div>
+            {newsItems.length > 0 ? (
+              newsItems.map((item) => (
+                <article className="news-item" key={item.id}>
+                  <div className="news-date">
+                    {item.displayDate ?? item.publishedAt ?? ""}
+                  </div>
+                  <div>
+                    <div className="tag">News</div>
+                    <h3>
+                      <Link href={`/news/${item.slug}`} prefetch={false}>
+                        {item.title}
+                      </Link>
+                    </h3>
+                    <p>{item.summary || item.bodyText}</p>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <article className="news-item">
+                <div className="news-date">Soon</div>
                 <div>
-                  <div className="tag">{item.tag}</div>
-                  <h3>{item.title}</h3>
-                  <p>{item.description}</p>
+                  <div className="tag">News</div>
+                  <h3>준비 중입니다</h3>
+                  <p>공개된 소식이 아직 없습니다.</p>
                 </div>
               </article>
-            ))}
+            )}
             <div className="news-inline-cta">
               <ArrowLink href="/shop">최근 작품 보러 가기</ArrowLink>
             </div>

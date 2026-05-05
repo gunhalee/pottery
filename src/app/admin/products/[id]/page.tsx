@@ -2,11 +2,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
   deleteProductAction,
-  logoutAdminAction,
   saveCafe24MappingAction,
   syncProductToCafe24Action,
   updateProductAction,
 } from "../../actions";
+import { AdminNav } from "@/components/admin/admin-nav";
 import { isAdminAuthenticated } from "@/lib/admin/auth";
 import {
   getProductById,
@@ -80,11 +80,7 @@ export default async function AdminProductEditPage({
           <Link className="admin-text-button" href="/admin/products">
             목록
           </Link>
-          <form action={logoutAdminAction}>
-            <button className="admin-text-button" type="submit">
-              로그아웃
-            </button>
-          </form>
+          <AdminNav />
         </div>
       </header>
 

@@ -1,3 +1,6 @@
+/* eslint-disable @next/next/no-img-element */
+
+import Link from "next/link";
 import {
   BottomNav,
   MetaLabel,
@@ -5,9 +8,11 @@ import {
   PageIntro,
   PageShell,
 } from "@/components/site/primitives";
-import { galleryItems } from "@/lib/content/site-content";
+import { getPublishedContentEntries } from "@/lib/content-manager/content-store";
 
-export default function GalleryPage() {
+export default async function GalleryPage() {
+  const galleryItems = await getPublishedContentEntries("gallery");
+
   return (
     <>
       <PageShell>
@@ -16,16 +21,40 @@ export default function GalleryPage() {
           subtitle="작품과 작업 과정의 분위기를 한눈에 볼 수 있는 아카이브입니다."
           title="Works Archive"
         />
-        <div className="gallery-grid">
-          {galleryItems.map((item, index) => (
-            <div
-              className={`gallery-item ${
-                "featured" in item && item.featured ? "featured" : ""
-              }`}
-              data-title={item.title}
-              key={`${item.title}-${index}`}
-            />
-          ))}
+        <div className="gallery-grid gallery-content-grid">
+          {galleryItems.length > 0 ? (
+            galleryItems.map((item) => {
+              const image =
+                item.images.find((entryImage) => entryImage.isCover) ??
+                item.images[0] ??
+                null;
+
+              return (
+                <Link
+                  className="gallery-item gallery-content-item"
+                  href={`/gallery/${item.slug}`}
+                  key={item.id}
+                  prefetch={false}
+                >
+                  {image ? (
+                    <img
+                      alt={image.alt}
+                      decoding="async"
+                      height={image.height}
+                      loading="lazy"
+                      src={image.src}
+                      width={image.width}
+                    />
+                  ) : null}
+                  <span>{item.title}</span>
+                </Link>
+              );
+            })
+          ) : (
+            <div className="gallery-item gallery-content-empty">
+              <span>공개된 작품 아카이브가 아직 없습니다.</span>
+            </div>
+          )}
         </div>
         <PageLinkCards
           cards={[

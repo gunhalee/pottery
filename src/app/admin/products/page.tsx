@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { logoutAdminAction, createProductDraftAction } from "../actions";
+import { createProductDraftAction } from "../actions";
+import { AdminNav } from "@/components/admin/admin-nav";
 import { isAdminAuthenticated } from "@/lib/admin/auth";
 import { formatProductPrice, readProducts, type ConsepotProduct } from "@/lib/shop";
 
@@ -38,11 +39,7 @@ export default async function AdminProductsPage({
             동기화합니다.
           </p>
         </div>
-        <form action={logoutAdminAction}>
-          <button className="admin-text-button" type="submit">
-            로그아웃
-          </button>
-        </form>
+        <AdminNav />
       </header>
 
       {params.missing ? (

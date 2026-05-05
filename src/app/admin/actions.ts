@@ -20,12 +20,27 @@ import {
   type Cafe24ProductMapping,
 } from "@/lib/shop";
 import {
+  createContentDraft,
+  deleteContentEntry,
+  deleteContentImage,
+  getContentAdminPath,
+  getContentPublicPath,
+  getContentEntryById,
+  normalizeContentSlug,
+  updateContentEntry,
+} from "@/lib/content-manager/content-store";
+import type {
+  ContentImageLayout,
+  ContentKind,
+} from "@/lib/content-manager/content-model";
+import { extractPlainTextFromLexicalJson } from "@/lib/content-manager/rich-text-utils";
+import {
   buildCafe24SyncRequestSnapshot,
   syncProductToCafe24,
 } from "@/lib/cafe24/product-sync";
 
 const draftSchema = z.object({
-  slug: z.string().min(1),
+  slug: z.string(),
   titleKo: z.string().min(1),
 });
 
@@ -72,6 +87,54 @@ const productDeleteSchema = z.object({
   id: z.string().min(1),
 });
 
+const contentDraftSchema = z.object({
+  kind: z.enum(["gallery", "news"]),
+  slug: z.string().optional(),
+  title: z.string().min(1),
+});
+
+const contentImageUpdateSchema = z.object({
+  alt: z.string(),
+  caption: z.string().optional(),
+  id: z.string().min(1),
+  isCover: z.boolean(),
+  isDetail: z.boolean(),
+  layout: z.enum([
+    "align-left",
+    "align-right",
+    "default",
+    "full",
+    "two-column",
+    "wide",
+  ]),
+  sortOrder: z.number().int().nonnegative(),
+});
+
+const contentUpdateSchema = z.object({
+  body: z.unknown(),
+  displayDate: z.string().optional(),
+  id: z.string().min(1),
+  images: z.array(contentImageUpdateSchema),
+  kind: z.enum(["gallery", "news"]),
+  relatedProductSlug: z.string().nullable(),
+  slug: z.string().min(1),
+  status: z.enum(["draft", "published"]),
+  summary: z.string(),
+  title: z.string().min(1),
+});
+
+const contentDeleteSchema = z.object({
+  confirmSlug: z.string().min(1),
+  id: z.string().min(1),
+  kind: z.enum(["gallery", "news"]),
+});
+
+const contentImageDeleteSchema = z.object({
+  entryId: z.string().min(1),
+  id: z.string().min(1),
+  kind: z.enum(["gallery", "news"]),
+});
+
 export async function loginAdminAction(formData: FormData) {
   const password = String(formData.get("password") ?? "");
   const next = safeNextPath(String(formData.get("next") ?? "/admin/products"));
@@ -102,6 +165,130 @@ export async function createProductDraftAction(formData: FormData) {
   revalidatePath("/shop");
   revalidatePath("/admin/products");
   redirect(`/admin/products/${product.id}?created=1`);
+}
+
+export async function createContentDraftAction(formData: FormData) {
+  await assertAdmin();
+
+  const parsed = contentDraftSchema.parse({
+    kind: formData.get("kind"),
+    slug: normalizeContentSlug(String(formData.get("slug") ?? "")),
+    title: stringValue(formData.get("title")),
+  });
+
+  const adminPath = getContentAdminPath(parsed.kind);
+
+  try {
+    const entry = await createContentDraft({
+      ...parsed,
+      slug: parsed.slug ?? "",
+    });
+
+    revalidatePath(adminPath);
+    redirect(`${adminPath}/${entry.id}?created=1`);
+  } catch (error) {
+    if (isDuplicateSlugError(error)) {
+      redirect(`${adminPath}?slug_error=duplicate`);
+    }
+
+    throw error;
+  }
+}
+
+export async function updateContentEntryAction(formData: FormData) {
+  await assertAdmin();
+
+  const body = parseJsonField(formData.get("bodyJson"));
+  const parsed = contentUpdateSchema.parse({
+    body,
+    displayDate: stringValue(formData.get("displayDate")),
+    id: stringValue(formData.get("id")),
+    images: z.array(contentImageUpdateSchema).parse(
+      parseJsonField(formData.get("imagesJson")),
+    ),
+    kind: formData.get("kind"),
+    relatedProductSlug: nullableStringValue(formData.get("relatedProductSlug")),
+    slug: normalizeContentSlug(String(formData.get("slug") ?? "")),
+    status: formData.get("status"),
+    summary: stringValue(formData.get("summary")),
+    title: stringValue(formData.get("title")),
+  });
+
+  const beforeUpdate = await getContentEntryById(parsed.id);
+  const adminPath = getContentAdminPath(parsed.kind);
+
+  if (!beforeUpdate || beforeUpdate.kind !== parsed.kind) {
+    redirect(`${adminPath}?missing=1`);
+  }
+
+  try {
+    const updated = await updateContentEntry(parsed.id, {
+      ...parsed,
+      bodyText: extractPlainTextFromLexicalJson(body),
+      images: parsed.images.map((image) => ({
+        ...image,
+        layout: image.layout as ContentImageLayout,
+      })),
+    });
+
+    revalidateContentPaths(
+      updated.kind,
+      updated.id,
+      updated.slug,
+      beforeUpdate.slug,
+    );
+    redirect(`${adminPath}/${updated.id}?saved=1`);
+  } catch (error) {
+    if (isDuplicateSlugError(error)) {
+      redirect(`${adminPath}/${parsed.id}?slug_error=duplicate`);
+    }
+
+    throw error;
+  }
+}
+
+export async function deleteContentEntryAction(formData: FormData) {
+  await assertAdmin();
+
+  const parsed = contentDeleteSchema.parse({
+    confirmSlug: stringValue(formData.get("confirmSlug")),
+    id: stringValue(formData.get("id")),
+    kind: formData.get("kind"),
+  });
+  const adminPath = getContentAdminPath(parsed.kind);
+  const entry = await getContentEntryById(parsed.id);
+
+  if (!entry || entry.kind !== parsed.kind) {
+    redirect(`${adminPath}?missing=1`);
+  }
+
+  if (parsed.confirmSlug !== entry.slug) {
+    redirect(`${adminPath}/${entry.id}?delete_error=confirm`);
+  }
+
+  const deleted = await deleteContentEntry(entry.id);
+  revalidateContentPaths(
+    deleted.kind,
+    deleted.id,
+    deleted.slug,
+    deleted.slug,
+  );
+  redirect(`${adminPath}?deleted=1`);
+}
+
+export async function deleteContentImageAction(formData: FormData) {
+  await assertAdmin();
+
+  const parsed = contentImageDeleteSchema.parse({
+    entryId: stringValue(formData.get("entryId")),
+    id: stringValue(formData.get("id")),
+    kind: formData.get("kind"),
+  });
+  const adminPath = getContentAdminPath(parsed.kind);
+
+  await deleteContentImage(parsed.entryId, parsed.id);
+  revalidatePath(`${adminPath}/${parsed.entryId}`);
+  redirect(`${adminPath}/${parsed.entryId}?image_deleted=1`);
 }
 
 export async function updateProductAction(formData: FormData) {
@@ -288,6 +475,40 @@ function revalidateProductPaths(slug: string, previousSlug?: string) {
   if (previousSlug && previousSlug !== slug) {
     revalidatePath(`/shop/${previousSlug}`);
   }
+}
+
+function revalidateContentPaths(
+  kind: ContentKind,
+  id: string,
+  slug: string,
+  previousSlug?: string,
+) {
+  const adminPath = getContentAdminPath(kind);
+  const publicPath = getContentPublicPath(kind);
+
+  revalidatePath(adminPath);
+  revalidatePath(`${adminPath}/${id}`);
+  revalidatePath(`${adminPath}/${id}/preview`);
+  revalidatePath(publicPath);
+  revalidatePath(`${publicPath}/${slug}`);
+
+  if (previousSlug && previousSlug !== slug) {
+    revalidatePath(`${publicPath}/${previousSlug}`);
+  }
+}
+
+function parseJsonField(value: FormDataEntryValue | null) {
+  const raw = String(value ?? "");
+
+  if (!raw) {
+    return null;
+  }
+
+  return JSON.parse(raw) as unknown;
+}
+
+function isDuplicateSlugError(error: unknown) {
+  return error instanceof Error && error.message.includes("slug");
 }
 
 function nullableIntegerValue(value: FormDataEntryValue | null) {
