@@ -1,9 +1,11 @@
 import Link from "next/link";
 import {
+  getCafe24CartAction,
   getProductActionHref,
   getProductCta,
   type ConsepotProduct,
 } from "@/lib/shop";
+import { Cafe24CartAction } from "./cafe24-cart-action";
 
 export function ProductActionLink({
   className = "button-primary",
@@ -14,6 +16,17 @@ export function ProductActionLink({
 }) {
   const cta = getProductCta(product);
   const action = getProductActionHref(product);
+  const cafe24CartAction = cta.kind === "buy" ? getCafe24CartAction(product) : null;
+
+  if (cta.kind === "buy" && cafe24CartAction) {
+    return (
+      <Cafe24CartAction
+        {...cafe24CartAction}
+        className={className}
+        label={cta.label}
+      />
+    );
+  }
 
   if (!action.href) {
     return (
@@ -42,4 +55,3 @@ export function ProductActionLink({
     </Link>
   );
 }
-

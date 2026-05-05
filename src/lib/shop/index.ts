@@ -10,6 +10,21 @@ type ProductActionHref = {
   href: string | null;
 };
 
+export type Cafe24CartAction = {
+  apiBaseUrl: string;
+  apiVersion: string;
+  basketType: "A0000" | "A0001";
+  checkoutHref: string;
+  clientId: string;
+  duplicatedItemCheck: "F" | "T";
+  frontApiKey: string;
+  maxQuantity: number;
+  prepaidShippingFee: "C" | "P";
+  productNo: string;
+  shopNo: number;
+  variantCode: string;
+};
+
 export {
   appendProductSyncLog,
   createProductDraft,
@@ -113,11 +128,7 @@ export function getProductActionHref(
 }
 
 export function getProductPurchaseHref(product: ConsepotProduct) {
-  if (!product.cafe24.productNo || !product.cafe24.variantCode) {
-    return null;
-  }
-
-  return `/checkout/cafe24/${product.slug}`;
+  return getCafe24CartAction(product)?.checkoutHref ?? null;
 }
 
 export function getCafe24ProductHref(product: ConsepotProduct) {
@@ -148,6 +159,49 @@ export function getCafe24CheckoutHref(product: ConsepotProduct) {
     process.env.NEXT_PUBLIC_CAFE24_SHOP_BASE_URL ||
       buildDefaultCafe24ShopBaseUrl(),
   );
+}
+
+export function getCafe24CartAction(
+  product: ConsepotProduct,
+): Cafe24CartAction | null {
+  const productNo = product.cafe24.productNo;
+  const variantCode = product.cafe24.variantCode;
+  const mallId =
+    process.env.NEXT_PUBLIC_CAFE24_MALL_ID || process.env.CAFE24_MALL_ID;
+  const clientId =
+    process.env.NEXT_PUBLIC_CAFE24_CLIENT_ID || process.env.CAFE24_CLIENT_ID;
+
+  if (
+    product.commerce.availabilityStatus !== "available" ||
+    !productNo ||
+    !variantCode ||
+    !mallId ||
+    !clientId
+  ) {
+    return null;
+  }
+
+  return {
+    apiBaseUrl: `https://${mallId}.cafe24api.com/api/v2`,
+    apiVersion:
+      process.env.NEXT_PUBLIC_CAFE24_API_VERSION ||
+      process.env.CAFE24_API_VERSION ||
+      "2025-09-01",
+    basketType: "A0000",
+    checkoutHref: getCafe24CheckoutHref(product),
+    clientId,
+    duplicatedItemCheck: "T",
+    frontApiKey: process.env.NEXT_PUBLIC_CAFE24_FRONT_API_KEY || "",
+    maxQuantity: Math.max(1, product.commerce.stockQuantity ?? 1),
+    prepaidShippingFee: "P",
+    productNo,
+    shopNo: Number(
+      process.env.NEXT_PUBLIC_CAFE24_SHOP_NO ||
+        process.env.CAFE24_SHOP_NO ||
+        "1",
+    ),
+    variantCode,
+  };
 }
 
 export function getKakaoProductHref(product: ConsepotProduct) {
