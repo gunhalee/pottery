@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { SiteLink } from "@/components/navigation/site-link";
 import { siteConfig } from "@/lib/config/site";
 
 export function SiteFooter() {
@@ -19,27 +19,27 @@ export function SiteFooter() {
           <div className="footer-nav">
             <div className="footer-col">
               <h3>Brand</h3>
-              <Link href="/intro" prefetch={false}>
+              <SiteLink href="/intro">
                 About
-              </Link>
-              <Link href="/news" prefetch={false}>
+              </SiteLink>
+              <SiteLink href="/news">
                 News
-              </Link>
-              <Link href="/gallery" prefetch={false}>
+              </SiteLink>
+              <SiteLink href="/gallery">
                 Gallery
-              </Link>
+              </SiteLink>
             </div>
             <div className="footer-col">
               <h3>Service</h3>
-              <Link href="/class" prefetch={false}>
+              <SiteLink href="/class">
                 Class
-              </Link>
-              <Link href="/shop" prefetch={false}>
+              </SiteLink>
+              <SiteLink href="/shop">
                 Shop
-              </Link>
-              <Link href="/shop#custom" prefetch={false}>
+              </SiteLink>
+              <SiteLink href="/shop#custom">
                 Custom
-              </Link>
+              </SiteLink>
             </div>
             <div className="footer-col">
               <h3>Connect</h3>
@@ -57,9 +57,9 @@ export function SiteFooter() {
               >
                 Channel
               </a>
-              <Link href="#" prefetch={false}>
+              <SiteLink href="#">
                 Store
-              </Link>
+              </SiteLink>
             </div>
           </div>
         </div>

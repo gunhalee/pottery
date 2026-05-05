@@ -1,9 +1,10 @@
-import Link from "next/link";
-import type { ComponentProps, ReactNode } from "react";
+import type { ReactNode } from "react";
+import { SiteLink } from "@/components/navigation/site-link";
 import { siteConfig } from "@/lib/config/site";
+import type { AppHref } from "@/lib/routing/types";
 import type { FeatureSection, WorkItem } from "@/lib/content/site-content";
 
-type LinkHref = ComponentProps<typeof Link>["href"];
+type LinkHref = AppHref;
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -17,9 +18,9 @@ export function ButtonLink({
   href: LinkHref;
 }) {
   return (
-    <Link href={href} className="button-primary" prefetch={false}>
+    <SiteLink href={href} className="button-primary">
       {children}
-    </Link>
+    </SiteLink>
   );
 }
 
@@ -50,9 +51,9 @@ export function ArrowLink({
   href: LinkHref;
 }) {
   return (
-    <Link href={href} className="link-arrow" prefetch={false}>
+    <SiteLink href={href} className="link-arrow">
       {children}
-    </Link>
+    </SiteLink>
   );
 }
 
@@ -206,14 +207,9 @@ export function WorkGrid({
         );
 
         return item.href ? (
-          <Link
-            href={item.href}
-            className="work-card"
-            key={item.placeholder}
-            prefetch={false}
-          >
+          <SiteLink href={item.href} className="work-card" key={item.placeholder}>
             {card}
-          </Link>
+          </SiteLink>
         ) : (
           <article className="work-card" key={item.placeholder}>
             {card}
@@ -263,17 +259,16 @@ export function PageLinkCards({
   return (
     <div className="page-link-cards">
       {cards.map((card) => (
-        <Link
+        <SiteLink
           className="page-link-card"
           href={card.href}
           key={card.label}
-          prefetch={false}
         >
           <div className="small-caps">{card.label}</div>
           <h2 className="card-title">{card.title}</h2>
           <p className="body-copy">{card.description}</p>
           <span className="link-arrow">{card.label}하기</span>
-        </Link>
+        </SiteLink>
       ))}
     </div>
   );
@@ -290,14 +285,13 @@ export function BottomNav({
   return (
     <nav className="bottom-nav" aria-label="Related pages">
       {links.map((link) => (
-        <Link
+        <SiteLink
           className="bottom-nav-link link-arrow"
           href={link.href}
           key={link.label}
-          prefetch={false}
         >
           {link.label}
-        </Link>
+        </SiteLink>
       ))}
     </nav>
   );

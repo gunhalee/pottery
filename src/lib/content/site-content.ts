@@ -1,7 +1,6 @@
-import type { ComponentProps } from "react";
-import type Link from "next/link";
+import type { AppHref } from "@/lib/routing/types";
 
-type LinkHref = ComponentProps<typeof Link>["href"];
+type LinkHref = AppHref;
 
 export type WorkItem = {
   description: string;
@@ -28,13 +27,75 @@ export type DetailItem = {
   value: string;
 };
 
+export type HomeHeroAction = {
+  href: LinkHref;
+  label: string;
+  tone: "primary" | "ghost";
+};
+
+export type HomeEntryCard = {
+  description: string;
+  href: LinkHref;
+  label: string;
+  title: string;
+};
+
+export type HomeStoryContent = {
+  ctaHref: LinkHref;
+  ctaLabel: string;
+  description: string;
+  imageLabel: string;
+  title: string;
+  titleEmphasis: string;
+};
+
 export const homeHero = {
-  eyebrow: "Placeholder tagline",
-  title: "Title Text",
-  titleEmphasis: "Goes Here",
+  actions: [
+    { href: "/shop", label: "Shop", tone: "primary" },
+    { href: "/class", label: "Class", tone: "ghost" },
+  ],
+  title: "Headline Text Here",
+} as const satisfies {
+  actions: ReadonlyArray<HomeHeroAction>;
+  title: string;
+};
+
+export const homeEntryCards = [
+  {
+    description: "현재 소장 가능한 작품들",
+    href: "/shop",
+    label: "Shop",
+    title: "작품 소장",
+  },
+  {
+    description: "원데이 · 정기 클래스",
+    href: "/class",
+    label: "Class",
+    title: "직접 해보기",
+  },
+  {
+    description: "작업 과정과 완성작",
+    href: "/gallery",
+    label: "Gallery",
+    title: "작품 아카이브",
+  },
+  {
+    description: "일정 · 신작 · 작업 일지",
+    href: "/news",
+    label: "News",
+    title: "공방 소식",
+  },
+] as const satisfies ReadonlyArray<HomeEntryCard>;
+
+export const homeStory = {
+  ctaHref: "/intro",
+  ctaLabel: "Read More",
   description:
-    "흙의 결, 손의 속도, 매일 쓰이는 그릇의 조용한 아름다움을 전하는 공방입니다.",
-} as const;
+    "느린 제작 방식과 절제된 형태를 바탕으로, 오래 곁에 두고 쓰는 도자 작품을 만듭니다. 공방의 분위기와 작업 철학을 소개합니다.",
+  imageLabel: "Brand Image",
+  title: "Brand Story",
+  titleEmphasis: "Headline",
+} as const satisfies HomeStoryContent;
 
 export const homeWorks: WorkItem[] = [
   {

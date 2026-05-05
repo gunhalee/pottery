@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { SiteLink } from "@/components/navigation/site-link";
 import {
   getCafe24CartAction,
   getCafe24DirectCheckoutHref,
@@ -77,8 +77,8 @@ export function ProductActionLink({
   }
 
   return (
-    <Link className={className} href={action.href} prefetch={false}>
+    <SiteLink className={className} href={action.href}>
       {cta.label}
-    </Link>
+    </SiteLink>
   );
 }
