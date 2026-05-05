@@ -10,6 +10,7 @@ import {
 import { isAdminAuthenticated } from "@/lib/admin/auth";
 import {
   getProductById,
+  getProductPurchaseHref,
   readProductSyncLogs,
   type ConsepotProduct,
   type ProductSyncLog,
@@ -362,9 +363,10 @@ export default async function AdminProductEditPage({
                 <input name="productUrl" defaultValue={product.cafe24.productUrl ?? ""} />
               </label>
               <label>
-                <span>주문 URL</span>
+                <span>바로구매 주문서 URL</span>
                 <input
                   name="checkoutUrl"
+                  placeholder="https://mallid.cafe24.com/surl/O/50"
                   defaultValue={product.cafe24.checkoutUrl ?? ""}
                 />
               </label>
@@ -420,9 +422,16 @@ function getAdminWarnings(product: ConsepotProduct, previewWarnings: string[]) {
 
   if (
     product.commerce.availabilityStatus === "available" &&
-    !product.cafe24.productNo
+    !getProductPurchaseHref(product)
   ) {
-    warnings.push("판매중 상품이지만 Cafe24 상품번호가 아직 없습니다.");
+    warnings.push("판매중 상품이지만 Cafe24 구매 이동 경로가 아직 없습니다.");
+  }
+
+  if (
+    product.commerce.availabilityStatus === "available" &&
+    !product.cafe24.checkoutUrl
+  ) {
+    warnings.push("주문서 직행을 위해 Cafe24 바로구매 주문서 URL을 입력해 주세요.");
   }
 
   if (product.published && product.commerce.price === null) {

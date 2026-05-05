@@ -13,6 +13,7 @@ import {
   getProductBadges,
   getProductBySlug,
   getProductCta,
+  getProductPurchaseKind,
   getProductSlugs,
 } from "@/lib/shop";
 
@@ -56,6 +57,7 @@ export default async function ShopDetailPage({
   const primaryImage = product.images.find((image) => image.isPrimary);
   const cta = getProductCta(product);
   const action = getProductActionHref(product);
+  const purchaseKind = getProductPurchaseKind(product);
 
   return (
     <>
@@ -84,8 +86,14 @@ export default async function ShopDetailPage({
 
             <div className="product-detail-action">
               <ProductActionLink product={product} />
-              {cta.kind === "buy" && action.href ? (
+              {cta.kind === "buy" && purchaseKind === "cafe24_checkout" ? (
+                <p>Cafe24 바로구매 주문서로 이동해 결제를 진행합니다.</p>
+              ) : cta.kind === "buy" && purchaseKind === "cafe24_product" ? (
+                <p>Cafe24 상품 화면에서 주문을 이어갑니다.</p>
+              ) : cta.kind === "buy" && purchaseKind === "cafe24_cart" ? (
                 <p>Cafe24 장바구니에 담은 뒤 주문 화면으로 이동합니다.</p>
+              ) : cta.kind === "buy" && action.href ? (
+                <p>Cafe24 주문 화면으로 이동합니다.</p>
               ) : cta.kind === "buy" ? (
                 <p>
                   Cafe24 상품 동기화가 끝나면 구매 버튼이 활성화됩니다.

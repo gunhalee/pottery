@@ -231,7 +231,10 @@ export async function saveCafe24MappingAction(formData: FormData) {
     checkoutUrl: parsed.checkoutUrl ?? undefined,
     displayGroup: parsed.displayGroup ?? undefined,
     lastSyncError: undefined,
-    mappingStatus: parsed.productNo ? "mapped" : "pending",
+    mappingStatus:
+      parsed.checkoutUrl || parsed.productNo || parsed.productUrl
+        ? "mapped"
+        : "pending",
     productNo: parsed.productNo,
     productUrl: parsed.productUrl ?? undefined,
     variantCode: parsed.variantCode ?? undefined,

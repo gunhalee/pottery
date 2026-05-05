@@ -1,6 +1,8 @@
 import Link from "next/link";
 import {
   getCafe24CartAction,
+  getCafe24DirectCheckoutHref,
+  getCafe24ProductHref,
   getProductActionHref,
   getProductCta,
   type ConsepotProduct,
@@ -16,7 +18,32 @@ export function ProductActionLink({
 }) {
   const cta = getProductCta(product);
   const action = getProductActionHref(product);
-  const cafe24CartAction = cta.kind === "buy" ? getCafe24CartAction(product) : null;
+  const cafe24CheckoutHref =
+    cta.kind === "buy" ? getCafe24DirectCheckoutHref(product) : null;
+  const cafe24ProductHref =
+    cta.kind === "buy" && !cafe24CheckoutHref
+      ? getCafe24ProductHref(product)
+      : null;
+  const cafe24CartAction =
+    cta.kind === "buy" && !cafe24CheckoutHref && !cafe24ProductHref
+      ? getCafe24CartAction(product)
+      : null;
+
+  if (cta.kind === "buy" && cafe24CheckoutHref) {
+    return (
+      <a className={className} href={cafe24CheckoutHref}>
+        {cta.label}
+      </a>
+    );
+  }
+
+  if (cta.kind === "buy" && cafe24ProductHref) {
+    return (
+      <a className={className} href={cafe24ProductHref}>
+        {cta.label}
+      </a>
+    );
+  }
 
   if (cta.kind === "buy" && cafe24CartAction) {
     return (

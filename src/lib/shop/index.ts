@@ -10,6 +10,11 @@ type ProductActionHref = {
   href: string | null;
 };
 
+export type ProductPurchaseKind =
+  | "cafe24_cart"
+  | "cafe24_checkout"
+  | "cafe24_product";
+
 export type Cafe24CartAction = {
   apiBaseUrl: string;
   apiVersion: string;
@@ -107,9 +112,11 @@ export function getProductActionHref(
   product: ConsepotProduct,
 ): ProductActionHref {
   if (product.commerce.availabilityStatus === "available") {
+    const href = getProductPurchaseHref(product);
+
     return {
-      external: false,
-      href: getProductPurchaseHref(product),
+      external: href ? isExternalHref(href) : false,
+      href,
     };
   }
 
@@ -130,17 +137,57 @@ export function getProductActionHref(
 }
 
 export function getProductPurchaseHref(product: ConsepotProduct) {
-  return getCafe24CartAction(product)?.checkoutHref ?? null;
+  return (
+    getCafe24DirectCheckoutHref(product) ??
+    getCafe24ProductHref(product) ??
+    getCafe24CartAction(product)?.checkoutHref ??
+    null
+  );
 }
 
-export function getCafe24ProductHref(product: ConsepotProduct) {
-  if (!product.cafe24.productUrl) {
+export function getProductPurchaseKind(
+  product: ConsepotProduct,
+): ProductPurchaseKind | null {
+  if (getCafe24DirectCheckoutHref(product)) {
+    return "cafe24_checkout";
+  }
+
+  if (getCafe24ProductHref(product)) {
+    return "cafe24_product";
+  }
+
+  if (getCafe24CartAction(product)) {
+    return "cafe24_cart";
+  }
+
+  return null;
+}
+
+export function getCafe24DirectCheckoutHref(product: ConsepotProduct) {
+  const checkoutUrl = product.cafe24.checkoutUrl?.trim();
+
+  if (!checkoutUrl) {
     return null;
   }
 
   return resolveExternalHref(
-    product.cafe24.productUrl,
-    process.env.NEXT_PUBLIC_CAFE24_SHOP_BASE_URL,
+    checkoutUrl,
+    process.env.NEXT_PUBLIC_CAFE24_SHOP_BASE_URL ||
+      buildDefaultCafe24ShopBaseUrl(),
+  );
+}
+
+export function getCafe24ProductHref(product: ConsepotProduct) {
+  const productUrl = product.cafe24.productUrl?.trim();
+
+  if (!productUrl) {
+    return null;
+  }
+
+  return resolveExternalHref(
+    productUrl,
+    process.env.NEXT_PUBLIC_CAFE24_SHOP_BASE_URL ||
+      buildDefaultCafe24ShopBaseUrl(),
   );
 }
 
@@ -249,6 +296,10 @@ function resolveExternalHref(href: string, baseHref?: string) {
   }
 
   return new URL(href, baseHref).toString();
+}
+
+function isExternalHref(href: string) {
+  return /^https?:\/\//.test(href);
 }
 
 function buildDefaultCafe24ShopBaseUrl() {
