@@ -1176,6 +1176,72 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   margin-top: 18px;
 }
 
+.admin-connection-status {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-left: 3px solid var(--brd);
+  background: var(--bg2);
+}
+
+.admin-connection-status p {
+  margin: 0;
+}
+
+.admin-connection-status-connected {
+  border-left-color: #6f7d5e;
+}
+
+.admin-connection-status-warning {
+  border-left-color: #a18a52;
+}
+
+.admin-connection-status-missing {
+  border-left-color: #9f6a5f;
+}
+
+.admin-connection-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-connection-head span,
+.admin-connection-meta dt {
+  color: var(--tx3);
+  font-size: 11px;
+}
+
+.admin-connection-head strong {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.admin-connection-meta {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.admin-connection-meta div {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.admin-connection-meta dt,
+.admin-connection-meta dd {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.admin-connection-meta dd {
+  color: var(--tx2);
+  overflow-wrap: anywhere;
+}
+
 .admin-secondary-button {
   display: inline-flex;
   min-height: 42px;
@@ -1202,6 +1268,11 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 .admin-oauth-button {
   width: 100%;
   margin-top: 12px;
+}
+
+.admin-oauth-button-muted {
+  border-color: var(--brd);
+  color: var(--tx2);
 }
 
 .admin-danger-zone {
@@ -2131,6 +2202,15 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   .admin-product-row {
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+
+  .admin-connection-head,
+  .admin-connection-meta div {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-connection-head {
+    display: grid;
   }
 
   .admin-sync-panel {

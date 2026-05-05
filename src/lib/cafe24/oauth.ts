@@ -25,6 +25,17 @@ export type Cafe24TokenResponse = {
   user_id?: string;
 };
 
+export type Cafe24ConnectionStatus = {
+  connected: boolean;
+  expiresAt: string | null;
+  missingEnv: string[];
+  mallId: string | null;
+  refreshTokenExpiresAt: string | null;
+  refreshable: boolean;
+  scopes: string[];
+  source: "env" | "none" | "supabase";
+};
+
 type Cafe24OAuthConfig = {
   clientId: string;
   clientSecret: string;
@@ -111,6 +122,52 @@ export async function hasCafe24AccessToken() {
 
   const stored = await readCafe24StoredToken();
   return Boolean(stored?.accessToken);
+}
+
+export async function getCafe24ConnectionStatus(): Promise<Cafe24ConnectionStatus> {
+  const missingEnv = [
+    "CAFE24_MALL_ID",
+    "CAFE24_CLIENT_ID",
+    "CAFE24_CLIENT_SECRET",
+  ].filter((name) => !process.env[name]);
+  const stored = await readCafe24StoredToken();
+
+  if (stored?.accessToken) {
+    return {
+      connected: true,
+      expiresAt: stored.expiresAt,
+      missingEnv,
+      mallId: stored.mallId,
+      refreshTokenExpiresAt: stored.refreshTokenExpiresAt,
+      refreshable: Boolean(stored.refreshToken),
+      scopes: stored.scopes,
+      source: "supabase",
+    };
+  }
+
+  if (process.env.CAFE24_ACCESS_TOKEN) {
+    return {
+      connected: true,
+      expiresAt: null,
+      missingEnv,
+      mallId: process.env.CAFE24_MALL_ID ?? null,
+      refreshTokenExpiresAt: null,
+      refreshable: false,
+      scopes: [],
+      source: "env",
+    };
+  }
+
+  return {
+    connected: false,
+    expiresAt: null,
+    missingEnv,
+    mallId: process.env.CAFE24_MALL_ID ?? null,
+    refreshTokenExpiresAt: null,
+    refreshable: false,
+    scopes: [],
+    source: "none",
+  };
 }
 
 export async function readCafe24TokenScopes(accessToken?: string) {

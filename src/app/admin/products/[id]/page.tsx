@@ -15,6 +15,10 @@ import {
   type ProductSyncLog,
 } from "@/lib/shop";
 import { buildCafe24SyncPreview } from "@/lib/cafe24/product-sync";
+import {
+  getCafe24ConnectionStatus,
+  type Cafe24ConnectionStatus,
+} from "@/lib/cafe24/oauth";
 
 type AdminProductEditPageProps = {
   params: Promise<{
@@ -52,8 +56,11 @@ export default async function AdminProductEditPage({
     notFound();
   }
 
-  const preview = await buildCafe24SyncPreview(product);
-  const syncLogs = await readProductSyncLogs(product.id);
+  const [preview, syncLogs, cafe24Connection] = await Promise.all([
+    buildCafe24SyncPreview(product),
+    readProductSyncLogs(product.id),
+    getCafe24ConnectionStatus(),
+  ]);
   const adminWarnings = getAdminWarnings(product, preview.warnings);
 
   return (
@@ -291,6 +298,8 @@ export default async function AdminProductEditPage({
         <aside className="admin-panel admin-sync-panel">
           <h2>Cafe24 동기화</h2>
 
+          <Cafe24ConnectionPanel connection={cafe24Connection} />
+
           <section className="admin-sync-block">
             <h3>전송 미리보기</h3>
             <dl className="admin-sync-list">
@@ -313,13 +322,6 @@ export default async function AdminProductEditPage({
               Cafe24 동기화
             </button>
           </form>
-          <a
-            className="admin-secondary-button admin-oauth-button"
-            href="/api/cafe24/oauth/start"
-          >
-            Cafe24 인증 연결/갱신
-          </a>
-
           <section className="admin-sync-block">
             <h3>매핑 정보</h3>
             <form action={saveCafe24MappingAction} className="admin-form">
@@ -428,6 +430,111 @@ function getAdminWarnings(product: ConsepotProduct, previewWarnings: string[]) {
   }
 
   return [...new Set(warnings)];
+}
+
+function Cafe24ConnectionPanel({
+  connection,
+}: {
+  connection: Cafe24ConnectionStatus;
+}) {
+  const state = getCafe24ConnectionUiState(connection);
+
+  return (
+    <section
+      className={`admin-sync-block admin-connection-status admin-connection-status-${state.kind}`}
+    >
+      <div className="admin-connection-head">
+        <span>Cafe24 연결</span>
+        <strong>{state.title}</strong>
+      </div>
+      <p>{state.message}</p>
+      <dl className="admin-connection-meta">
+        <div>
+          <dt>저장 위치</dt>
+          <dd>{connectionSourceLabel(connection.source)}</dd>
+        </div>
+        <div>
+          <dt>몰 ID</dt>
+          <dd>{connection.mallId ?? "미설정"}</dd>
+        </div>
+        {connection.expiresAt ? (
+          <div>
+            <dt>Access token 만료</dt>
+            <dd>{formatDateTime(connection.expiresAt)}</dd>
+          </div>
+        ) : null}
+        {connection.refreshTokenExpiresAt ? (
+          <div>
+            <dt>Refresh token 만료</dt>
+            <dd>{formatDateTime(connection.refreshTokenExpiresAt)}</dd>
+          </div>
+        ) : null}
+        {connection.scopes.length > 0 ? (
+          <div>
+            <dt>권한</dt>
+            <dd>{connection.scopes.join(", ")}</dd>
+          </div>
+        ) : null}
+        {connection.missingEnv.length > 0 ? (
+          <div>
+            <dt>필요 env</dt>
+            <dd>{connection.missingEnv.join(", ")}</dd>
+          </div>
+        ) : null}
+      </dl>
+      <a
+        className={`admin-secondary-button admin-oauth-button ${
+          connection.connected ? "admin-oauth-button-muted" : ""
+        }`}
+        href="/api/cafe24/oauth/start"
+      >
+        {connection.connected ? "Cafe24 재인증" : "Cafe24 연결하기"}
+      </a>
+    </section>
+  );
+}
+
+function getCafe24ConnectionUiState(connection: Cafe24ConnectionStatus) {
+  if (!connection.connected) {
+    return {
+      kind: "missing",
+      message: "상품 동기화를 시작하려면 최초 1회 Cafe24 인증이 필요합니다.",
+      title: "미연결",
+    };
+  }
+
+  if (connection.source === "env") {
+    return {
+      kind: "warning",
+      message:
+        "환경변수 access token을 사용 중입니다. 만료되면 재인증이 필요합니다.",
+      title: "임시 연결",
+    };
+  }
+
+  if (!connection.refreshable) {
+    return {
+      kind: "warning",
+      message:
+        "토큰은 저장되어 있지만 refresh token이 없어 만료 후 재인증이 필요합니다.",
+      title: "연결됨",
+    };
+  }
+
+  return {
+    kind: "connected",
+    message:
+      "토큰이 Supabase에 저장되어 있습니다. 만료 시 서버에서 자동 갱신합니다.",
+    title: "연결됨",
+  };
+}
+
+function connectionSourceLabel(source: Cafe24ConnectionStatus["source"]) {
+  return {
+    env: "환경변수",
+    none: "없음",
+    supabase: "Supabase",
+  }[source];
 }
 
 function SyncLogItem({ log }: { log: ProductSyncLog }) {
