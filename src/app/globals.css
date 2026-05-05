@@ -142,6 +142,56 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   min-height: calc(100svh - var(--nav-offset));
 }
 
+.scroll-top-button {
+  position: fixed;
+  right: 28px;
+  bottom: 28px;
+  z-index: 80;
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  border: 0.5px solid color-mix(in srgb, var(--brd) 78%, transparent);
+  border-radius: 50%;
+  background: rgba(247, 247, 245, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow:
+    0 12px 28px rgba(26, 26, 24, 0.16),
+    0 2px 8px rgba(26, 26, 24, 0.08);
+  color: var(--tx);
+  cursor: pointer;
+  font-family: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  font-size: 18px;
+  line-height: 1;
+  opacity: 0.82;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.scroll-top-button:hover {
+  border-color: color-mix(in srgb, var(--tx) 16%, var(--brd));
+  background: var(--white);
+  opacity: 1;
+  box-shadow:
+    0 16px 34px rgba(26, 26, 24, 0.18),
+    0 4px 12px rgba(26, 26, 24, 0.1);
+  transform: translateY(-2px);
+}
+
+.scroll-top-button:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: 4px;
+}
+
+.scroll-top-button span {
+  transform: translateY(-1px);
+}
+
 .serif {
   font-family: var(--font-cormorant), ui-serif, Georgia, serif;
 }
@@ -1147,6 +1197,11 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
     font-size: 10px;
   }
 
+  .scroll-top-button {
+    right: 22px;
+    bottom: 22px;
+  }
+
   .hero-overlay {
     width: min(100% - 48px, 640px);
     padding: 0 0 48px 24px;
@@ -1296,6 +1351,14 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 
   .hero-button {
     width: 100%;
+  }
+
+  .scroll-top-button {
+    width: 40px;
+    height: 40px;
+    right: 18px;
+    bottom: 18px;
+    font-size: 17px;
   }
 
   .home-entry-card {
