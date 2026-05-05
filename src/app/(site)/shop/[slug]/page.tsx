@@ -7,7 +7,6 @@ import {
 } from "@/components/site/primitives";
 import { ProductActionLink } from "@/components/shop/product-action-link";
 import { ProductBadge } from "@/components/shop/product-badge";
-import { ProductFixedCta } from "@/components/shop/product-fixed-cta";
 import {
   formatProductPrice,
   getProductActionHref,
@@ -121,8 +120,6 @@ export default async function ShopDetailPage({
             ))}
         </section>
       </PageShell>
-
-      <ProductFixedCta product={product} />
 
       <BottomNav
         links={[

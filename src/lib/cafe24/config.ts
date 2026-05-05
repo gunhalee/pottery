@@ -30,7 +30,7 @@ export async function getCafe24Config(): Promise<Cafe24Config> {
   return {
     accessToken,
     apiBaseUrl: apiBaseUrl.replace(/\/$/, ""),
-    apiVersion: process.env.CAFE24_API_VERSION || "2025-09-01",
+    apiVersion: process.env.CAFE24_API_VERSION || "2026-03-01",
     defaultCategoryNo: optionalNumber("CAFE24_DEFAULT_CATEGORY_NO"),
     defaultDisplayGroup: optionalNumber("CAFE24_DEFAULT_DISPLAY_GROUP") ?? 1,
     mallId,

@@ -117,6 +117,7 @@ export function Cafe24CartAction({
             -
           </button>
           <input
+            aria-label="구매 수량"
             inputMode="numeric"
             max={normalizedMaxQuantity}
             min={1}
@@ -143,6 +144,7 @@ export function Cafe24CartAction({
             +
           </button>
         </div>
+        <small>최대 {normalizedMaxQuantity}개</small>
       </label>
       <button
         className={className}

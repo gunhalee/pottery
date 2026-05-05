@@ -38,8 +38,10 @@ export {
   readProducts,
   updateProduct,
   updateProductCafe24Mapping,
+  updateProductInventory,
   writeProducts,
   type ProductDraftInput,
+  type ProductInventoryUpdateInput,
   type ProductSyncLogInput,
   type ProductUpdateInput,
 } from "./product-store";
@@ -186,13 +188,13 @@ export function getCafe24CartAction(
     apiVersion:
       process.env.NEXT_PUBLIC_CAFE24_API_VERSION ||
       process.env.CAFE24_API_VERSION ||
-      "2025-09-01",
+      "2026-03-01",
     basketType: "A0000",
     checkoutHref: getCafe24CheckoutHref(product),
     clientId,
     duplicatedItemCheck: "T",
     frontApiKey: process.env.NEXT_PUBLIC_CAFE24_FRONT_API_KEY || "",
-    maxQuantity: Math.max(1, product.commerce.stockQuantity ?? 1),
+    maxQuantity: getPurchaseMaxQuantity(product),
     prepaidShippingFee: "P",
     productNo,
     shopNo: Number(
@@ -253,6 +255,16 @@ function buildDefaultCafe24ShopBaseUrl() {
   const mallId =
     process.env.NEXT_PUBLIC_CAFE24_MALL_ID || process.env.CAFE24_MALL_ID;
   return mallId ? `https://${mallId}.cafe24.com` : undefined;
+}
+
+function getPurchaseMaxQuantity(product: ConsepotProduct) {
+  const stockQuantity = product.commerce.stockQuantity;
+
+  if (stockQuantity && stockQuantity > 0) {
+    return stockQuantity;
+  }
+
+  return 99;
 }
 
 export type {

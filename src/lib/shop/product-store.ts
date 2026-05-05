@@ -187,6 +187,11 @@ export type ProductSyncLogInput = {
   status: ProductSyncLog["status"];
 };
 
+export type ProductInventoryUpdateInput = {
+  availabilityStatus: AvailabilityStatus;
+  stockQuantity: number | null;
+};
+
 export async function readProducts(): Promise<ConsepotProduct[]> {
   if (isSupabaseConfigured()) {
     return readProductsFromSupabase();
@@ -251,6 +256,17 @@ export async function updateProductCafe24Mapping(
   }
 
   return updateProductCafe24MappingInJson(id, cafe24);
+}
+
+export async function updateProductInventory(
+  id: string,
+  input: ProductInventoryUpdateInput,
+) {
+  if (isSupabaseConfigured()) {
+    return updateProductInventoryInSupabase(id, input);
+  }
+
+  return updateProductInventoryInJson(id, input);
 }
 
 export async function deleteProduct(id: string) {
@@ -474,6 +490,27 @@ async function updateProductCafe24MappingInSupabase(
   return getProductById(id);
 }
 
+async function updateProductInventoryInSupabase(
+  id: string,
+  input: ProductInventoryUpdateInput,
+) {
+  const supabase = getSupabaseAdminClient();
+  const { error } = await supabase
+    .from("shop_products")
+    .update({
+      availability_status: input.availabilityStatus,
+      stock_quantity: input.stockQuantity,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(`Supabase 상품 재고 저장 실패: ${error.message}`);
+  }
+
+  return getProductById(id);
+}
+
 async function deleteProductInSupabase(id: string) {
   const current = await getProductById(id);
 
@@ -632,6 +669,29 @@ async function updateProductCafe24MappingInJson(
           commerce: {
             ...product.commerce,
             syncedAt: cafe24.lastSyncedAt ?? product.commerce.syncedAt,
+          },
+          updatedAt: new Date().toISOString(),
+        })
+      : product,
+  );
+
+  await writeJsonProducts(nextProducts);
+  return nextProducts.find((product) => product.id === id) ?? null;
+}
+
+async function updateProductInventoryInJson(
+  id: string,
+  input: ProductInventoryUpdateInput,
+) {
+  const products = await readProductsFromJson();
+  const nextProducts = products.map((product) =>
+    product.id === id
+      ? productSchema.parse({
+          ...product,
+          commerce: {
+            ...product.commerce,
+            availabilityStatus: input.availabilityStatus,
+            stockQuantity: input.stockQuantity,
           },
           updatedAt: new Date().toISOString(),
         })
