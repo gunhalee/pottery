@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/layout/site-header";
 
 export default function SiteLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-full">
+    <div className="min-h-full" id="site-top">
       <SiteHeader />
       <main className="site-main">{children}</main>
       <SiteFooter />

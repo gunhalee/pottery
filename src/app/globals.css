@@ -22,7 +22,7 @@
   --color-muted: var(--tx2);
   --color-border: var(--brd);
   --color-accent: var(--acc);
-  --font-sans: "Noto Sans KR", "Noto Sans KR Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Cormorant Garamond", "Cormorant Garamond Fallback", ui-serif, Georgia, serif;
   --font-mono: "Outfit", "Outfit Fallback", ui-monospace, monospace;
 }
@@ -41,7 +41,7 @@ body {
   overflow-x: hidden;
   background: var(--bg);
   color: var(--tx);
-  font-family: var(--font-noto-sans-kr), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-weight: 300;
   text-rendering: geometricPrecision;
 }
@@ -104,7 +104,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 }
 
 .nav-logo {
-  font-family: var(--font-noto-sans-kr), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-size: 16px;
   font-weight: 400;
   letter-spacing: 0.02em;
@@ -122,7 +122,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 }
 
 .nav-link {
-  font-family: var(--font-noto-sans-kr), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-size: 12px;
   font-weight: 400;
   letter-spacing: 0.02em;
@@ -1927,7 +1927,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 .footer-logo {
   margin-bottom: 10px;
   color: rgba(255, 255, 255, 0.8);
-  font-family: var(--font-noto-sans-kr), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-size: 16px;
   font-weight: 400;
   letter-spacing: 0.02em;

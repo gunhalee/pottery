@@ -54,24 +54,25 @@ export default function HomePage() {
             src={heroPoster}
             alt=""
             fill
-            priority
+            preload
+            quality={70}
             placeholder="blur"
             sizes="100vw"
             className="hero-poster"
           />
-          <video
-            className="hero-video"
-            autoPlay
-            loop
-            muted
-            playsInline
-            poster="/asset/hero-image.jpg"
-            preload="metadata"
-          >
-            {heroVideoSrc ? (
+          {heroVideoSrc ? (
+            <video
+              className="hero-video"
+              autoPlay
+              loop
+              muted
+              playsInline
+              poster="/asset/hero-image.jpg"
+              preload="metadata"
+            >
               <source src={heroVideoSrc} type="video/mp4" />
-            ) : null}
-          </video>
+            </video>
+          ) : null}
         </div>
         <div className="hero-overlay">
           <h1 className="hero-title">Headline Text Here</h1>
