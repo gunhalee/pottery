@@ -165,7 +165,7 @@ export async function syncProductToCafe24Action(formData: FormData) {
   }
 
   try {
-    const requestSnapshot = buildCafe24SyncRequestSnapshot(product);
+    const requestSnapshot = await buildCafe24SyncRequestSnapshot(product);
     const cafe24 = await syncProductToCafe24(product);
     const updated = await updateProductCafe24Mapping(product.id, cafe24);
 
@@ -192,7 +192,7 @@ export async function syncProductToCafe24Action(formData: FormData) {
       action: "sync",
       message,
       productId: product.id,
-      requestPayload: buildCafe24SyncRequestSnapshot(product),
+      requestPayload: await buildCafe24SyncRequestSnapshot(product),
       status: "failed",
     });
 

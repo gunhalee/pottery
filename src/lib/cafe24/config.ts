@@ -1,5 +1,7 @@
 import "server-only";
 
+import { getCafe24AccessToken, hasCafe24AccessToken } from "./oauth";
+
 export type Cafe24Config = {
   accessToken: string;
   apiBaseUrl: string;
@@ -18,9 +20,9 @@ export class Cafe24ConfigError extends Error {
   }
 }
 
-export function getCafe24Config(): Cafe24Config {
+export async function getCafe24Config(): Promise<Cafe24Config> {
   const mallId = requiredEnv("CAFE24_MALL_ID");
-  const accessToken = requiredEnv("CAFE24_ACCESS_TOKEN");
+  const accessToken = await getCafe24AccessToken();
   const apiBaseUrl =
     process.env.CAFE24_API_BASE_URL ||
     `https://${mallId}.cafe24api.com/api/v2/admin`;
@@ -39,9 +41,11 @@ export function getCafe24Config(): Cafe24Config {
   };
 }
 
-export function getCafe24ConfigStatus() {
+export async function getCafe24ConfigStatus() {
   return {
-    accessToken: Boolean(process.env.CAFE24_ACCESS_TOKEN),
+    accessToken: await hasCafe24AccessToken(),
+    clientId: Boolean(process.env.CAFE24_CLIENT_ID),
+    clientSecret: Boolean(process.env.CAFE24_CLIENT_SECRET),
     mallId: Boolean(process.env.CAFE24_MALL_ID),
   };
 }

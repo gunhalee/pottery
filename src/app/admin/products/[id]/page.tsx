@@ -52,7 +52,7 @@ export default async function AdminProductEditPage({
     notFound();
   }
 
-  const preview = buildCafe24SyncPreview(product);
+  const preview = await buildCafe24SyncPreview(product);
   const syncLogs = await readProductSyncLogs(product.id);
   const adminWarnings = getAdminWarnings(product, preview.warnings);
 
@@ -313,6 +313,12 @@ export default async function AdminProductEditPage({
               Cafe24 동기화
             </button>
           </form>
+          <a
+            className="admin-secondary-button admin-oauth-button"
+            href="/api/cafe24/oauth/start"
+          >
+            Cafe24 인증 연결/갱신
+          </a>
 
           <section className="admin-sync-block">
             <h3>매핑 정보</h3>

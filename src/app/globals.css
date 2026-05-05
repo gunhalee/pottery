@@ -1188,6 +1188,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   cursor: pointer;
   font: inherit;
   font-size: 12px;
+  text-decoration: none;
   transition:
     background 0.2s ease,
     color 0.2s ease;
@@ -1196,6 +1197,11 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 .admin-secondary-button:hover {
   background: var(--tx);
   color: var(--bg);
+}
+
+.admin-oauth-button {
+  width: 100%;
+  margin-top: 12px;
 }
 
 .admin-danger-zone {

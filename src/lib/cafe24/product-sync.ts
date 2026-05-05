@@ -47,10 +47,10 @@ export type Cafe24SyncPreview = {
   warnings: string[];
 };
 
-export function buildCafe24SyncPreview(
+export async function buildCafe24SyncPreview(
   product: ConsepotProduct,
-): Cafe24SyncPreview {
-  const configStatus = getCafe24ConfigStatus();
+): Promise<Cafe24SyncPreview> {
+  const configStatus = await getCafe24ConfigStatus();
   const warnings: string[] = [];
   const categoryNo = product.cafe24.categoryNo ?? getDefaultCategoryNo();
   const shopNo = getDefaultShopNo();
@@ -60,7 +60,7 @@ export function buildCafe24SyncPreview(
   }
 
   if (!configStatus.accessToken) {
-    warnings.push("CAFE24_ACCESS_TOKEN 환경 변수가 필요합니다.");
+    warnings.push("Cafe24 OAuth 인증이 필요합니다.");
   }
 
   if (product.commerce.price === null) {
@@ -121,7 +121,7 @@ export function buildCafe24SyncPreview(
 }
 
 export async function syncProductToCafe24(product: ConsepotProduct) {
-  const config = getCafe24Config();
+  const config = await getCafe24Config();
   const categoryNo = product.cafe24.categoryNo ?? config.defaultCategoryNo;
   const displayGroup =
     product.cafe24.displayGroup ?? config.defaultDisplayGroup;
@@ -157,10 +157,10 @@ export async function syncProductToCafe24(product: ConsepotProduct) {
   const variantCode =
     product.cafe24.variantCode ??
     extractVariantCode(productResponse) ??
-    (await retrievePrimaryVariantCode(productNo));
+    (await retrievePrimaryVariantCode(productNo, config));
 
   if (variantCode && product.commerce.stockQuantity !== null) {
-    await syncVariantInventory(productNo, variantCode, product);
+    await syncVariantInventory(productNo, variantCode, product, config);
   }
 
   const now = new Date().toISOString();
@@ -184,8 +184,8 @@ export async function syncProductToCafe24(product: ConsepotProduct) {
   } satisfies Cafe24ProductMapping;
 }
 
-export function buildCafe24SyncRequestSnapshot(product: ConsepotProduct) {
-  const preview = buildCafe24SyncPreview(product);
+export async function buildCafe24SyncRequestSnapshot(product: ConsepotProduct) {
+  const preview = await buildCafe24SyncPreview(product);
 
   return {
     mapping: product.cafe24,
@@ -238,8 +238,10 @@ function toCafe24ProductPayload(
   };
 }
 
-async function retrievePrimaryVariantCode(productNo: string) {
-  const config = getCafe24Config();
+async function retrievePrimaryVariantCode(
+  productNo: string,
+  config: Awaited<ReturnType<typeof getCafe24Config>>,
+) {
   const payload = await cafe24Fetch(config, `/products/${productNo}/variants`, {
     searchParams: {
       shop_no: config.shopNo,
@@ -253,8 +255,8 @@ async function syncVariantInventory(
   productNo: string,
   variantCode: string,
   product: ConsepotProduct,
+  config: Awaited<ReturnType<typeof getCafe24Config>>,
 ) {
-  const config = getCafe24Config();
   const request: Cafe24VariantInventoryPayload = {
     display_soldout: "T",
     important_inventory: "A",
