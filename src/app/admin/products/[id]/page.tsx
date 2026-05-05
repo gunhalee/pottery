@@ -11,6 +11,7 @@ import { isAdminAuthenticated } from "@/lib/admin/auth";
 import {
   getProductById,
   getProductPurchaseHref,
+  getProductPurchaseKind,
   readProductSyncLogs,
   type ConsepotProduct,
   type ProductSyncLog,
@@ -429,9 +430,11 @@ function getAdminWarnings(product: ConsepotProduct, previewWarnings: string[]) {
 
   if (
     product.commerce.availabilityStatus === "available" &&
-    !product.cafe24.checkoutUrl
+    getProductPurchaseKind(product) !== "cafe24_checkout"
   ) {
-    warnings.push("주문서 직행을 위해 Cafe24 바로구매 주문서 URL을 입력해 주세요.");
+    warnings.push(
+      "주문서 직행을 위해 Cafe24 바로구매 주문서 URL을 입력하거나 Cafe24 상품 동기화로 상품번호를 받아오세요.",
+    );
   }
 
   if (product.published && product.commerce.price === null) {

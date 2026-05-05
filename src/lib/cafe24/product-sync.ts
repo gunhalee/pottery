@@ -170,10 +170,17 @@ export async function syncProductToCafe24(product: ConsepotProduct) {
     displayGroup,
     productNo,
   });
+  const checkoutUrl =
+    product.cafe24.checkoutUrl?.trim() ||
+    buildCafe24DirectCheckoutUrl({
+      baseUrl: config.shopBaseUrl,
+      productNo,
+    });
 
   return {
     ...product.cafe24,
     categoryNo: categoryNo ?? undefined,
+    checkoutUrl,
     displayGroup,
     lastSyncError: undefined,
     lastSyncedAt: now,
@@ -309,6 +316,19 @@ function buildCafe24ProductUrl(options: {
 
   url.searchParams.set("display_group", String(options.displayGroup));
   return url.toString();
+}
+
+function buildCafe24DirectCheckoutUrl(options: {
+  baseUrl: string | null;
+  productNo: string;
+}) {
+  const href = `/surl/O/${encodeURIComponent(options.productNo)}`;
+
+  if (!options.baseUrl) {
+    return href;
+  }
+
+  return new URL(href, options.baseUrl).toString();
 }
 
 function extractProductNo(payload: unknown): string | null {

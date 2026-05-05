@@ -166,14 +166,26 @@ export function getProductPurchaseKind(
 export function getCafe24DirectCheckoutHref(product: ConsepotProduct) {
   const checkoutUrl = product.cafe24.checkoutUrl?.trim();
 
-  if (!checkoutUrl) {
+  if (checkoutUrl) {
+    return resolveExternalHref(
+      checkoutUrl,
+      process.env.NEXT_PUBLIC_CAFE24_SHOP_BASE_URL ||
+        buildDefaultCafe24ShopBaseUrl(),
+    );
+  }
+
+  const productNo = product.cafe24.productNo?.trim();
+  const shopBaseUrl =
+    process.env.NEXT_PUBLIC_CAFE24_SHOP_BASE_URL ||
+    buildDefaultCafe24ShopBaseUrl();
+
+  if (!productNo || !shopBaseUrl) {
     return null;
   }
 
   return resolveExternalHref(
-    checkoutUrl,
-    process.env.NEXT_PUBLIC_CAFE24_SHOP_BASE_URL ||
-      buildDefaultCafe24ShopBaseUrl(),
+    `/surl/O/${encodeURIComponent(productNo)}`,
+    shopBaseUrl,
   );
 }
 
