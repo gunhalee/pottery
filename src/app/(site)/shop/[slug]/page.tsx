@@ -7,6 +7,7 @@ import {
 } from "@/components/site/primitives";
 import { ProductActionLink } from "@/components/shop/product-action-link";
 import { ProductBadge } from "@/components/shop/product-badge";
+import { ProductSpecList } from "@/components/shop/product-spec-list";
 import {
   formatProductPrice,
   getProductActionHref,
@@ -110,23 +111,16 @@ export default async function ShopDetailPage({
           <p className="body-copy">{product.story ?? product.shortDescription}</p>
         </section>
 
-        <section className="product-detail-section product-spec-grid">
-          {[
-            ["크기", product.size],
-            ["소재", product.material],
-            ["유약", product.glaze],
-            ["사용", product.usageNote],
-            ["관리", product.careNote],
-            ["배송", product.shippingNote],
-          ]
-            .filter((item): item is [string, string] => Boolean(item[1]))
-            .map(([label, value]) => (
-              <div className="product-spec-item" key={label}>
-                <span>{label}</span>
-                <p>{value}</p>
-              </div>
-            ))}
-        </section>
+        <ProductSpecList
+          items={[
+            { label: "크기", value: product.size },
+            { label: "소재", value: product.material },
+            { label: "유약", value: product.glaze },
+            { label: "사용", value: product.usageNote },
+            { label: "관리", value: product.careNote },
+            { label: "배송", value: product.shippingNote },
+          ]}
+        />
       </PageShell>
 
       <BottomNav
