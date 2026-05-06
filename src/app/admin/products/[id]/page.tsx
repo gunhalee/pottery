@@ -7,6 +7,7 @@ import {
   updateProductAction,
 } from "../../actions";
 import { AdminNav } from "@/components/admin/admin-nav";
+import { AdminSuccessNotice } from "@/components/admin/admin-success-notice";
 import { ProductImageManager } from "@/components/admin/product-image-manager";
 import { isAdminAuthenticated } from "@/lib/admin/auth";
 import {
@@ -70,6 +71,7 @@ export default async function AdminProductEditPage({
     readMediaLibraryAssets(120),
   ]);
   const adminWarnings = getAdminWarnings(product, preview.warnings);
+  const publicHref = product.published ? `/shop/${product.slug}` : null;
 
   return (
     <main className="admin-page">
@@ -90,10 +92,32 @@ export default async function AdminProductEditPage({
         </div>
       </header>
 
-      {flags.created ? <div className="admin-alert">초안을 만들었습니다.</div> : null}
-      {flags.saved ? <div className="admin-alert">저장했습니다.</div> : null}
+      {flags.created ? (
+        <AdminSuccessNotice
+          description="상품 초안을 만들었습니다. 공개 체크 후 저장하면 공개 상품 링크가 표시됩니다."
+          key={`product-created-${product.id}`}
+          title="초안을 만들었습니다."
+        />
+      ) : null}
+      {flags.saved ? (
+        <AdminSuccessNotice
+          description={
+            publicHref
+              ? "상품을 저장했고 공개 페이지에 반영했습니다. 고객 화면을 바로 확인할 수 있습니다."
+              : "상품을 저장했습니다. 아직 공개 전이라 공개 상품 링크는 표시하지 않습니다."
+          }
+          key={`product-saved-${product.updatedAt}`}
+          primaryHref={publicHref}
+          primaryLabel="공개 상품 보기"
+          title="저장했습니다."
+        />
+      ) : null}
       {flags.mapping_saved ? (
-        <div className="admin-alert">Cafe24 매핑 정보를 저장했습니다.</div>
+        <AdminSuccessNotice
+          description="Cafe24 상품번호, 품목코드, 주문서 URL 등 매핑 정보를 저장했습니다."
+          key={`product-mapping-${product.updatedAt}`}
+          title="Cafe24 매핑 정보를 저장했습니다."
+        />
       ) : null}
       {flags.image_deleted ? (
         <div className="admin-alert">상품 이미지를 삭제했습니다.</div>
@@ -109,7 +133,13 @@ export default async function AdminProductEditPage({
         </div>
       ) : null}
       {flags.synced ? (
-        <div className="admin-alert">Cafe24 상품 동기화를 완료했습니다.</div>
+        <AdminSuccessNotice
+          description="Cafe24로 상품 정보를 보냈습니다. 최근 로그에서 응답 상태를 함께 확인할 수 있습니다."
+          key={`product-synced-${product.updatedAt}`}
+          primaryHref={publicHref}
+          primaryLabel="공개 상품 보기"
+          title="Cafe24 상품 동기화를 완료했습니다."
+        />
       ) : null}
       {flags.sync_error ? (
         <div className="admin-alert admin-alert-danger">

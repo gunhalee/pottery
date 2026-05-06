@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { deleteContentEntryAction } from "@/app/admin/actions";
 import { AdminNav } from "@/components/admin/admin-nav";
+import { AdminSuccessNotice } from "@/components/admin/admin-success-notice";
 import { ContentEditorForm } from "@/components/admin/content-editor/content-editor-form";
 import type {
   ContentEntry,
@@ -10,6 +11,7 @@ import type { MediaPickerAsset } from "@/components/admin/media-picker";
 import {
   getContentAdminPath,
   getContentKindLabel,
+  getContentPublicPath,
 } from "@/lib/content-manager/content-store";
 
 type ContentAdminEditPageProps = {
@@ -43,6 +45,10 @@ export function ContentAdminEditPage({
   const label = getContentKindLabel(kind);
   const adminPath = getContentAdminPath(kind);
   const previewHref = `${adminPath}/${entry.id}/preview`;
+  const publicHref =
+    entry.status === "published"
+      ? `${getContentPublicPath(kind)}/${entry.slug}`
+      : null;
 
   return (
     <main className="admin-page admin-content-page">
@@ -63,8 +69,29 @@ export function ContentAdminEditPage({
         </div>
       </header>
 
-      {created ? <div className="admin-alert">초안을 만들었습니다.</div> : null}
-      {saved ? <div className="admin-alert">저장했습니다.</div> : null}
+      {created ? (
+        <AdminSuccessNotice
+          description={`${label} 초안을 만들었습니다. 본문을 채운 뒤 published로 저장하면 공개 링크가 표시됩니다.`}
+          key={`content-created-${entry.id}`}
+          secondaryHref={previewHref}
+          title="초안을 만들었습니다."
+        />
+      ) : null}
+      {saved ? (
+        <AdminSuccessNotice
+          description={
+            publicHref
+              ? `저장된 ${label}이 공개되었습니다. 공개 페이지를 바로 확인할 수 있습니다.`
+              : `${label}을 저장했습니다. 아직 draft 상태라 공개 링크 대신 미리보기를 확인할 수 있습니다.`
+          }
+          primaryHref={publicHref}
+          primaryLabel={`게시된 ${label} 보기`}
+          key={`content-saved-${entry.updatedAt}`}
+          secondaryHref={previewHref}
+          secondaryLabel="관리자 미리보기"
+          title="저장했습니다."
+        />
+      ) : null}
       {imageDeleted ? (
         <div className="admin-alert">이미지를 삭제했습니다.</div>
       ) : null}
