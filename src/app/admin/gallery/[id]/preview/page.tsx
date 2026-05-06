@@ -17,13 +17,15 @@ export const metadata = {
 export default async function AdminGalleryPreviewPage({
   params,
 }: AdminGalleryPreviewPageProps) {
+  const { id } = await params;
   const authenticated = await isAdminAuthenticated();
 
   if (!authenticated) {
-    redirect("/admin/login?next=/admin/gallery");
+    redirect(
+      `/admin/login?next=${encodeURIComponent(`/admin/gallery/${id}/preview`)}`,
+    );
   }
 
-  const { id } = await params;
   const entry = await getContentEntryById(id);
 
   if (!entry || entry.kind !== "gallery") {

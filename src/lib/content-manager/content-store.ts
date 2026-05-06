@@ -23,8 +23,8 @@ import {
   isSupabasePublicReadConfigured,
 } from "@/lib/supabase/server";
 import {
-  emptyRichTextBody,
   createParagraphBody,
+  normalizeRichTextBody,
 } from "./rich-text-defaults";
 import { walkLexicalNodes } from "./rich-text-utils";
 import type {
@@ -805,7 +805,7 @@ function buildUpdatedEntry(
 
   return entrySchema.parse({
     ...current,
-    body: input.body ?? emptyRichTextBody,
+    body: normalizeRichTextBody(input.body, input.bodyText),
     bodyText: input.bodyText.trim(),
     displayDate: emptyToUndefined(input.displayDate),
     publishedAt: statusChangedToPublished
@@ -997,7 +997,7 @@ function fromSupabaseEntryRow(
   usages: MediaUsage[],
 ): ContentEntry {
   return entrySchema.parse({
-    body: row.body_json,
+    body: normalizeRichTextBody(row.body_json, row.body_text),
     bodyText: row.body_text,
     createdAt: row.created_at,
     displayDate: row.display_date ?? undefined,
@@ -1055,7 +1055,7 @@ function toContentEntryListItem(entry: ContentEntry): ContentEntryListItem {
 
 function toSupabaseEntryRow(entry: ContentEntry) {
   return {
-    body_json: entry.body,
+    body_json: normalizeRichTextBody(entry.body, entry.bodyText),
     body_text: entry.bodyText,
     display_date: entry.displayDate ?? null,
     id: entry.id,

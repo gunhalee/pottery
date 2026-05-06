@@ -27,19 +27,18 @@ export default async function AdminGalleryEditPage({
   params,
   searchParams,
 }: AdminGalleryEditPageProps) {
+  const [{ id }, flags] = await Promise.all([params, searchParams]);
   const authenticated = await isAdminAuthenticated();
 
   if (!authenticated) {
-    redirect("/admin/login?next=/admin/gallery");
+    redirect(`/admin/login?next=${encodeURIComponent(`/admin/gallery/${id}`)}`);
   }
 
-  const [{ id }, flags, products, mediaAssets] = await Promise.all([
-    params,
-    searchParams,
+  const [entry, products, mediaAssets] = await Promise.all([
+    getContentEntryById(id),
     readProducts(),
     readMediaLibraryAssets(120),
   ]);
-  const entry = await getContentEntryById(id);
 
   if (!entry || entry.kind !== "gallery") {
     notFound();

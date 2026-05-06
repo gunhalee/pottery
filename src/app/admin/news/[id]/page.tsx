@@ -26,18 +26,17 @@ export default async function AdminNewsEditPage({
   params,
   searchParams,
 }: AdminNewsEditPageProps) {
+  const [{ id }, flags] = await Promise.all([params, searchParams]);
   const authenticated = await isAdminAuthenticated();
 
   if (!authenticated) {
-    redirect("/admin/login?next=/admin/news");
+    redirect(`/admin/login?next=${encodeURIComponent(`/admin/news/${id}`)}`);
   }
 
-  const [{ id }, flags, mediaAssets] = await Promise.all([
-    params,
-    searchParams,
+  const [entry, mediaAssets] = await Promise.all([
+    getContentEntryById(id),
     readMediaLibraryAssets(120),
   ]);
-  const entry = await getContentEntryById(id);
 
   if (!entry || entry.kind !== "news") {
     notFound();

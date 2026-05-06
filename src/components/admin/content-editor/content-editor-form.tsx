@@ -70,6 +70,7 @@ import {
   extractPlainTextFromLexicalJson,
   walkLexicalNodes,
 } from "@/lib/content-manager/rich-text-utils";
+import { normalizeRichTextBody } from "@/lib/content-manager/rich-text-defaults";
 import {
   $createContentImageNode,
   $createInstagramNode,
@@ -142,7 +143,7 @@ export function ContentEditorForm({
 }: ContentEditorFormProps) {
   const [title, setTitle] = useState(entry.title);
   const [bodyJson, setBodyJson] = useState(() =>
-    JSON.stringify(entry.body ?? null),
+    JSON.stringify(normalizeRichTextBody(entry.body, entry.bodyText)),
   );
   const [initialBodyJson] = useState(bodyJson);
   const [initialImageIds] = useState(() => entry.images.map((image) => image.id));

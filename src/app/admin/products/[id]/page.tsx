@@ -54,13 +54,13 @@ export default async function AdminProductEditPage({
   params,
   searchParams,
 }: AdminProductEditPageProps) {
+  const { id } = await params;
   const authenticated = await isAdminAuthenticated();
 
   if (!authenticated) {
-    redirect("/admin/login?next=/admin/products");
+    redirect(`/admin/login?next=${encodeURIComponent(`/admin/products/${id}`)}`);
   }
 
-  const { id } = await params;
   const flags = await searchParams;
   const product = await getProductById(id);
 

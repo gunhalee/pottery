@@ -4,7 +4,18 @@ import { createClient } from "@supabase/supabase-js";
 
 const emptyRichTextBody = {
   root: {
-    children: [],
+    children: [
+      {
+        children: [],
+        direction: null,
+        format: "",
+        indent: 0,
+        textFormat: 0,
+        textStyle: "",
+        type: "paragraph",
+        version: 1,
+      },
+    ],
     direction: null,
     format: "",
     indent: 0,

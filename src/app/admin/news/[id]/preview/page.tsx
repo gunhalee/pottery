@@ -16,13 +16,15 @@ export const metadata = {
 export default async function AdminNewsPreviewPage({
   params,
 }: AdminNewsPreviewPageProps) {
+  const { id } = await params;
   const authenticated = await isAdminAuthenticated();
 
   if (!authenticated) {
-    redirect("/admin/login?next=/admin/news");
+    redirect(
+      `/admin/login?next=${encodeURIComponent(`/admin/news/${id}/preview`)}`,
+    );
   }
 
-  const { id } = await params;
   const entry = await getContentEntryById(id);
 
   if (!entry || entry.kind !== "news") {
