@@ -7,6 +7,7 @@ import {
   buildMediaVariantSources,
   pickMediaVariantForSurface,
 } from "@/lib/media/media-variant-policy";
+import { getVariantStatusLabel } from "@/lib/media/media-editor-status";
 import type { MediaAsset } from "@/lib/media/media-model";
 
 export type MediaPickerAsset = MediaAsset & {
@@ -91,6 +92,9 @@ export function MediaPicker({
           {filteredAssets.map((asset) => {
             const thumbnail = pickMediaVariantForSurface(asset, "thumbnail");
             const missingVariants = getMissingVariants(asset);
+            const variantLabel = getVariantStatusLabel(
+              buildMediaVariantSources(asset),
+            );
             const disabled = disabledIds.has(asset.id);
 
             return (
@@ -107,8 +111,8 @@ export function MediaPicker({
                   {disabled
                     ? "이미 연결됨"
                     : missingVariants.length > 0
-                      ? `${missingVariants.join(", ")} 누락`
-                      : `${asset.usageCount ?? 0} usages`}
+                      ? variantLabel
+                      : `${variantLabel} · ${asset.usageCount ?? 0} usages`}
                 </small>
               </button>
             );

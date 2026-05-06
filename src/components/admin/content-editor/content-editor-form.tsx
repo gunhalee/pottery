@@ -45,6 +45,7 @@ import {
   MediaPicker,
   type MediaPickerAsset,
 } from "@/components/admin/media-picker";
+import { MediaPublishReadiness } from "@/components/admin/media-publish-readiness";
 import { RichTextRenderer } from "@/components/content/rich-text-renderer";
 import {
   buildAdminUploadError,
@@ -55,6 +56,10 @@ import {
 } from "@/lib/admin/upload-feedback";
 import { withContentImageVariant } from "@/lib/content-manager/content-images";
 import { buildMediaVariantSources } from "@/lib/media/media-variant-policy";
+import {
+  getContentImageEditorStatus,
+  getContentImagesPublishIssues,
+} from "@/lib/media/media-editor-status";
 import type {
   ContentEntry,
   ContentImage,
@@ -154,6 +159,10 @@ export function ContentEditorForm({
   const coverImage = images.find((image) => image.isCover) ?? null;
   const listImage = images.find((image) => image.isListImage) ?? null;
   const hasRoleGaps = images.length > 0 && (!coverImage || !listImage);
+  const publishIssues = useMemo(
+    () => getContentImagesPublishIssues(images, bodyImageIds),
+    [bodyImageIds, images],
+  );
   const pendingUploadCount = images.filter(
     (image) => !initialImageIds.includes(image.id),
   ).length;
@@ -386,6 +395,10 @@ export function ContentEditorForm({
               안정적으로 이어집니다.
             </div>
           ) : null}
+          <MediaPublishReadiness
+            issues={publishIssues}
+            okText="대표, 목록, 본문 이미지와 역할별 variant가 준비되어 있습니다."
+          />
           {images.length > 0 ? (
             <div className="admin-image-list">
               {images.map((image) => (
@@ -754,7 +767,7 @@ function ImageSettings({
   image: ContentImage;
   onChange: (patch: Partial<ContentImage>) => void;
 }) {
-  const exposureSummary = getImageExposureSummary(image, imageInBody);
+  const imageStatus = getContentImageEditorStatus(image, imageInBody);
   const previewImage = withContentImageVariant(image, "thumbnail");
 
   return (
@@ -763,8 +776,25 @@ function ImageSettings({
       <div className="admin-form">
         <div className="admin-image-role-summary">
           <span>노출 위치</span>
-          <strong>{exposureSummary}</strong>
+          <strong>{imageStatus.exposureLabel}</strong>
         </div>
+        <div className="admin-media-status-strip">
+          <span
+            className={`admin-media-status-pill admin-media-status-${imageStatus.variantTone}`}
+          >
+            {imageStatus.variantLabel}
+          </span>
+          {imageStatus.requiredVariants.length > 0 ? (
+            <span>필요: {imageStatus.requiredVariants.join(" / ")}</span>
+          ) : (
+            <span>발행 필수 variant 없음</span>
+          )}
+        </div>
+        {imageStatus.publishIssues.length > 0 ? (
+          <p className="admin-image-role-note admin-image-role-note-danger">
+            발행 차단: {imageStatus.publishIssues.join(" · ")}
+          </p>
+        ) : null}
         <label>
           <span>대체 텍스트</span>
           <input
@@ -918,18 +948,6 @@ function getContentImageIds(body: unknown) {
       .map((node) => node.id)
       .filter((id): id is string => typeof id === "string"),
   );
-}
-
-function getImageExposureSummary(image: ContentImage, imageInBody: boolean) {
-  const roles = [
-    imageInBody ? "본문" : null,
-    image.isCover ? "대표" : null,
-    image.isListImage ? "목록" : null,
-    image.isDetail ? "상세 하단" : null,
-    image.isReserved ? "보관" : null,
-  ].filter(Boolean);
-
-  return roles.length > 0 ? roles.join(" + ") : "노출 없음";
 }
 
 function isSafeEditorUrl(url: string) {

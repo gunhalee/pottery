@@ -16,6 +16,7 @@ import {
   MediaPicker,
   type MediaPickerAsset,
 } from "@/components/admin/media-picker";
+import { MediaPublishReadiness } from "@/components/admin/media-publish-readiness";
 import {
   buildAdminUploadError,
   readAdminUploadPayload,
@@ -28,6 +29,10 @@ import {
   pickMediaVariantForSurface,
   pickVariantSource,
 } from "@/lib/media/media-variant-policy";
+import {
+  getProductImageEditorStatus,
+  getProductImagesPublishIssues,
+} from "@/lib/media/media-editor-status";
 import type { ProductImage } from "@/lib/shop/product-model";
 
 type EditableProductImage = ProductImage & {
@@ -108,6 +113,10 @@ export function ProductImageManager({
     [images, initialStoragePaths],
   );
   const pendingStoragePathKey = pendingStoragePaths.join("\n");
+  const publishIssues = useMemo(
+    () => getProductImagesPublishIssues(images),
+    [images],
+  );
 
   useEffect(() => {
     const form = document.getElementById(formId);
@@ -409,11 +418,17 @@ export function ProductImageManager({
         />
       ) : null}
 
+      <MediaPublishReadiness
+        issues={publishIssues}
+        okText="대표, 목록, 역할별 variant가 준비되어 있습니다."
+      />
+
       {images.length > 0 ? (
         <div className="admin-product-image-list">
           {images.map((image, index) => {
             const previewSrc =
               pickVariantSource(image.variants, "thumbnail")?.src ?? image.src;
+            const imageStatus = getProductImageEditorStatus(image);
 
             return (
               <article className="admin-product-image-item" key={image.id}>
@@ -425,6 +440,29 @@ export function ProductImageManager({
                 </div>
               )}
               <div className="admin-product-image-fields">
+                <div className="admin-image-role-summary">
+                  <span>노출 위치</span>
+                  <strong>{imageStatus.exposureLabel}</strong>
+                </div>
+                <div className="admin-media-status-strip">
+                  <span
+                    className={`admin-media-status-pill admin-media-status-${imageStatus.variantTone}`}
+                  >
+                    {imageStatus.variantLabel}
+                  </span>
+                  {imageStatus.requiredVariants.length > 0 ? (
+                    <span>
+                      필요: {imageStatus.requiredVariants.join(" / ")}
+                    </span>
+                  ) : (
+                    <span>발행 필수 variant 없음</span>
+                  )}
+                </div>
+                {imageStatus.publishIssues.length > 0 ? (
+                  <p className="admin-image-role-note admin-image-role-note-danger">
+                    발행 차단: {imageStatus.publishIssues.join(" · ")}
+                  </p>
+                ) : null}
                 <label>
                   <span>대체 텍스트</span>
                   <input
