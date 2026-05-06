@@ -186,8 +186,7 @@ export default async function ShopDetailPage({
             { label: "크기", value: product.size },
             { label: "소재", value: product.material },
             { label: "유약", value: product.glaze },
-            { label: "사용", value: product.usageNote },
-            { label: "관리", value: product.careNote },
+            { label: "주문안내", value: product.usageNote },
             { label: "배송", value: product.shippingNote },
           ]}
         />
