@@ -11,6 +11,7 @@ type AdminNewsEditPageProps = {
     created?: string;
     delete_error?: string;
     image_deleted?: string;
+    publish_error?: string;
     saved?: string;
     slug_error?: string;
   }>;
@@ -44,6 +45,7 @@ export default async function AdminNewsEditPage({
       entry={entry}
       imageDeleted={flags.image_deleted}
       kind="news"
+      publishError={flags.publish_error}
       saved={flags.saved}
       slugError={flags.slug_error}
     />

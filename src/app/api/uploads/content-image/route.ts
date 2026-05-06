@@ -1,19 +1,12 @@
-import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import sharp from "sharp";
 import { isAdminAuthenticated } from "@/lib/admin/auth";
-import {
-  addContentImage,
-  contentImageBucket,
-} from "@/lib/content-manager/content-store";
+import { getContentEntryById } from "@/lib/content-manager/content-store";
 import type {
   ContentImageLayout,
   ContentKind,
 } from "@/lib/content-manager/content-model";
-import {
-  getSupabaseAdminClient,
-  isSupabaseConfigured,
-} from "@/lib/supabase/server";
+import { uploadMediaImage } from "@/lib/media/media-upload";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -68,6 +61,18 @@ export async function POST(request: Request) {
     );
   }
 
+  const entry = await getContentEntryById(entryId);
+
+  if (!entry || entry.kind !== kind) {
+    return NextResponse.json(
+      {
+        message: "콘텐츠를 찾을 수 없습니다.",
+        ok: false,
+      },
+      { status: 404 },
+    );
+  }
+
   if (!(file instanceof File)) {
     return NextResponse.json(
       {
@@ -88,93 +93,40 @@ export async function POST(request: Request) {
     );
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const converted = await sharp(buffer)
-    .rotate()
-    .resize({
-      fit: "inside",
-      height: 1800,
-      withoutEnlargement: true,
-      width: 1800,
-    })
-    .webp({ quality: 82 })
-    .toBuffer({ resolveWithObject: true });
-
-  const supabase = getSupabaseAdminClient();
-  await ensureContentImageBucket();
-
-  const storagePath = `${kind}/${entryId}/${randomUUID()}.webp`;
-  const { error: uploadError } = await supabase.storage
-    .from(contentImageBucket)
-    .upload(storagePath, converted.data, {
-      cacheControl: "31536000",
-      contentType: "image/webp",
-      upsert: false,
-    });
-
-  if (uploadError) {
-    return NextResponse.json(
-      {
-        message: uploadError.message,
-        ok: false,
-      },
-      { status: 500 },
-    );
-  }
-
-  const { data } = supabase.storage
-    .from(contentImageBucket)
-    .getPublicUrl(storagePath);
-
   try {
-    const image = await addContentImage({
+    const asset = await uploadMediaImage({
       alt: buildAltText(file.name),
-      entryId,
-      height: converted.info.height,
-      layout,
-      src: data.publicUrl,
-      storagePath,
-      width: converted.info.width,
+      buffer: Buffer.from(await file.arrayBuffer()),
+      filename: file.name,
     });
+    const detailVariant =
+      asset.variants.find((variant) => variant.variant === "detail") ??
+      asset.variants.find((variant) => variant.variant === "master") ??
+      null;
 
     return NextResponse.json({
-      image,
+      image: {
+        alt: asset.alt,
+        caption: asset.caption,
+        createdAt: asset.createdAt,
+        height: detailVariant?.height ?? asset.height,
+        id: asset.id,
+        isCover: false,
+        isDetail: false,
+        isListImage: false,
+        isReserved: asset.reserved,
+        layout,
+        sortOrder: entry.images.length,
+        src: detailVariant?.src ?? asset.src,
+        storagePath: asset.masterPath,
+        updatedAt: asset.updatedAt,
+        width: detailVariant?.width ?? asset.width,
+      },
       ok: true,
     });
   } catch (error) {
-    await supabase.storage.from(contentImageBucket).remove([storagePath]);
     throw error;
   }
-}
-
-async function ensureContentImageBucket() {
-  const supabase = getSupabaseAdminClient();
-  const { error } = await supabase.storage.getBucket(contentImageBucket);
-
-  if (!error) {
-    return;
-  }
-
-  if (!isStorageNotFoundError(error)) {
-    throw new Error(`Supabase Storage bucket 확인 실패: ${error.message}`);
-  }
-
-  const { error: createError } = await supabase.storage.createBucket(
-    contentImageBucket,
-    {
-      allowedMimeTypes: ["image/webp"],
-      fileSizeLimit: maxUploadBytes,
-      public: true,
-    },
-  );
-
-  if (createError && !/already exists/i.test(createError.message)) {
-    throw new Error(`Supabase Storage bucket 생성 실패: ${createError.message}`);
-  }
-}
-
-function isStorageNotFoundError(error: { message?: string; statusCode?: string }) {
-  return error.statusCode === "404" || /not found/i.test(error.message ?? "");
 }
 
 function buildAltText(filename: string) {

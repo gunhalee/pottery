@@ -14,8 +14,7 @@ export default function ClassPage() {
       <PageShell>
         <PageIntro
           subtitle="흙을 만지고 형태를 만드는 시간을 예약하세요."
-          title="Class"
-          titleEmphasis="Info"
+          title="함께하기"
         />
 
         <div className="class-grid section-gap">
@@ -42,7 +41,7 @@ export default function ClassPage() {
         <FollowCTA title="다음 클래스 오픈 소식을 받으려면" />
 
         <div>
-          <div className="review-title">Reviews</div>
+          <div className="review-title">후기</div>
           <div className="review-grid">
             {classReviews.map((review) => (
               <figure className="review" key={review.quote}>

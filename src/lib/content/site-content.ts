@@ -51,10 +51,10 @@ export type HomeStoryContent = {
 
 export const homeHero = {
   actions: [
-    { href: "/shop", label: "Shop", tone: "primary" },
-    { href: "/class", label: "Class", tone: "ghost" },
+    { href: "/gallery", label: "작품 보기", tone: "primary" },
+    { href: "/shop", label: "소장 가능한 작품", tone: "ghost" },
   ],
-  title: "Headline Text Here",
+  title: "조용한 쓰임을 위한 도자",
 } as const satisfies {
   actions: ReadonlyArray<HomeHeroAction>;
   title: string;
@@ -62,60 +62,60 @@ export const homeHero = {
 
 export const homeEntryCards = [
   {
-    description: "현재 소장 가능한 작품들",
+    description: "현재 소장 가능한 작품",
     href: "/shop",
-    label: "Shop",
+    label: "소장",
     title: "작품 소장",
   },
   {
     description: "원데이 · 정기 클래스",
     href: "/class",
-    label: "Class",
+    label: "수업",
     title: "직접 해보기",
   },
   {
     description: "작업 과정과 완성작",
     href: "/gallery",
-    label: "Gallery",
+    label: "작품",
     title: "작품 아카이브",
   },
   {
     description: "일정 · 신작 · 작업 일지",
     href: "/news",
-    label: "News",
+    label: "소식",
     title: "공방 소식",
   },
 ] as const satisfies ReadonlyArray<HomeEntryCard>;
 
 export const homeStory = {
   ctaHref: "/intro",
-  ctaLabel: "Read More",
+  ctaLabel: "소개 보기",
   description:
-    "느린 제작 방식과 절제된 형태를 바탕으로, 오래 곁에 두고 쓰는 도자 작품을 만듭니다. 공방의 분위기와 작업 철학을 소개합니다.",
-  imageLabel: "Brand Image",
-  title: "Brand Story",
-  titleEmphasis: "Headline",
+    "오래 곁에 두고 쓰는 형태를 만듭니다.",
+  imageLabel: "공방 이미지",
+  title: "공방 소개",
+  titleEmphasis: "",
 } as const satisfies HomeStoryContent;
 
 export const homeWorks: WorkItem[] = [
   {
     description: "White porcelain",
     href: "/shop",
-    placeholder: "Product 01",
-    title: "Moon Jar",
+    placeholder: "작품 01",
+    title: "백자 달항아리",
   },
   {
     description: "Hand-thrown stoneware",
     href: "/shop",
-    placeholder: "Product 02",
-    title: "Tea Bowl",
+    placeholder: "작품 02",
+    title: "찻사발",
     tone: "dark",
   },
   {
     description: "Matte ash glaze",
     href: "/shop",
-    placeholder: "Product 03",
-    title: "Small Vase",
+    placeholder: "작품 03",
+    title: "작은 화병",
   },
 ];
 
@@ -123,13 +123,13 @@ export const homeQuickLinks = [
   {
     description:
       "손으로 빚고 다듬는 시간을 경험할 수 있는 정규 수업과 원데이 클래스를 운영합니다.",
-    eyebrow: "Class",
+    eyebrow: "수업",
     href: "/class",
     title: "Section Title",
   },
   {
     description: "새 작품, 전시 일정, 공방 운영 소식을 간결하게 전합니다.",
-    eyebrow: "News",
+    eyebrow: "소식",
     href: "/news",
     title: "Section Title",
   },
@@ -142,44 +142,44 @@ export const homeQuickLinks = [
 
 export const introFeatures: FeatureSection[] = [
   {
-    eyebrow: "Section 01",
-    imageLabel: "Portrait",
+    eyebrow: "소개",
+    imageLabel: "공방",
     paragraphs: [
       "매일의 식탁 위에서 오래 머무는 형태를 고민합니다. 과한 장식보다 균형, 무게감, 손끝에 닿는 감각을 중요하게 여깁니다.",
       "계절에 따라 달라지는 흙과 유약의 표정을 기록하며 공방의 이야기를 이어갑니다.",
     ],
-    title: "Heading",
-    titleEmphasis: "Text",
+    title: "오래 쓰는 형태",
+    titleEmphasis: "",
   },
   {
-    eyebrow: "Section 02",
-    imageLabel: "Works",
+    eyebrow: "작업",
+    imageLabel: "작품",
     imageTone: "dark",
     paragraphs: [
       "물레 성형부터 건조, 초벌, 시유, 재벌까지 모든 과정을 천천히 살핍니다. 같은 형태라도 손의 흔적이 남아 각기 다른 분위기를 가집니다.",
     ],
     reverse: true,
-    title: "Heading",
-    titleEmphasis: "Text",
+    title: "천천히 살피는 과정",
+    titleEmphasis: "",
   },
   {
-    eyebrow: "Section 03",
-    imageLabel: "Studio",
+    eyebrow: "방문",
+    imageLabel: "공방",
     imageVariant: "wide",
     paragraphs: [
       "공방 방문과 수업 상담은 예약제로 운영합니다. 조용히 작품을 보고 직접 손으로 만져볼 수 있는 시간을 준비합니다.",
     ],
-    title: "Heading",
-    titleEmphasis: "Text",
+    title: "예약제로 운영하는 공방",
+    titleEmphasis: "",
   },
 ];
 
 export const paletteLabels = [
-  "Style 01",
-  "Style 02",
-  "Style 03",
-  "Style 04",
-  "Style 05",
+  "백색",
+  "회색",
+  "흙색",
+  "그늘",
+  "먹색",
 ] as const;
 
 export const newsItems = [
@@ -222,7 +222,7 @@ export const galleryItems = [
 
 export const classItems = [
   {
-    action: "Book",
+    action: "예약 문의",
     description:
       "처음 흙을 만지는 분도 차분히 따라올 수 있는 기초 클래스입니다.",
     details: [
@@ -231,11 +231,11 @@ export const classItems = [
       { label: "비용", value: "80,000원" },
       { label: "인원", value: "1-3명" },
     ],
-    eyebrow: "Type A",
-    title: "Class Name",
+    eyebrow: "원데이",
+    title: "물레 성형",
   },
   {
-    action: "Contact",
+    action: "상담 문의",
     description: "원하는 형태와 쓰임을 함께 정해 제작하는 맞춤형 수업입니다.",
     details: [
       { label: "구성", value: "핸드빌딩" },
@@ -243,8 +243,8 @@ export const classItems = [
       { label: "비용", value: "상담 후 안내" },
       { label: "인원", value: "개인/그룹" },
     ],
-    eyebrow: "Type B",
-    title: "Class Name",
+    eyebrow: "맞춤",
+    title: "핸드빌딩",
   },
 ] as const;
 

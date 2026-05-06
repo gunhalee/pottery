@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CodeHighlightNode, CodeNode, $createCodeNode } from "@lexical/code";
 import { LinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
 import {
@@ -36,7 +36,10 @@ import {
   FORMAT_TEXT_COMMAND,
   type EditorState,
 } from "lexical";
-import { updateContentEntryAction } from "@/app/admin/actions";
+import {
+  deleteContentImageAction,
+  updateContentEntryAction,
+} from "@/app/admin/actions";
 import { RichTextRenderer } from "@/components/content/rich-text-renderer";
 import type {
   ContentEntry,
@@ -44,7 +47,10 @@ import type {
   ContentImageLayout,
   ContentKind,
 } from "@/lib/content-manager/content-model";
-import { extractPlainTextFromLexicalJson } from "@/lib/content-manager/rich-text-utils";
+import {
+  extractPlainTextFromLexicalJson,
+  walkLexicalNodes,
+} from "@/lib/content-manager/rich-text-utils";
 import {
   $createContentImageNode,
   $createInstagramNode,
@@ -118,9 +124,46 @@ export function ContentEditorForm({
     JSON.stringify(entry.body ?? null),
   );
   const [initialBodyJson] = useState(bodyJson);
+  const [initialImageIds] = useState(() => entry.images.map((image) => image.id));
   const [bodyText, setBodyText] = useState(entry.bodyText);
+  const [displayDate, setDisplayDate] = useState(entry.displayDate ?? "");
   const [images, setImages] = useState(entry.images);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [summary, setSummary] = useState(entry.summary);
   const previewBody = useMemo(() => safeParseJson(bodyJson), [bodyJson]);
+  const bodyImageIds = useMemo(
+    () => getContentImageIds(previewBody),
+    [previewBody],
+  );
+  const coverImage = images.find((image) => image.isCover) ?? null;
+  const listImage = images.find((image) => image.isListImage) ?? null;
+  const hasRoleGaps = images.length > 0 && (!coverImage || !listImage);
+  const pendingUploadCount = images.filter(
+    (image) => !initialImageIds.includes(image.id),
+  ).length;
+  const hasUnsavedChanges =
+    title !== entry.title ||
+    bodyJson !== initialBodyJson ||
+    displayDate !== (entry.displayDate ?? "") ||
+    summary !== entry.summary ||
+    pendingUploadCount > 0;
+
+  useEffect(() => {
+    if (!hasUnsavedChanges || isSubmitting) {
+      return;
+    }
+
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges, isSubmitting]);
 
   const initialConfig = useMemo(
     () => ({
@@ -155,6 +198,8 @@ export function ContentEditorForm({
           id: image.id,
           isCover: image.isCover,
           isDetail: image.isDetail,
+          isListImage: image.isListImage,
+          isReserved: image.isReserved,
           layout: image.layout,
           sortOrder: index,
         })),
@@ -163,14 +208,26 @@ export function ContentEditorForm({
   );
 
   return (
-    <form action={updateContentEntryAction} className="admin-content-editor">
+    <form
+      action={updateContentEntryAction}
+      className="admin-content-editor"
+      onSubmit={() => setIsSubmitting(true)}
+    >
       <input name="bodyJson" type="hidden" value={bodyJson} />
       <input name="bodyText" type="hidden" value={bodyText} />
+      <input name="entryId" type="hidden" value={entry.id} />
       <input name="id" type="hidden" value={entry.id} />
       <input name="imagesJson" type="hidden" value={imagesJson} />
       <input name="kind" type="hidden" value={entry.kind} />
 
       <div className="admin-content-editor-main">
+        {pendingUploadCount > 0 ? (
+          <div className="admin-alert admin-alert-warning admin-unsaved-media-alert">
+            새로 올린 이미지 {pendingUploadCount}개가 아직 저장되지 않았습니다.
+            저장하지 않고 나가면 이후 cleanup 대상이 될 수 있습니다.
+          </div>
+        ) : null}
+
         <section className="admin-panel">
           <div className="admin-panel-head">
             <h2>기본 정보</h2>
@@ -208,9 +265,10 @@ export function ContentEditorForm({
               <label>
                 <span>{entry.kind === "news" ? "날짜" : "연도/날짜"}</span>
                 <input
-                  defaultValue={entry.displayDate ?? ""}
                   name="displayDate"
+                  onChange={(event) => setDisplayDate(event.target.value)}
                   placeholder={entry.kind === "news" ? "2026.05" : "2026"}
+                  value={displayDate}
                 />
               </label>
               <label>
@@ -224,9 +282,10 @@ export function ContentEditorForm({
             <label>
               <span>짧은 설명</span>
               <textarea
-                defaultValue={entry.summary}
                 name="summary"
+                onChange={(event) => setSummary(event.target.value)}
                 rows={3}
+                value={summary}
               />
             </label>
             {entry.kind === "gallery" ? (
@@ -300,10 +359,17 @@ export function ContentEditorForm({
             <h2>본문 이미지</h2>
             <span>{images.length} images</span>
           </div>
+          {hasRoleGaps ? (
+            <div className="admin-alert admin-alert-warning admin-image-role-alert">
+              대표 이미지와 목록 이미지를 모두 지정해야 상세/목록 노출이
+              안정적으로 이어집니다.
+            </div>
+          ) : null}
           {images.length > 0 ? (
             <div className="admin-image-list">
               {images.map((image) => (
                 <ImageSettings
+                  imageInBody={bodyImageIds.has(image.id)}
                   image={image}
                   key={image.id}
                   onChange={(patch) =>
@@ -328,8 +394,14 @@ export function ContentEditorForm({
           <span>{entry.kind === "news" ? "소식" : "작품"}</span>
         </div>
         <article className="admin-live-preview">
-          <p className="admin-preview-date">{entry.displayDate}</p>
+          {coverImage ? (
+            <figure className="admin-live-preview-cover">
+              <img alt={coverImage.alt} src={coverImage.src} />
+            </figure>
+          ) : null}
+          <p className="admin-preview-date">{displayDate}</p>
           <h1>{title || "제목 없음"}</h1>
+          {summary ? <p className="admin-preview-summary">{summary}</p> : null}
           <RichTextRenderer body={previewBody} images={images} />
         </article>
       </aside>
@@ -565,16 +637,24 @@ function EditorToolbar({
 }
 
 function ImageSettings({
+  imageInBody,
   image,
   onChange,
 }: {
+  imageInBody: boolean;
   image: ContentImage;
   onChange: (patch: Partial<ContentImage>) => void;
 }) {
+  const exposureSummary = getImageExposureSummary(image, imageInBody);
+
   return (
     <article className="admin-image-item">
       <img alt={image.alt} src={image.src} />
       <div className="admin-form">
+        <div className="admin-image-role-summary">
+          <span>노출 위치</span>
+          <strong>{exposureSummary}</strong>
+        </div>
         <label>
           <span>대체 텍스트</span>
           <input
@@ -609,6 +689,7 @@ function ImageSettings({
             <label>
               <input
                 checked={image.isCover}
+                disabled={image.isReserved}
                 onChange={(event) => onChange({ isCover: event.target.checked })}
                 type="checkbox"
               />
@@ -616,14 +697,51 @@ function ImageSettings({
             </label>
             <label>
               <input
+                checked={image.isListImage}
+                disabled={image.isReserved}
+                onChange={(event) =>
+                  onChange({ isListImage: event.target.checked })
+                }
+                type="checkbox"
+              />
+              <span>목록</span>
+            </label>
+            <label>
+              <input
                 checked={image.isDetail}
+                disabled={image.isReserved}
                 onChange={(event) => onChange({ isDetail: event.target.checked })}
                 type="checkbox"
               />
               <span>상세</span>
             </label>
+            <label>
+              <input
+                checked={image.isReserved}
+                disabled={imageInBody}
+                onChange={(event) =>
+                  onChange({ isReserved: event.target.checked })
+                }
+                type="checkbox"
+              />
+              <span>보관</span>
+            </label>
           </div>
         </div>
+        {imageInBody && image.isReserved ? (
+          <p className="admin-image-role-note">
+            본문에 삽입된 이미지는 저장 시 보관 상태가 해제됩니다.
+          </p>
+        ) : null}
+        <button
+          className="admin-danger-inline-button"
+          formAction={deleteContentImageAction}
+          name="imageId"
+          type="submit"
+          value={image.id}
+        >
+          이미지 삭제
+        </button>
       </div>
     </article>
   );
@@ -636,16 +754,30 @@ function updateImageSettings(
 ) {
   return images.map((image, index) => {
     const isTarget = image.id === imageId;
+    const targetPatch = isTarget ? patch : {};
+    const isReserved = isTarget
+      ? Boolean(targetPatch.isReserved ?? image.isReserved)
+      : image.isReserved;
 
     return {
       ...image,
-      ...((isTarget ? patch : {}) as Partial<ContentImage>),
+      ...(targetPatch as Partial<ContentImage>),
       isCover:
         patch.isCover && !isTarget
           ? false
           : isTarget
-            ? patch.isCover ?? image.isCover
+            ? !isReserved && (patch.isCover ?? image.isCover)
             : image.isCover,
+      isDetail: isTarget
+        ? !isReserved && (patch.isDetail ?? image.isDetail)
+        : image.isDetail,
+      isListImage:
+        patch.isListImage && !isTarget
+          ? false
+          : isTarget
+            ? !isReserved && (patch.isListImage ?? image.isListImage)
+            : image.isListImage,
+      isReserved,
       sortOrder: index,
     };
   });
@@ -667,6 +799,27 @@ function safeParseJson(value: string) {
   } catch {
     return null;
   }
+}
+
+function getContentImageIds(body: unknown) {
+  return new Set(
+    walkLexicalNodes(body)
+      .filter((node) => node.type === "content-image")
+      .map((node) => node.id)
+      .filter((id): id is string => typeof id === "string"),
+  );
+}
+
+function getImageExposureSummary(image: ContentImage, imageInBody: boolean) {
+  const roles = [
+    imageInBody ? "본문" : null,
+    image.isCover ? "대표" : null,
+    image.isListImage ? "목록" : null,
+    image.isDetail ? "상세 하단" : null,
+    image.isReserved ? "보관" : null,
+  ].filter(Boolean);
+
+  return roles.length > 0 ? roles.join(" + ") : "노출 없음";
 }
 
 function isSafeEditorUrl(url: string) {

@@ -1,9 +1,17 @@
-import "server-only";
+﻿import "server-only";
 
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
+import type { MediaUsage } from "@/lib/media/media-model";
+import {
+  deleteUnusedMediaAssetsByMasterPaths,
+  mediaAssetBucket,
+  pickMediaVariant,
+  readMediaUsagesByOwner,
+  replaceMediaUsagesForOwner,
+} from "@/lib/media/media-store";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { cafe24ProductMap } from "./cafe24-product-map";
 import { productCatalog } from "./product-catalog";
@@ -12,12 +20,24 @@ import type {
   Cafe24ProductMapping,
   ConsepotProduct,
   LimitedType,
+  ProductImage,
   ProductSyncLog,
   ProductKind,
   RestockCtaType,
 } from "./product-model";
 
 const dataFilePath = path.join(process.cwd(), "data", "shop-products.json");
+export const productImageBucket = mediaAssetBucket;
+const emptyProductStoryBody = {
+  root: {
+    children: [],
+    direction: null,
+    format: "",
+    indent: 0,
+    type: "root",
+    version: 1,
+  },
+};
 
 type ProductRow = {
   id: string;
@@ -25,6 +45,8 @@ type ProductRow = {
   title_ko: string;
   short_description: string;
   story: string | null;
+  story_json?: unknown;
+  story_text?: string | null;
   category: string;
   kind: ProductKind;
   is_limited: boolean;
@@ -45,15 +67,6 @@ type ProductRow = {
   published_at: string | null;
   created_at: string;
   updated_at: string;
-};
-
-type ProductImageRow = {
-  alt: string;
-  cafe24_image_path: string | null;
-  is_primary: boolean;
-  placeholder_label: string | null;
-  sort_order: number;
-  src: string | null;
 };
 
 type Cafe24MappingRow = {
@@ -82,15 +95,22 @@ type ProductSyncLogRow = {
 
 type ProductSelectRow = ProductRow & {
   shop_product_cafe24_mappings?: Cafe24MappingRow | Cafe24MappingRow[] | null;
-  shop_product_images?: ProductImageRow[] | null;
 };
 
 const imageSchema = z.object({
   alt: z.string().min(1),
   cafe24ImagePath: z.string().optional(),
+  caption: z.string().optional(),
+  height: z.number().int().positive().optional(),
+  id: z.string().optional(),
+  isDescription: z.boolean().optional(),
+  isDetail: z.boolean().optional(),
+  isListImage: z.boolean().optional(),
   isPrimary: z.boolean().optional(),
   placeholderLabel: z.string().optional(),
   src: z.string().optional(),
+  storagePath: z.string().optional(),
+  width: z.number().int().positive().optional(),
 });
 
 const commerceSchema = z.object({
@@ -143,6 +163,8 @@ const productSchema = z.object({
     .min(1)
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   story: z.string().optional(),
+  storyBody: z.unknown().optional(),
+  storyText: z.string().optional(),
   titleKo: z.string().min(1),
   updatedAt: z.string(),
   usageNote: z.string().optional(),
@@ -160,6 +182,7 @@ export type ProductUpdateInput = {
   careNote?: string;
   category: string;
   glaze?: string;
+  images: ProductImage[];
   isArchived: boolean;
   isLimited: boolean;
   kind: ProductKind;
@@ -277,6 +300,22 @@ export async function deleteProduct(id: string) {
   return deleteProductInJson(id);
 }
 
+export async function deleteProductImageAssets(images: ProductImage[]) {
+  if (!isSupabaseConfigured()) {
+    return;
+  }
+
+  const masterPaths = images
+    .map((image) => image.storagePath)
+    .filter((storagePath): storagePath is string => Boolean(storagePath));
+
+  if (masterPaths.length === 0) {
+    return;
+  }
+
+  await deleteUnusedMediaAssetsByMasterPaths(masterPaths);
+}
+
 export async function readProductSyncLogs(productId: string, limit = 8) {
   if (!isSupabaseConfigured()) {
     return [] satisfies ProductSyncLog[];
@@ -291,7 +330,7 @@ export async function readProductSyncLogs(productId: string, limit = 8) {
     .limit(limit);
 
   if (error) {
-    throw new Error(`Supabase 동기화 로그 조회 실패: ${error.message}`);
+    throw new Error(`Supabase ?숆린??濡쒓렇 議고쉶 ?ㅽ뙣: ${error.message}`);
   }
 
   return (data ?? []).map((row) =>
@@ -320,7 +359,7 @@ export async function appendProductSyncLog(input: ProductSyncLogInput) {
     .single();
 
   if (error) {
-    throw new Error(`Supabase 동기화 로그 저장 실패: ${error.message}`);
+    throw new Error(`Supabase ?숆린??濡쒓렇 ????ㅽ뙣: ${error.message}`);
   }
 
   return fromSupabaseSyncLogRow(data as ProductSyncLogRow);
@@ -341,18 +380,23 @@ async function readProductsFromSupabase() {
     .select(
       `
         *,
-        shop_product_images (*),
         shop_product_cafe24_mappings (*)
       `,
     )
     .order("created_at", { ascending: false });
 
   if (error) {
-    throw new Error(`Supabase 상품 조회 실패: ${error.message}`);
+    throw new Error(`Supabase ?곹뭹 議고쉶 ?ㅽ뙣: ${error.message}`);
   }
 
+  const rows = (data ?? []) as ProductSelectRow[];
+  const usageMap = await readMediaUsagesByOwner(
+    "product",
+    rows.map((row) => row.id),
+  );
+
   return productListSchema.parse(
-    (data ?? []).map((row) => fromSupabaseRow(row as ProductSelectRow)),
+    rows.map((row) => fromSupabaseRow(row, usageMap.get(row.id) ?? [])),
   );
 }
 
@@ -366,7 +410,7 @@ async function writeProductsToSupabase(products: ConsepotProduct[]) {
       .upsert(toSupabaseProductRow(product), { onConflict: "id" });
 
     if (productError) {
-      throw new Error(`Supabase 상품 저장 실패: ${productError.message}`);
+      throw new Error(`Supabase ?곹뭹 ????ㅽ뙣: ${productError.message}`);
     }
 
     await replaceProductImages(product);
@@ -397,20 +441,14 @@ async function createProductDraftInSupabase(input: ProductDraftInput) {
     },
     createdAt: new Date().toISOString(),
     id,
-    images: [
-      {
-        alt: `${titleKo} 대표 이미지`,
-        isPrimary: true,
-        placeholderLabel: titleKo,
-      },
-    ],
+    images: [],
     isArchived: false,
     isLimited: false,
     kind: "regular",
     limitedType: null,
     published: false,
     restockCtaType: "restock_alert",
-    shortDescription: "상품 설명을 입력해 주세요.",
+    shortDescription: "?곹뭹 ?ㅻ챸???낅젰??二쇱꽭??",
     slug,
     titleKo,
     updatedAt: new Date().toISOString(),
@@ -421,7 +459,7 @@ async function createProductDraftInSupabase(input: ProductDraftInput) {
   );
 
   if (error) {
-    throw new Error(`Supabase 상품 초안 생성 실패: ${error.message}`);
+    throw new Error(`Supabase ?곹뭹 珥덉븞 ?앹꽦 ?ㅽ뙣: ${error.message}`);
   }
 
   await replaceProductImages(product);
@@ -434,7 +472,7 @@ async function updateProductInSupabase(id: string, input: ProductUpdateInput) {
   const current = await getProductById(id);
 
   if (!current) {
-    throw new Error("상품을 찾을 수 없습니다.");
+    throw new Error("?곹뭹??李얠쓣 ???놁뒿?덈떎.");
   }
 
   const product = productSchema.parse({
@@ -448,6 +486,7 @@ async function updateProductInSupabase(id: string, input: ProductUpdateInput) {
       stockQuantity: input.stockQuantity,
     },
     glaze: emptyToUndefined(input.glaze),
+    images: normalizeProductImages(input.images, input.titleKo),
     isArchived: input.isArchived,
     isLimited: input.isLimited,
     kind: input.kind,
@@ -464,6 +503,8 @@ async function updateProductInSupabase(id: string, input: ProductUpdateInput) {
     size: emptyToUndefined(input.size),
     slug: normalizeSlug(input.slug),
     story: emptyToUndefined(input.story),
+    storyBody: createParagraphStoryBody(input.story ?? ""),
+    storyText: input.story?.trim() ?? "",
     titleKo: input.titleKo.trim(),
     updatedAt: new Date().toISOString(),
     usageNote: emptyToUndefined(input.usageNote),
@@ -476,8 +517,10 @@ async function updateProductInSupabase(id: string, input: ProductUpdateInput) {
     .eq("id", id);
 
   if (error) {
-    throw new Error(`Supabase 상품 수정 실패: ${error.message}`);
+    throw new Error(`Supabase ?곹뭹 ?섏젙 ?ㅽ뙣: ${error.message}`);
   }
+
+  await replaceProductImages(product);
 
   return (await getProductById(id)) ?? product;
 }
@@ -505,7 +548,7 @@ async function updateProductInventoryInSupabase(
     .eq("id", id);
 
   if (error) {
-    throw new Error(`Supabase 상품 재고 저장 실패: ${error.message}`);
+    throw new Error(`Supabase ?곹뭹 ?ш퀬 ????ㅽ뙣: ${error.message}`);
   }
 
   return getProductById(id);
@@ -515,14 +558,16 @@ async function deleteProductInSupabase(id: string) {
   const current = await getProductById(id);
 
   if (!current) {
-    throw new Error("상품을 찾을 수 없습니다.");
+    throw new Error("?곹뭹??李얠쓣 ???놁뒿?덈떎.");
   }
+
+  await replaceMediaUsagesForOwner("product", current.id, []);
 
   const supabase = getSupabaseAdminClient();
   const { error } = await supabase.from("shop_products").delete().eq("id", id);
 
   if (error) {
-    throw new Error(`Supabase 상품 삭제 실패: ${error.message}`);
+    throw new Error(`Supabase ?곹뭹 ??젣 ?ㅽ뙣: ${error.message}`);
   }
 
   return current;
@@ -547,7 +592,7 @@ async function createProductDraftInJson(input: ProductDraftInput) {
   const slug = normalizeSlug(input.slug);
 
   if (products.some((product) => product.slug === slug)) {
-    throw new Error("이미 사용 중인 slug입니다.");
+    throw new Error("?대? ?ъ슜 以묒씤 slug?낅땲??");
   }
 
   const product: ConsepotProduct = productSchema.parse({
@@ -567,20 +612,14 @@ async function createProductDraftInJson(input: ProductDraftInput) {
     },
     createdAt: now,
     id: randomUUID(),
-    images: [
-      {
-        alt: `${input.titleKo} 대표 이미지`,
-        isPrimary: true,
-        placeholderLabel: input.titleKo,
-      },
-    ],
+    images: [],
     isArchived: false,
     isLimited: false,
     kind: "regular",
     limitedType: null,
     published: false,
     restockCtaType: "restock_alert",
-    shortDescription: "상품 설명을 입력해 주세요.",
+    shortDescription: "?곹뭹 ?ㅻ챸???낅젰??二쇱꽭??",
     slug,
     titleKo: input.titleKo.trim(),
     updatedAt: now,
@@ -597,13 +636,13 @@ async function updateProductInJson(id: string, input: ProductUpdateInput) {
   const current = products.find((product) => product.id === id);
 
   if (!current) {
-    throw new Error("상품을 찾을 수 없습니다.");
+    throw new Error("?곹뭹??李얠쓣 ???놁뒿?덈떎.");
   }
 
   if (
     products.some((product) => product.id !== id && product.slug === nextSlug)
   ) {
-    throw new Error("이미 사용 중인 slug입니다.");
+    throw new Error("?대? ?ъ슜 以묒씤 slug?낅땲??");
   }
 
   const nextProducts = products.map((product) =>
@@ -619,16 +658,7 @@ async function updateProductInJson(id: string, input: ProductUpdateInput) {
             stockQuantity: input.stockQuantity,
           },
           glaze: emptyToUndefined(input.glaze),
-          images:
-            product.images.length > 0
-              ? product.images
-              : [
-                  {
-                    alt: `${input.titleKo} 대표 이미지`,
-                    isPrimary: true,
-                    placeholderLabel: input.titleKo,
-                  },
-                ],
+          images: normalizeProductImages(input.images, input.titleKo),
           isArchived: input.isArchived,
           isLimited: input.isLimited,
           kind: input.kind,
@@ -645,6 +675,8 @@ async function updateProductInJson(id: string, input: ProductUpdateInput) {
           size: emptyToUndefined(input.size),
           slug: nextSlug,
           story: emptyToUndefined(input.story),
+          storyBody: createParagraphStoryBody(input.story ?? ""),
+          storyText: input.story?.trim() ?? "",
           titleKo: input.titleKo.trim(),
           updatedAt: now,
           usageNote: emptyToUndefined(input.usageNote),
@@ -707,7 +739,7 @@ async function deleteProductInJson(id: string) {
   const current = products.find((product) => product.id === id);
 
   if (!current) {
-    throw new Error("상품을 찾을 수 없습니다.");
+    throw new Error("?곹뭹??李얠쓣 ???놁뒿?덈떎.");
   }
 
   await writeJsonProducts(products.filter((product) => product.id !== id));
@@ -721,37 +753,40 @@ async function writeJsonProducts(products: ConsepotProduct[]) {
 }
 
 async function replaceProductImages(product: ConsepotProduct) {
-  const supabase = getSupabaseAdminClient();
-  const { error: deleteError } = await supabase
-    .from("shop_product_images")
-    .delete()
-    .eq("product_id", product.id);
+  await replaceMediaUsagesForOwner(
+    "product",
+    product.id,
+    product.images.flatMap((image, index) => {
+      if (!image.id || !image.src) {
+        return [];
+      }
 
-  if (deleteError) {
-    throw new Error(`Supabase 상품 이미지 삭제 실패: ${deleteError.message}`);
-  }
+      const hasExplicitRole =
+        image.isPrimary ||
+        image.isListImage ||
+        image.isDetail ||
+        image.isDescription;
+      const roles = [
+        image.isPrimary ? "cover" : null,
+        image.isListImage ? "list" : null,
+        image.isDetail || !hasExplicitRole ? "detail" : null,
+        image.isDescription ? "description" : null,
+      ].filter(
+        (
+          role,
+        ): role is "cover" | "description" | "detail" | "list" =>
+          Boolean(role),
+      );
 
-  const rows = product.images.map((image, index) => ({
-    alt: image.alt,
-    cafe24_image_path: image.cafe24ImagePath ?? null,
-    is_primary: image.isPrimary ?? index === 0,
-    placeholder_label: image.placeholderLabel ?? null,
-    product_id: product.id,
-    sort_order: index,
-    src: image.src ?? null,
-  }));
-
-  if (rows.length === 0) {
-    return;
-  }
-
-  const { error: insertError } = await supabase
-    .from("shop_product_images")
-    .insert(rows);
-
-  if (insertError) {
-    throw new Error(`Supabase 상품 이미지 저장 실패: ${insertError.message}`);
-  }
+      return roles.map((role) => ({
+        altOverride: image.alt,
+        assetId: image.id!,
+        captionOverride: image.caption,
+        role,
+        sortOrder: index,
+      }));
+    }),
+  );
 }
 
 async function upsertCafe24Mapping(
@@ -765,15 +800,15 @@ async function upsertCafe24Mapping(
     .upsert(row, { onConflict: "product_id" });
 
   if (error) {
-    throw new Error(`Supabase Cafe24 매핑 저장 실패: ${error.message}`);
+    throw new Error(`Supabase Cafe24 留ㅽ븨 ????ㅽ뙣: ${error.message}`);
   }
 }
 
-function fromSupabaseRow(row: ProductSelectRow): ConsepotProduct {
+function fromSupabaseRow(
+  row: ProductSelectRow,
+  usages: MediaUsage[],
+): ConsepotProduct {
   const mapping = normalizeMappingRow(row.shop_product_cafe24_mappings);
-  const images = [...(row.shop_product_images ?? [])].sort(
-    (a, b) => a.sort_order - b.sort_order,
-  );
 
   return productSchema.parse({
     cafe24: {
@@ -800,13 +835,7 @@ function fromSupabaseRow(row: ProductSelectRow): ConsepotProduct {
     createdAt: row.created_at,
     glaze: row.glaze ?? undefined,
     id: row.id,
-    images: images.map((image) => ({
-      alt: image.alt,
-      cafe24ImagePath: image.cafe24_image_path ?? undefined,
-      isPrimary: image.is_primary,
-      placeholderLabel: image.placeholder_label ?? undefined,
-      src: image.src ?? undefined,
-    })),
+    images: mediaUsagesToProductImages(usages),
     isArchived: row.is_archived,
     isLimited: row.is_limited,
     kind: row.kind,
@@ -819,7 +848,9 @@ function fromSupabaseRow(row: ProductSelectRow): ConsepotProduct {
     shortDescription: row.short_description,
     size: row.size ?? undefined,
     slug: row.slug,
-    story: row.story ?? undefined,
+    story: row.story_text ?? row.story ?? undefined,
+    storyBody: row.story_json ?? undefined,
+    storyText: row.story_text ?? row.story ?? undefined,
     titleKo: row.title_ko,
     updatedAt: row.updated_at,
     usageNote: row.usage_note ?? undefined,
@@ -863,6 +894,9 @@ function toSupabaseProductRow(product: ConsepotProduct) {
     slug: product.slug,
     stock_quantity: product.commerce.stockQuantity,
     story: product.story ?? null,
+    story_json:
+      product.storyBody ?? createParagraphStoryBody(product.story ?? ""),
+    story_text: product.storyText ?? product.story ?? "",
     title_ko: product.titleKo,
     updated_at: product.updatedAt,
     usage_note: product.usageNote ?? null,
@@ -919,9 +953,142 @@ function getDefaultDisplayGroup() {
   return value ? Number(value) : 1;
 }
 
+function mediaUsagesToProductImages(usages: MediaUsage[]) {
+  const grouped = new Map<string, MediaUsage[]>();
+
+  for (const usage of usages) {
+    const assetUsages = grouped.get(usage.assetId) ?? [];
+    assetUsages.push(usage);
+    grouped.set(usage.assetId, assetUsages);
+  }
+
+  return [...grouped.values()]
+    .map((assetUsages) => {
+      const asset = assetUsages[0]?.asset;
+
+      if (!asset) {
+        return null;
+      }
+
+      const roles = new Set(assetUsages.map((usage) => usage.role));
+      const primaryUsage =
+        assetUsages.find((usage) => usage.role === "cover") ??
+        assetUsages.find((usage) => usage.role === "list") ??
+        assetUsages[0];
+      const imageVariant =
+        pickMediaVariant(asset, "detail") ??
+        pickMediaVariant(asset, "master") ??
+        asset.variants[0] ??
+        null;
+
+      return imageSchema.parse({
+        alt: primaryUsage?.altOverride ?? asset.alt,
+        caption: primaryUsage?.captionOverride ?? asset.caption,
+        height: imageVariant?.height ?? asset.height,
+        id: asset.id,
+        isDescription: roles.has("description"),
+        isDetail: roles.has("detail"),
+        isListImage: roles.has("list"),
+        isPrimary: roles.has("cover"),
+        src: imageVariant?.src ?? asset.src,
+        storagePath: asset.masterPath,
+        width: imageVariant?.width ?? asset.width,
+      });
+    })
+    .filter((image): image is ProductImage => Boolean(image))
+    .sort((a, b) => {
+      const aOrder = Math.min(
+        ...usages
+          .filter((usage) => usage.assetId === a.id)
+          .map((usage) => usage.sortOrder),
+      );
+      const bOrder = Math.min(
+        ...usages
+          .filter((usage) => usage.assetId === b.id)
+          .map((usage) => usage.sortOrder),
+      );
+
+      return aOrder - bOrder;
+    });
+}
+
+function normalizeProductImages(images: ProductImage[], fallbackTitle: string) {
+  const cleaned = images
+    .map((image) => ({
+      alt: image.alt.trim() || `${fallbackTitle.trim() || "?곹뭹"} ?대?吏`,
+      cafe24ImagePath: emptyToUndefined(image.cafe24ImagePath),
+      caption: emptyToUndefined(image.caption),
+      height: image.height,
+      id: emptyToUndefined(image.id),
+      isDescription: Boolean(image.isDescription),
+      isDetail: Boolean(image.isDetail),
+      isListImage: Boolean(image.isListImage),
+      isPrimary: Boolean(image.isPrimary),
+      placeholderLabel: emptyToUndefined(image.placeholderLabel),
+      src: emptyToUndefined(image.src),
+      storagePath: emptyToUndefined(image.storagePath),
+      width: image.width,
+    }))
+    .filter(
+      (image) =>
+        image.src || image.placeholderLabel || image.cafe24ImagePath,
+    );
+
+  const primaryIndex = cleaned.findIndex((image) => image.isPrimary);
+  const listIndex = cleaned.findIndex((image) => image.isListImage);
+  const nextPrimaryIndex = primaryIndex >= 0 ? primaryIndex : 0;
+  const nextListIndex = listIndex >= 0 ? listIndex : -1;
+
+  return cleaned.map((image, index) =>
+    imageSchema.parse({
+      ...image,
+      isPrimary: index === nextPrimaryIndex,
+      isListImage: index === nextListIndex,
+    }),
+  );
+}
+
 function emptyToUndefined(value: string | undefined) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
+}
+
+function createParagraphStoryBody(text: string) {
+  const trimmed = text.trim();
+
+  if (!trimmed) {
+    return emptyProductStoryBody;
+  }
+
+  return {
+    root: {
+      children: [
+        {
+          children: [
+            {
+              detail: 0,
+              format: 0,
+              mode: "normal",
+              style: "",
+              text: trimmed,
+              type: "text",
+              version: 1,
+            },
+          ],
+          direction: null,
+          format: "",
+          indent: 0,
+          type: "paragraph",
+          version: 1,
+        },
+      ],
+      direction: null,
+      format: "",
+      indent: 0,
+      type: "root",
+      version: 1,
+    },
+  };
 }
 
 function isMissingFileError(error: unknown) {

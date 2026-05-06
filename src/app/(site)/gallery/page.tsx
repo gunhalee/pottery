@@ -16,17 +16,16 @@ export default async function GalleryPage() {
   return (
     <>
       <PageShell>
-        <MetaLabel>Gallery</MetaLabel>
+        <MetaLabel>작품</MetaLabel>
         <PageIntro
-          subtitle="작품과 작업 과정의 분위기를 한눈에 볼 수 있는 아카이브입니다."
-          title="Works Archive"
+          subtitle="완성작과 작업 과정의 기록입니다."
+          title="작품"
         />
         <div className="gallery-grid gallery-content-grid">
           {galleryItems.length > 0 ? (
             galleryItems.map((item) => {
               const image =
-                item.images.find((entryImage) => entryImage.isCover) ??
-                item.images[0] ??
+                item.images.find((entryImage) => entryImage.isListImage) ??
                 null;
 
               return (

@@ -12,6 +12,7 @@ type AdminGalleryEditPageProps = {
     created?: string;
     delete_error?: string;
     image_deleted?: string;
+    publish_error?: string;
     saved?: string;
     slug_error?: string;
   }>;
@@ -53,6 +54,7 @@ export default async function AdminGalleryEditPage({
         slug: product.slug,
         title: product.titleKo,
       }))}
+      publishError={flags.publish_error}
       saved={flags.saved}
       slugError={flags.slug_error}
     />

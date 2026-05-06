@@ -14,6 +14,12 @@ export function AdminNav() {
         <Link href="/admin/gallery" prefetch={false}>
           작품
         </Link>
+        <Link href="/admin/media" prefetch={false}>
+          미디어
+        </Link>
+        <Link href="/admin/ops" prefetch={false}>
+          운영
+        </Link>
       </nav>
       <form action={logoutAdminAction}>
         <button className="admin-text-button" type="submit">

@@ -21,6 +21,7 @@ type ContentAdminEditPageProps = {
     slug: string;
     title: string;
   }>;
+  publishError?: string;
   saved?: string;
   slugError?: string;
 };
@@ -32,6 +33,7 @@ export function ContentAdminEditPage({
   imageDeleted,
   kind,
   productOptions,
+  publishError,
   saved,
   slugError,
 }: ContentAdminEditPageProps) {
@@ -66,6 +68,11 @@ export function ContentAdminEditPage({
       {slugError ? (
         <div className="admin-alert admin-alert-danger">
           이미 사용 중인 slug입니다.
+        </div>
+      ) : null}
+      {publishError ? (
+        <div className="admin-alert admin-alert-danger">
+          공개하려면 제목, slug, 대표 이미지, 목록 이미지가 필요합니다.
         </div>
       ) : null}
       {deleteError ? (

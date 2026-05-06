@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import {
@@ -24,7 +23,6 @@ import {
   deleteContentEntry,
   deleteContentImage,
   getContentAdminPath,
-  getContentPublicPath,
   getContentEntryById,
   normalizeContentSlug,
   updateContentEntry,
@@ -33,15 +31,39 @@ import type {
   ContentImageLayout,
   ContentKind,
 } from "@/lib/content-manager/content-model";
-import { extractPlainTextFromLexicalJson } from "@/lib/content-manager/rich-text-utils";
+import {
+  extractPlainTextFromLexicalJson,
+  removeContentImageNodeFromLexicalJson,
+} from "@/lib/content-manager/rich-text-utils";
 import {
   buildCafe24SyncRequestSnapshot,
   syncProductToCafe24,
 } from "@/lib/cafe24/product-sync";
+import {
+  revalidateContentSurfaces,
+  revalidateDeletedProductSurfaces,
+  revalidateProductSurfaces,
+} from "@/lib/revalidation/admin-revalidation";
 
 const draftSchema = z.object({
   slug: z.string(),
   titleKo: z.string().min(1),
+});
+
+const productImageUpdateSchema = z.object({
+  alt: z.string(),
+  cafe24ImagePath: z.string().optional(),
+  caption: z.string().optional(),
+  height: z.number().int().positive().optional(),
+  id: z.string().optional(),
+  isDescription: z.boolean().optional(),
+  isDetail: z.boolean().optional(),
+  isListImage: z.boolean().optional(),
+  isPrimary: z.boolean(),
+  placeholderLabel: z.string().optional(),
+  src: z.string().optional(),
+  storagePath: z.string().optional(),
+  width: z.number().int().positive().optional(),
 });
 
 const productUpdateSchema = z.object({
@@ -50,6 +72,7 @@ const productUpdateSchema = z.object({
   category: z.string().min(1),
   glaze: z.string().optional(),
   id: z.string().min(1),
+  images: z.array(productImageUpdateSchema),
   isArchived: z.boolean(),
   isLimited: z.boolean(),
   kind: z.enum(["regular", "one_of_a_kind"]),
@@ -99,6 +122,8 @@ const contentImageUpdateSchema = z.object({
   id: z.string().min(1),
   isCover: z.boolean(),
   isDetail: z.boolean(),
+  isListImage: z.boolean(),
+  isReserved: z.boolean(),
   layout: z.enum([
     "align-left",
     "align-right",
@@ -131,7 +156,7 @@ const contentDeleteSchema = z.object({
 
 const contentImageDeleteSchema = z.object({
   entryId: z.string().min(1),
-  id: z.string().min(1),
+  imageId: z.string().min(1),
   kind: z.enum(["gallery", "news"]),
 });
 
@@ -162,8 +187,7 @@ export async function createProductDraftAction(formData: FormData) {
 
   const product = await createProductDraft(parsed);
 
-  revalidatePath("/shop");
-  revalidatePath("/admin/products");
+  revalidateProductSurfaces(product.slug);
   redirect(`/admin/products/${product.id}?created=1`);
 }
 
@@ -184,7 +208,7 @@ export async function createContentDraftAction(formData: FormData) {
       slug: parsed.slug ?? "",
     });
 
-    revalidatePath(adminPath);
+    revalidateContentPaths(entry.kind, entry.id, entry.slug);
     redirect(`${adminPath}/${entry.id}?created=1`);
   } catch (error) {
     if (isDuplicateSlugError(error)) {
@@ -221,6 +245,12 @@ export async function updateContentEntryAction(formData: FormData) {
     redirect(`${adminPath}?missing=1`);
   }
 
+  const publishError = getContentPublishError(parsed);
+
+  if (publishError) {
+    redirect(`${adminPath}/${parsed.id}?publish_error=${publishError}`);
+  }
+
   try {
     const updated = await updateContentEntry(parsed.id, {
       ...parsed,
@@ -236,6 +266,8 @@ export async function updateContentEntryAction(formData: FormData) {
       updated.id,
       updated.slug,
       beforeUpdate.slug,
+      updated.relatedProductSlug,
+      beforeUpdate.relatedProductSlug,
     );
     redirect(`${adminPath}/${updated.id}?saved=1`);
   } catch (error) {
@@ -272,6 +304,8 @@ export async function deleteContentEntryAction(formData: FormData) {
     deleted.id,
     deleted.slug,
     deleted.slug,
+    deleted.relatedProductSlug,
+    deleted.relatedProductSlug,
   );
   redirect(`${adminPath}?deleted=1`);
 }
@@ -281,44 +315,66 @@ export async function deleteContentImageAction(formData: FormData) {
 
   const parsed = contentImageDeleteSchema.parse({
     entryId: stringValue(formData.get("entryId")),
-    id: stringValue(formData.get("id")),
+    imageId: stringValue(formData.get("imageId")),
     kind: formData.get("kind"),
   });
   const adminPath = getContentAdminPath(parsed.kind);
+  const entry = await getContentEntryById(parsed.entryId);
 
-  await deleteContentImage(parsed.entryId, parsed.id);
-  revalidatePath(`${adminPath}/${parsed.entryId}`);
+  if (!entry || entry.kind !== parsed.kind) {
+    redirect(`${adminPath}?missing=1`);
+  }
+
+  const body = removeContentImageNodeFromLexicalJson(
+    parseJsonField(formData.get("bodyJson")) ?? entry.body,
+    parsed.imageId,
+  );
+  const images = z
+    .array(contentImageUpdateSchema)
+    .parse(parseJsonField(formData.get("imagesJson")))
+    .filter((image) => image.id !== parsed.imageId);
+
+  const updated = await updateContentEntry(entry.id, {
+    body,
+    bodyText: extractPlainTextFromLexicalJson(body),
+    displayDate: stringValue(formData.get("displayDate")),
+    images: images.map((image) => ({
+      ...image,
+      layout: image.layout as ContentImageLayout,
+    })),
+    relatedProductSlug: nullableStringValue(formData.get("relatedProductSlug")),
+    slug: normalizeContentSlug(String(formData.get("slug") ?? "")),
+    status: z
+      .enum(["draft", "published"])
+      .parse(String(formData.get("status") ?? entry.status)),
+    summary: stringValue(formData.get("summary")),
+    title: stringValue(formData.get("title")),
+  });
+  await deleteContentImage(parsed.entryId, parsed.imageId);
+  revalidateContentPaths(
+    updated.kind,
+    updated.id,
+    updated.slug,
+    entry.slug,
+    updated.relatedProductSlug,
+    entry.relatedProductSlug,
+  );
   redirect(`${adminPath}/${parsed.entryId}?image_deleted=1`);
 }
 
 export async function updateProductAction(formData: FormData) {
   await assertAdmin();
 
-  const parsed = productUpdateSchema.parse({
-    availabilityStatus: formData.get("availabilityStatus"),
-    careNote: stringValue(formData.get("careNote")),
-    category: stringValue(formData.get("category")),
-    glaze: stringValue(formData.get("glaze")),
-    id: stringValue(formData.get("id")),
-    isArchived: formData.get("isArchived") === "on",
-    isLimited: formData.get("isLimited") === "on",
-    kind: formData.get("kind"),
-    limitedType: nullableSelectValue(formData.get("limitedType")),
-    material: stringValue(formData.get("material")),
-    price: nullableIntegerValue(formData.get("price")),
-    published: formData.get("published") === "on",
-    restockCtaType: nullableSelectValue(formData.get("restockCtaType")),
-    shippingNote: stringValue(formData.get("shippingNote")),
-    shortDescription: stringValue(formData.get("shortDescription")),
-    size: stringValue(formData.get("size")),
-    slug: normalizeSlug(String(formData.get("slug") ?? "")),
-    stockQuantity: nullableIntegerValue(formData.get("stockQuantity")),
-    story: stringValue(formData.get("story")),
-    titleKo: stringValue(formData.get("titleKo")),
-    usageNote: stringValue(formData.get("usageNote")),
-  });
+  const parsed = parseProductUpdateFormData(formData);
 
   const beforeUpdate = await getProductById(parsed.id);
+
+  const publishError = getProductPublishError(parsed);
+
+  if (publishError) {
+    redirect(`/admin/products/${parsed.id}?publish_error=${publishError}`);
+  }
+
   const updated = await updateProduct(parsed.id, parsed);
 
   if (!updated) {
@@ -327,6 +383,38 @@ export async function updateProductAction(formData: FormData) {
 
   revalidateProductPaths(updated.slug, beforeUpdate?.slug);
   redirect(`/admin/products/${updated.id}?saved=1`);
+}
+
+export async function deleteProductImageAction(formData: FormData) {
+  await assertAdmin();
+
+  const parsed = parseProductUpdateFormData(formData);
+  const imageId = stringValue(formData.get("imageId"));
+  const beforeUpdate = await getProductById(parsed.id);
+
+  if (!beforeUpdate || !imageId) {
+    redirect("/admin/products?missing=1");
+  }
+
+  const submittedImage = parsed.images.find((image) => image.id === imageId);
+  const savedImage = beforeUpdate.images.find((image) => image.id === imageId);
+  const targetImage = submittedImage ?? savedImage;
+
+  if (!targetImage) {
+    redirect(`/admin/products/${beforeUpdate.id}?image_delete_error=missing`);
+  }
+
+  const updated = await updateProduct(parsed.id, {
+    ...parsed,
+    images: parsed.images.filter((image) => image.id !== imageId),
+  });
+
+  if (!updated) {
+    redirect("/admin/products?missing=1");
+  }
+
+  revalidateProductPaths(updated.slug, beforeUpdate.slug);
+  redirect(`/admin/products/${updated.id}?image_deleted=1`);
 }
 
 export async function redirectToProductEditorAction(formData: FormData) {
@@ -383,8 +471,7 @@ export async function syncProductToCafe24Action(formData: FormData) {
       status: "failed",
     });
 
-    revalidatePath("/admin/products");
-    revalidatePath(`/admin/products/${product.id}`);
+    revalidateProductSurfaces(product.slug);
     redirect(
       `/admin/products/${product.id}?sync_error=${encodeURIComponent(message)}`,
     );
@@ -461,20 +548,96 @@ export async function deleteProductAction(formData: FormData) {
 
   const deleted = await deleteProduct(product.id);
 
-  revalidatePath("/shop");
-  revalidatePath(`/shop/${deleted.slug}`);
-  revalidatePath("/admin/products");
+  revalidateDeletedProductSurfaces(deleted.slug);
   redirect("/admin/products?deleted=1");
 }
 
 function revalidateProductPaths(slug: string, previousSlug?: string) {
-  revalidatePath("/shop");
-  revalidatePath(`/shop/${slug}`);
-  revalidatePath("/admin/products");
+  revalidateProductSurfaces(slug, previousSlug);
+}
 
-  if (previousSlug && previousSlug !== slug) {
-    revalidatePath(`/shop/${previousSlug}`);
+function parseProductUpdateFormData(formData: FormData) {
+  return productUpdateSchema.parse({
+    availabilityStatus: formData.get("availabilityStatus"),
+    careNote: stringValue(formData.get("careNote")),
+    category: stringValue(formData.get("category")),
+    glaze: stringValue(formData.get("glaze")),
+    id: stringValue(formData.get("id")),
+    images: z
+      .array(productImageUpdateSchema)
+      .parse(parseJsonField(formData.get("imagesJson")) ?? []),
+    isArchived: formData.get("isArchived") === "on",
+    isLimited: formData.get("isLimited") === "on",
+    kind: formData.get("kind"),
+    limitedType: nullableSelectValue(formData.get("limitedType")),
+    material: stringValue(formData.get("material")),
+    price: nullableIntegerValue(formData.get("price")),
+    published: formData.get("published") === "on",
+    restockCtaType: nullableSelectValue(formData.get("restockCtaType")),
+    shippingNote: stringValue(formData.get("shippingNote")),
+    shortDescription: stringValue(formData.get("shortDescription")),
+    size: stringValue(formData.get("size")),
+    slug: normalizeSlug(String(formData.get("slug") ?? "")),
+    stockQuantity: nullableIntegerValue(formData.get("stockQuantity")),
+    story: stringValue(formData.get("story")),
+    titleKo: stringValue(formData.get("titleKo")),
+    usageNote: stringValue(formData.get("usageNote")),
+  });
+}
+
+function getContentPublishError(input: z.infer<typeof contentUpdateSchema>) {
+  if (input.status !== "published") {
+    return null;
   }
+
+  if (!input.title.trim()) {
+    return "title";
+  }
+
+  if (!input.slug.trim()) {
+    return "slug";
+  }
+
+  if (!input.images.some((image) => image.isCover)) {
+    return "cover";
+  }
+
+  if (!input.images.some((image) => image.isListImage)) {
+    return "list";
+  }
+
+  return null;
+}
+
+function getProductPublishError(input: z.infer<typeof productUpdateSchema>) {
+  if (!input.published) {
+    return null;
+  }
+
+  if (!input.titleKo.trim()) {
+    return "title";
+  }
+
+  if (!input.slug.trim()) {
+    return "slug";
+  }
+
+  if (!input.images.some((image) => image.isPrimary)) {
+    return "cover";
+  }
+
+  if (!input.images.some((image) => image.isListImage)) {
+    return "list";
+  }
+
+  if (
+    input.availabilityStatus === "available" &&
+    (input.price === null || input.price < 0)
+  ) {
+    return "price";
+  }
+
+  return null;
 }
 
 function revalidateContentPaths(
@@ -482,19 +645,17 @@ function revalidateContentPaths(
   id: string,
   slug: string,
   previousSlug?: string,
+  relatedProductSlug?: string | null,
+  previousRelatedProductSlug?: string | null,
 ) {
-  const adminPath = getContentAdminPath(kind);
-  const publicPath = getContentPublicPath(kind);
-
-  revalidatePath(adminPath);
-  revalidatePath(`${adminPath}/${id}`);
-  revalidatePath(`${adminPath}/${id}/preview`);
-  revalidatePath(publicPath);
-  revalidatePath(`${publicPath}/${slug}`);
-
-  if (previousSlug && previousSlug !== slug) {
-    revalidatePath(`${publicPath}/${previousSlug}`);
-  }
+  revalidateContentSurfaces({
+    id,
+    kind,
+    previousRelatedProductSlug,
+    previousSlug,
+    relatedProductSlug,
+    slug,
+  });
 }
 
 function parseJsonField(value: FormDataEntryValue | null) {

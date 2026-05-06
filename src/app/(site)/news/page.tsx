@@ -15,14 +15,10 @@ export default async function NewsPage() {
   return (
     <>
       <PageShell>
-        <MetaLabel>News</MetaLabel>
+        <MetaLabel>소식</MetaLabel>
         <div className="news-layout">
           <div>
-            <h1 className="section-title">
-              News &amp;
-              <br />
-              Updates
-            </h1>
+            <h1 className="section-title">소식</h1>
             {newsItems.length > 0 ? (
               newsItems.map((item) => (
                 <article className="news-item" key={item.id}>
@@ -30,7 +26,7 @@ export default async function NewsPage() {
                     {item.displayDate ?? item.publishedAt ?? ""}
                   </div>
                   <div>
-                    <div className="tag">News</div>
+                    <div className="tag">소식</div>
                     <h3>
                       <Link href={`/news/${item.slug}`} prefetch={false}>
                         {item.title}
@@ -44,7 +40,7 @@ export default async function NewsPage() {
               <article className="news-item">
                 <div className="news-date">Soon</div>
                 <div>
-                  <div className="tag">News</div>
+                  <div className="tag">소식</div>
                   <h3>준비 중입니다</h3>
                   <p>공개된 소식이 아직 없습니다.</p>
                 </div>
@@ -55,7 +51,7 @@ export default async function NewsPage() {
             </div>
           </div>
           <aside>
-            <div className="aside-title">Schedule</div>
+            <div className="aside-title">일정</div>
             {scheduleItems.map((item) => (
               <div className="schedule" key={item.title}>
                 <div className="schedule-date">{item.date}</div>
@@ -64,7 +60,7 @@ export default async function NewsPage() {
               </div>
             ))}
             <div className="follow-box">
-              <div className="aside-title">Follow Us</div>
+              <div className="aside-title">연결</div>
               <div className="follow-links">
                 <a
                   className="follow-link"

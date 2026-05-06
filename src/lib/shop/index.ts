@@ -34,11 +34,13 @@ export {
   appendProductSyncLog,
   createProductDraft,
   deleteProduct,
+  deleteProductImageAssets,
   getProductById,
   getProductBySlug,
   getProductSlugs,
   getPublishedProducts,
   normalizeSlug,
+  productImageBucket,
   readProductSyncLogs,
   readProducts,
   updateProduct,
@@ -50,6 +52,29 @@ export {
   type ProductSyncLogInput,
   type ProductUpdateInput,
 } from "./product-store";
+
+export function getProductPrimaryImage(product: ConsepotProduct) {
+  return (
+    product.images.find((image) => image.isPrimary && image.src) ??
+    product.images.find((image) => image.src) ??
+    product.images.find((image) => image.isPrimary) ??
+    product.images[0] ??
+    null
+  );
+}
+
+export function getProductListImage(product: ConsepotProduct) {
+  return (
+    product.images.find((image) => image.isListImage && image.src) ??
+    getProductPrimaryImage(product)
+  );
+}
+
+export function getProductDisplayImages(product: ConsepotProduct) {
+  return product.images.filter(
+    (image) => Boolean(image.src) && (image.isDetail || image.isPrimary),
+  );
+}
 
 export function getProductBadges(product: ConsepotProduct) {
   const badges: ProductBadgeKind[] = [];

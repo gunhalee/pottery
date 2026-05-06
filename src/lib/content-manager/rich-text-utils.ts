@@ -2,6 +2,7 @@ type LexicalNodeRecord = {
   alt?: unknown;
   caption?: unknown;
   children?: unknown;
+  id?: unknown;
   src?: unknown;
   text?: unknown;
   title?: unknown;
@@ -27,6 +28,14 @@ export function extractPlainTextFromLexicalJson(body: unknown) {
 
 export function hasInstagramNode(body: unknown) {
   return walkLexicalNodes(body).some((node) => node.type === "instagram");
+}
+
+export function removeContentImageNodeFromLexicalJson(
+  body: unknown,
+  imageId: string,
+) {
+  const transformed = removeMatchingImageNode(body, imageId);
+  return transformed === removedNode ? null : transformed;
 }
 
 export function walkLexicalNodes(body: unknown) {
@@ -100,4 +109,34 @@ function isNodeRecord(value: unknown): value is LexicalNodeRecord {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+const removedNode = Symbol("removed-node");
+
+function removeMatchingImageNode(value: unknown, imageId: string): unknown {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => removeMatchingImageNode(item, imageId))
+      .filter((item) => item !== removedNode);
+  }
+
+  if (!isNodeRecord(value)) {
+    return value;
+  }
+
+  if (value.type === "content-image" && value.id === imageId) {
+    return removedNode;
+  }
+
+  const next: Record<string, unknown> = {};
+
+  for (const [key, item] of Object.entries(value)) {
+    const transformed = removeMatchingImageNode(item, imageId);
+
+    if (transformed !== removedNode) {
+      next[key] = transformed;
+    }
+  }
+
+  return next;
 }

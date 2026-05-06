@@ -53,9 +53,17 @@ export type Cafe24MappingStatus =
 export type ProductImage = {
   alt: string;
   cafe24ImagePath?: string;
+  caption?: string;
+  height?: number;
+  id?: string;
+  isDescription?: boolean;
+  isDetail?: boolean;
+  isListImage?: boolean;
   isPrimary?: boolean;
   placeholderLabel?: string;
   src?: string;
+  storagePath?: string;
+  width?: number;
 };
 
 export type ProductCommerceSnapshot = {
@@ -100,6 +108,8 @@ export type ProductContent = {
   size?: string;
   slug: string;
   story?: string;
+  storyBody?: unknown;
+  storyText?: string;
   titleKo: string;
   updatedAt: string;
   usageNote?: string;

@@ -1,14 +1,13 @@
-"use client";
-
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { InstagramEmbed } from "@/components/content/instagram-embed";
 import type { ContentImage } from "@/lib/content-manager/content-model";
-import { hasInstagramNode } from "@/lib/content-manager/rich-text-utils";
 
 type RichTextRendererProps = {
   body: unknown;
   className?: string;
+  hiddenImageIds?: string[];
   images?: ContentImage[];
 };
 
@@ -30,54 +29,14 @@ type RichNode = {
   height?: unknown;
 };
 
-declare global {
-  interface Window {
-    instgrm?: {
-      Embeds?: {
-        process: () => void;
-      };
-    };
-  }
-}
-
 export function RichTextRenderer({
   body,
   className,
+  hiddenImageIds = [],
   images = [],
 }: RichTextRendererProps) {
-  const imageById = useMemo(
-    () => new Map(images.map((image) => [image.id, image])),
-    [images],
-  );
-
-  useEffect(() => {
-    if (!hasInstagramNode(body)) {
-      return;
-    }
-
-    if (window.instgrm?.Embeds) {
-      window.instgrm.Embeds.process();
-      return;
-    }
-
-    const existingScript = document.querySelector<HTMLScriptElement>(
-      'script[src="https://www.instagram.com/embed.js"]',
-    );
-
-    if (existingScript) {
-      existingScript.addEventListener("load", () =>
-        window.instgrm?.Embeds?.process(),
-      );
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.async = true;
-    script.src = "https://www.instagram.com/embed.js";
-    script.onload = () => window.instgrm?.Embeds?.process();
-    document.body.appendChild(script);
-  }, [body]);
-
+  const imageById = new Map(images.map((image) => [image.id, image]));
+  const hiddenImageIdSet = new Set(hiddenImageIds);
   const root = getRoot(body);
   const children = getChildren(root);
 
@@ -87,7 +46,9 @@ export function RichTextRenderer({
 
   return (
     <div className={["rich-text", className].filter(Boolean).join(" ")}>
-      {children.map((node, index) => renderNode(node, `${index}`, imageById))}
+      {children.map((node, index) =>
+        renderNode(node, `${index}`, imageById, hiddenImageIdSet),
+      )}
     </div>
   );
 }
@@ -96,6 +57,7 @@ function renderNode(
   node: unknown,
   key: string,
   imageById: Map<string, ContentImage>,
+  hiddenImageIdSet: Set<string>,
 ): ReactNode {
   if (!isRichNode(node)) {
     return null;
@@ -106,7 +68,7 @@ function renderNode(
   }
 
   const children = getChildren(node).map((child, index) =>
-    renderNode(child, `${key}-${index}`, imageById),
+    renderNode(child, `${key}-${index}`, imageById, hiddenImageIdSet),
   );
 
   switch (node.type) {
@@ -149,7 +111,7 @@ function renderNode(
     case "horizontalrule":
       return <hr className="rich-text-rule" key={key} />;
     case "content-image":
-      return renderContentImage(node, key, imageById);
+      return renderContentImage(node, key, imageById, hiddenImageIdSet);
     case "youtube":
       return renderYouTube(node, key);
     case "instagram":
@@ -236,7 +198,12 @@ function renderContentImage(
   node: RichNode,
   key: string,
   imageById: Map<string, ContentImage>,
+  hiddenImageIdSet: Set<string>,
 ) {
+  if (typeof node.id === "string" && hiddenImageIdSet.has(node.id)) {
+    return null;
+  }
+
   const image =
     typeof node.id === "string" ? imageById.get(node.id) ?? null : null;
   const src = image?.src ?? (typeof node.src === "string" ? node.src : "");
@@ -296,18 +263,7 @@ function renderInstagram(node: RichNode, key: string) {
     return null;
   }
 
-  return (
-    <blockquote
-      className="rich-text-embed rich-text-instagram instagram-media"
-      data-instgrm-permalink={url}
-      data-instgrm-version="14"
-      key={key}
-    >
-      <a href={url} rel="noopener noreferrer" target="_blank">
-        Instagram에서 보기
-      </a>
-    </blockquote>
-  );
+  return <InstagramEmbed key={key} url={url} />;
 }
 
 function getYouTubeEmbedUrl(node: RichNode) {

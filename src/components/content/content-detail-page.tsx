@@ -20,23 +20,19 @@ export function ContentDetailPage({
   preview = false,
   relatedProduct,
 }: ContentDetailPageProps) {
-  const coverImage =
-    entry.images.find((image) => image.isCover) ?? entry.images[0] ?? null;
+  const coverImage = entry.images.find((image) => image.isCover) ?? null;
   const detailImages = entry.images.filter((image) => image.isDetail);
+  const reservedImageIds = entry.images
+    .filter((image) => image.isReserved)
+    .map((image) => image.id);
 
   return (
     <PageShell className="content-detail-shell">
       {preview ? (
         <div className="admin-preview-banner">관리자 미리보기</div>
       ) : null}
-      <MetaLabel>{entry.kind === "news" ? "News" : "Gallery"}</MetaLabel>
+      <MetaLabel>{entry.kind === "news" ? "소식" : "작품"}</MetaLabel>
       <article className="content-detail">
-        <header className="content-detail-header">
-          <p>{entry.displayDate ?? entry.publishedAt ?? "Draft"}</p>
-          <h1>{entry.title}</h1>
-          {entry.summary ? <div>{entry.summary}</div> : null}
-        </header>
-
         {coverImage ? (
           <figure className="content-detail-cover">
             <img
@@ -51,7 +47,17 @@ export function ContentDetailPage({
           </figure>
         ) : null}
 
-        <RichTextRenderer body={entry.body} images={entry.images} />
+        <header className="content-detail-header">
+          <p>{entry.displayDate ?? entry.publishedAt ?? "Draft"}</p>
+          <h1>{entry.title}</h1>
+          {entry.summary ? <div>{entry.summary}</div> : null}
+        </header>
+
+        <RichTextRenderer
+          body={entry.body}
+          hiddenImageIds={reservedImageIds}
+          images={entry.images}
+        />
 
         {detailImages.length > 0 ? (
           <div className="content-detail-image-strip">
@@ -74,7 +80,7 @@ export function ContentDetailPage({
         {relatedProduct ? (
           <aside className="content-related-product">
             <div>
-              <span>Linked Work</span>
+              <span>연결 상품</span>
               <h2>{relatedProduct.titleKo}</h2>
               <p>{relatedProduct.shortDescription}</p>
             </div>

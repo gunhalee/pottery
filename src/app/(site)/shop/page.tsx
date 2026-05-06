@@ -13,9 +13,8 @@ export default async function ShopPage() {
     <>
       <PageShell>
         <PageIntro
-          subtitle="공방에서 빚은 상시 작품과 하나뿐인 작품, 예전 아카이브까지 함께 모았습니다."
-          title="Shop"
-          titleEmphasis="Archive"
+          subtitle="소장 가능한 작품을 모았습니다."
+          title="작품 소장"
         />
 
         <ProductGrid products={products} />

@@ -7,6 +7,7 @@ import {
   updateProductAction,
 } from "../../actions";
 import { AdminNav } from "@/components/admin/admin-nav";
+import { ProductImageManager } from "@/components/admin/product-image-manager";
 import { isAdminAuthenticated } from "@/lib/admin/auth";
 import {
   getProductById,
@@ -29,7 +30,10 @@ type AdminProductEditPageProps = {
   searchParams: Promise<{
     created?: string;
     delete_error?: string;
+    image_delete_error?: string;
+    image_deleted?: string;
     mapping_saved?: string;
+    publish_error?: string;
     saved?: string;
     sync_error?: string;
     synced?: string;
@@ -89,6 +93,20 @@ export default async function AdminProductEditPage({
       {flags.mapping_saved ? (
         <div className="admin-alert">Cafe24 매핑 정보를 저장했습니다.</div>
       ) : null}
+      {flags.image_deleted ? (
+        <div className="admin-alert">상품 이미지를 삭제했습니다.</div>
+      ) : null}
+      {flags.image_delete_error ? (
+        <div className="admin-alert admin-alert-danger">
+          삭제할 상품 이미지를 찾을 수 없습니다.
+        </div>
+      ) : null}
+      {flags.publish_error ? (
+        <div className="admin-alert admin-alert-danger">
+          공개하려면 상품명, slug, 대표 이미지, 목록 이미지가 필요하고 판매중
+          상품은 가격도 필요합니다.
+        </div>
+      ) : null}
       {flags.synced ? (
         <div className="admin-alert">Cafe24 상품 동기화를 완료했습니다.</div>
       ) : null}
@@ -114,7 +132,11 @@ export default async function AdminProductEditPage({
       <div className="admin-edit-grid">
         <section className="admin-panel">
           <h2>상품 내용</h2>
-          <form action={updateProductAction} className="admin-form admin-edit-form">
+          <form
+            action={updateProductAction}
+            className="admin-form admin-edit-form"
+            id="product-edit-form"
+          >
             <input name="id" type="hidden" value={product.id} />
 
             <div className="admin-form-grid">
@@ -147,6 +169,12 @@ export default async function AdminProductEditPage({
               <span>작품 이야기</span>
               <textarea name="story" rows={6} defaultValue={product.story} />
             </label>
+
+            <ProductImageManager
+              formId="product-edit-form"
+              initialImages={product.images}
+              productId={product.id}
+            />
 
             <div className="admin-form-grid">
               <label>

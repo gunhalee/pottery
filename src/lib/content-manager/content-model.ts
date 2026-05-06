@@ -18,6 +18,8 @@ export type ContentImage = {
   id: string;
   isCover: boolean;
   isDetail: boolean;
+  isListImage: boolean;
+  isReserved: boolean;
   layout: ContentImageLayout;
   sortOrder: number;
   src: string;
@@ -55,6 +57,8 @@ export type ContentImageUpdateInput = {
   id: string;
   isCover: boolean;
   isDetail: boolean;
+  isListImage: boolean;
+  isReserved: boolean;
   layout: ContentImageLayout;
   sortOrder: number;
 };

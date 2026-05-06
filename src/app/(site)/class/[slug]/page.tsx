@@ -14,7 +14,7 @@ export default async function ClassDetailPage({
   return (
     <PageShell className="detail-shell">
       <div className="placeholder-panel">
-        <div className="small-caps">Class Detail</div>
+        <div className="small-caps">클래스 상세</div>
         <h1 className="section-title">클래스 상세 스캐폴드</h1>
         <p className="body-copy">
           현재 slug는 <span className="inline-code">{slug}</span>입니다. 추후

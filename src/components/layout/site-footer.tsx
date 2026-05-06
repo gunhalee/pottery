@@ -18,31 +18,31 @@ export function SiteFooter() {
           </div>
           <div className="footer-nav">
             <div className="footer-col">
-              <h3>Brand</h3>
+              <h3>공방</h3>
               <SiteLink href="/intro">
-                About
+                소개
               </SiteLink>
               <SiteLink href="/news">
-                News
+                소식
               </SiteLink>
               <SiteLink href="/gallery">
-                Gallery
+                작품
               </SiteLink>
             </div>
             <div className="footer-col">
-              <h3>Service</h3>
+              <h3>이용</h3>
               <SiteLink href="/class">
-                Class
+                함께하기
               </SiteLink>
               <SiteLink href="/shop">
-                Shop
+                소장하기
               </SiteLink>
               <SiteLink href="/shop#custom">
-                Custom
+                주문 상담
               </SiteLink>
             </div>
             <div className="footer-col">
-              <h3>Connect</h3>
+              <h3>연결</h3>
               <a
                 href={siteConfig.instagramUrl}
                 rel="noopener noreferrer"
@@ -55,10 +55,10 @@ export function SiteFooter() {
                 rel="noopener noreferrer"
                 target="_blank"
               >
-                Channel
+                카카오채널
               </a>
               <SiteLink href="#">
-                Store
+                스토어
               </SiteLink>
             </div>
           </div>

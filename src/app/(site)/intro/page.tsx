@@ -13,16 +13,13 @@ export default function IntroPage() {
     <>
       <PageIntro
         subtitle="흙과 손, 쓰임을 중심에 둔 공방입니다."
-        title="About"
-        titleEmphasis="Us"
+        title="소개"
       />
 
       <SplitFeature {...introFeatures[0]} />
 
       <QuoteBand>
-        Brand Philosophy
-        <br />
-        Statement Goes Here
+        오래 곁에 두고 쓰는 형태를 천천히 만듭니다.
       </QuoteBand>
 
       <SplitFeature {...introFeatures[1]} />

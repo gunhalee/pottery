@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "media:migrate": "node scripts/migrate-media-assets.mjs",
+    "media:migrate:apply": "node scripts/migrate-media-assets.mjs --apply",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
