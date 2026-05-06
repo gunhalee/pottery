@@ -18,17 +18,16 @@ export type ProductPurchaseKind =
   | "cafe24_product";
 
 export type Cafe24CartAction = {
-  apiBaseUrl: string;
-  apiVersion: string;
   basketType: "A0000" | "A0001";
+  cartEndpoint: string;
   checkoutHref: string;
-  clientId: string;
-  duplicatedItemCheck: "F" | "T";
-  frontApiKey: string;
+  displayGroup: number;
   maxQuantity: number;
   prepaidShippingFee: "C" | "P";
+  productCategoryNo: number;
+  productName: string;
   productNo: string;
-  shopNo: number;
+  productPrice: number;
   variantCode: string;
 };
 
@@ -195,9 +194,9 @@ export function getProductActionHref(
 
 export function getProductPurchaseHref(product: ConsepotProduct) {
   return (
+    getCafe24CartAction(product)?.checkoutHref ??
     getCafe24DirectCheckoutHref(product) ??
     getCafe24ProductHref(product) ??
-    getCafe24CartAction(product)?.checkoutHref ??
     null
   );
 }
@@ -205,16 +204,16 @@ export function getProductPurchaseHref(product: ConsepotProduct) {
 export function getProductPurchaseKind(
   product: ConsepotProduct,
 ): ProductPurchaseKind | null {
+  if (getCafe24CartAction(product)) {
+    return "cafe24_cart";
+  }
+
   if (getCafe24DirectCheckoutHref(product)) {
     return "cafe24_checkout";
   }
 
   if (getCafe24ProductHref(product)) {
     return "cafe24_product";
-  }
-
-  if (getCafe24CartAction(product)) {
-    return "cafe24_cart";
   }
 
   return null;
@@ -279,45 +278,49 @@ export function getCafe24CheckoutHref(product: ConsepotProduct) {
   );
 }
 
+export function getCafe24BasketHref() {
+  return resolveExternalHref(
+    "/order/basket.html",
+    process.env.NEXT_PUBLIC_CAFE24_SHOP_BASE_URL ||
+      buildDefaultCafe24ShopBaseUrl(),
+  );
+}
+
 export function getCafe24CartAction(
   product: ConsepotProduct,
 ): Cafe24CartAction | null {
   const productNo = product.cafe24.productNo;
   const variantCode = product.cafe24.variantCode;
-  const mallId =
-    process.env.NEXT_PUBLIC_CAFE24_MALL_ID || process.env.CAFE24_MALL_ID;
-  const clientId =
-    process.env.NEXT_PUBLIC_CAFE24_CLIENT_ID || process.env.CAFE24_CLIENT_ID;
+  const productCategoryNo =
+    product.cafe24.categoryNo ?? getDefaultCafe24CategoryNo();
+  const shopBaseUrl =
+    process.env.NEXT_PUBLIC_CAFE24_SHOP_BASE_URL ||
+    buildDefaultCafe24ShopBaseUrl();
+  const productPrice = product.commerce.price;
 
   if (
     product.commerce.availabilityStatus !== "available" ||
     !productNo ||
     !variantCode ||
-    !mallId ||
-    !clientId
+    !productCategoryNo ||
+    !shopBaseUrl ||
+    productPrice === null
   ) {
     return null;
   }
 
   return {
-    apiBaseUrl: `https://${mallId}.cafe24api.com/api/v2`,
-    apiVersion:
-      process.env.NEXT_PUBLIC_CAFE24_API_VERSION ||
-      process.env.CAFE24_API_VERSION ||
-      "2026-03-01",
     basketType: "A0000",
-    checkoutHref: getCafe24CheckoutHref(product),
-    clientId,
-    duplicatedItemCheck: "T",
-    frontApiKey: process.env.NEXT_PUBLIC_CAFE24_FRONT_API_KEY || "",
+    cartEndpoint: resolveExternalHref("/exec/front/order/basket/", shopBaseUrl),
+    checkoutHref: getCafe24BasketHref(),
+    displayGroup:
+      product.cafe24.displayGroup ?? getDefaultCafe24DisplayGroup(),
     maxQuantity: getPurchaseMaxQuantity(product),
     prepaidShippingFee: "P",
+    productCategoryNo,
+    productName: product.titleKo,
     productNo,
-    shopNo: Number(
-      process.env.NEXT_PUBLIC_CAFE24_SHOP_NO ||
-        process.env.CAFE24_SHOP_NO ||
-        "1",
-    ),
+    productPrice,
     variantCode,
   };
 }
@@ -375,6 +378,22 @@ function buildDefaultCafe24ShopBaseUrl() {
   const mallId =
     process.env.NEXT_PUBLIC_CAFE24_MALL_ID || process.env.CAFE24_MALL_ID;
   return mallId ? `https://${mallId}.cafe24.com` : undefined;
+}
+
+function getDefaultCafe24CategoryNo() {
+  const value =
+    process.env.NEXT_PUBLIC_CAFE24_DEFAULT_CATEGORY_NO ||
+    process.env.CAFE24_DEFAULT_CATEGORY_NO;
+  const categoryNo = value ? Number(value) : null;
+  return categoryNo && Number.isFinite(categoryNo) ? categoryNo : null;
+}
+
+function getDefaultCafe24DisplayGroup() {
+  const value =
+    process.env.NEXT_PUBLIC_CAFE24_DEFAULT_DISPLAY_GROUP ||
+    process.env.CAFE24_DEFAULT_DISPLAY_GROUP;
+  const displayGroup = value ? Number(value) : null;
+  return displayGroup && Number.isFinite(displayGroup) ? displayGroup : 1;
 }
 
 function getPurchaseMaxQuantity(product: ConsepotProduct) {

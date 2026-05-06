@@ -3,38 +3,34 @@
 import { useState } from "react";
 
 export type Cafe24CartActionProps = {
-  apiBaseUrl: string;
-  apiVersion: string;
   basketType: "A0000" | "A0001";
+  cartEndpoint: string;
   checkoutHref: string;
   className?: string;
-  clientId: string;
-  duplicatedItemCheck: "F" | "T";
-  frontApiKey: string;
-  label: string;
+  displayGroup: number;
   maxQuantity: number;
   prepaidShippingFee: "C" | "P";
+  productName: string;
   productNo: string;
-  shopNo: number;
+  productPrice: number;
+  productCategoryNo: number;
   variantCode: string;
 };
 
 type ActionStatus = "error" | "idle" | "loading";
 
 export function Cafe24CartAction({
-  apiBaseUrl,
-  apiVersion,
   basketType,
+  cartEndpoint,
   checkoutHref,
   className = "button-primary",
-  clientId,
-  duplicatedItemCheck,
-  frontApiKey,
-  label,
+  displayGroup,
   maxQuantity,
   prepaidShippingFee,
+  productCategoryNo,
+  productName,
   productNo,
-  shopNo,
+  productPrice,
   variantCode,
 }: Cafe24CartActionProps) {
   const normalizedMaxQuantity = Math.max(1, maxQuantity);
@@ -52,49 +48,31 @@ export function Cafe24CartAction({
     setMessage(null);
 
     try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        "X-Cafe24-Api-Version": apiVersion,
-        "X-Cafe24-Client-Id": clientId,
-      };
-
-      if (frontApiKey) {
-        headers.Authorization = `Basic ${window.btoa(`${clientId}:${frontApiKey}`)}`;
-      }
-
-      const response = await fetch(`${apiBaseUrl}/carts`, {
-        body: JSON.stringify({
-          request: {
-            basket_type: basketType,
-            duplicated_item_check: duplicatedItemCheck,
-            prepaid_shipping_fee: prepaidShippingFee,
-            product_no: Number(productNo),
-            shop_no: shopNo,
-            variants: [
-              {
-                quantity: clampedQuantity,
-                variants_code: variantCode,
-              },
-            ],
-          },
+      await fetch(cartEndpoint, {
+        body: buildCafe24CartBody({
+          basketType,
+          displayGroup,
+          prepaidShippingFee,
+          productCategoryNo,
+          productName,
+          productNo,
+          productPrice,
+          quantity: clampedQuantity,
+          variantCode,
         }),
         credentials: "include",
-        headers,
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+        },
         method: "POST",
+        mode: "no-cors",
       });
-      const payload = await readPayload(response);
-
-      if (!response.ok) {
-        throw new Error(extractCafe24ErrorMessage(payload, response.status));
-      }
 
       window.location.assign(checkoutHref);
-    } catch (error) {
+    } catch {
       setStatus("error");
       setMessage(
-        error instanceof Error
-          ? error.message
-          : "Cafe24 장바구니 담기에 실패했습니다.",
+        "Cafe24 장바구니로 이동하지 못했습니다. 잠시 후 다시 시도해 주세요.",
       );
     }
   }
@@ -152,25 +130,63 @@ export function Cafe24CartAction({
         onClick={addToCart}
         type="button"
       >
-        {status === "loading" ? "장바구니 담는 중" : label}
+        {status === "loading" ? "장바구니로 이동 중" : "구매하기"}
       </button>
       {message ? <p className="product-cart-error">{message}</p> : null}
     </div>
   );
 }
 
-async function readPayload(response: Response) {
-  const text = await response.text();
+function buildCafe24CartBody({
+  basketType,
+  displayGroup,
+  prepaidShippingFee,
+  productCategoryNo,
+  productName,
+  productNo,
+  productPrice,
+  quantity,
+  variantCode,
+}: {
+  basketType: "A0000" | "A0001";
+  displayGroup: number;
+  prepaidShippingFee: "C" | "P";
+  productCategoryNo: number;
+  productName: string;
+  productNo: string;
+  productPrice: number;
+  quantity: number;
+  variantCode: string;
+}) {
+  const body = new URLSearchParams({
+    basket_type: basketType,
+    ch_ref: "",
+    command: "add",
+    delvType: "A",
+    display_group: String(displayGroup),
+    has_option: "F",
+    is_cultural_tax: "F",
+    is_direct_buy: "F",
+    is_individual: "F",
+    main_cate_no: String(productCategoryNo),
+    multi_option_data: "",
+    multi_option_schema: "",
+    option_type: "T",
+    prd_detail_ship_type: prepaidShippingFee,
+    product_max: "-1",
+    product_max_type: "F",
+    product_min: "1",
+    product_name: productName,
+    product_no: productNo,
+    product_price: String(productPrice),
+    quantity: String(quantity),
+    redirect: "2",
+    relation_product: "yes",
+  });
 
-  if (!text) {
-    return null;
-  }
+  body.append("selected_item[]", `${quantity}||${variantCode}`);
 
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
-  }
+  return body;
 }
 
 function clampQuantity(value: number, maxQuantity: number) {
@@ -179,31 +195,4 @@ function clampQuantity(value: number, maxQuantity: number) {
   }
 
   return Math.min(Math.max(1, Math.floor(value)), maxQuantity);
-}
-
-function extractCafe24ErrorMessage(payload: unknown, status: number) {
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "error" in payload &&
-    typeof payload.error === "object" &&
-    payload.error !== null &&
-    "message" in payload.error
-  ) {
-    return String(payload.error.message);
-  }
-
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "message" in payload
-  ) {
-    return String(payload.message);
-  }
-
-  if (typeof payload === "string") {
-    return payload;
-  }
-
-  return `Cafe24 장바구니 API 요청 실패 (${status})`;
 }

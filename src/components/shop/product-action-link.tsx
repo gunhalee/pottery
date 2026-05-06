@@ -18,16 +18,20 @@ export function ProductActionLink({
 }) {
   const cta = getProductCta(product);
   const action = getProductActionHref(product);
+  const cafe24CartAction =
+    cta.kind === "buy" ? getCafe24CartAction(product) : null;
   const cafe24CheckoutHref =
-    cta.kind === "buy" ? getCafe24DirectCheckoutHref(product) : null;
+    cta.kind === "buy" && !cafe24CartAction
+      ? getCafe24DirectCheckoutHref(product)
+      : null;
   const cafe24ProductHref =
-    cta.kind === "buy" && !cafe24CheckoutHref
+    cta.kind === "buy" && !cafe24CartAction && !cafe24CheckoutHref
       ? getCafe24ProductHref(product)
       : null;
-  const cafe24CartAction =
-    cta.kind === "buy" && !cafe24CheckoutHref && !cafe24ProductHref
-      ? getCafe24CartAction(product)
-      : null;
+
+  if (cta.kind === "buy" && cafe24CartAction) {
+    return <Cafe24CartAction {...cafe24CartAction} className={className} />;
+  }
 
   if (cta.kind === "buy" && cafe24CheckoutHref) {
     return (
@@ -42,16 +46,6 @@ export function ProductActionLink({
       <a className={className} href={cafe24ProductHref}>
         {cta.label}
       </a>
-    );
-  }
-
-  if (cta.kind === "buy" && cafe24CartAction) {
-    return (
-      <Cafe24CartAction
-        {...cafe24CartAction}
-        className={className}
-        label={cta.label}
-      />
     );
   }
 
