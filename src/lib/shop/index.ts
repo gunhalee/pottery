@@ -28,6 +28,7 @@ export type Cafe24CartAction = {
   productName: string;
   productNo: string;
   productPrice: number;
+  statusEndpoint: string;
   variantCode: string;
 };
 
@@ -321,6 +322,9 @@ export function getCafe24CartAction(
     productName: product.titleKo,
     productNo,
     productPrice,
+    statusEndpoint: `/api/cafe24/product-status?slug=${encodeURIComponent(
+      product.slug,
+    )}`,
     variantCode,
   };
 }

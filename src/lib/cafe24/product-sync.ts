@@ -249,11 +249,15 @@ async function retrievePrimaryVariantCode(
   productNo: string,
   config: Awaited<ReturnType<typeof getCafe24Config>>,
 ) {
-  const payload = await cafe24Fetch(config, `/products/${productNo}/variants`, {
-    searchParams: {
-      shop_no: config.shopNo,
+  const payload = await cafe24Fetch(
+    config,
+    `/products/${encodeURIComponent(productNo)}/variants`,
+    {
+      searchParams: {
+        shop_no: config.shopNo,
+      },
     },
-  });
+  );
 
   return extractVariantCode(payload);
 }
@@ -275,7 +279,9 @@ async function syncVariantInventory(
 
   await cafe24Fetch(
     config,
-    `/products/${productNo}/variants/${variantCode}/inventories`,
+    `/products/${encodeURIComponent(productNo)}/variants/${encodeURIComponent(
+      variantCode,
+    )}/inventories`,
     {
       body: { request },
       method: "PUT",

@@ -4,10 +4,21 @@ import {
   PageShell,
 } from "@/components/site/primitives";
 import { ProductGrid } from "@/components/shop/product-grid";
-import { getPublishedProducts } from "@/lib/shop";
+import {
+  CartReturnNotice,
+  RecentProductsPanel,
+  type RecentProductSummary,
+} from "@/components/shop/recent-products";
+import {
+  formatProductPrice,
+  getProductListImage,
+  getPublishedProducts,
+  type ConsepotProduct,
+} from "@/lib/shop";
 
 export default async function ShopPage() {
   const products = await getPublishedProducts();
+  const recentProductSummaries = products.map(toRecentProductSummary);
 
   return (
     <>
@@ -17,6 +28,11 @@ export default async function ShopPage() {
           title="작품 소장"
         />
 
+        <a className="shop-order-lookup-link link-arrow" href="/order/lookup">
+          주문 조회
+        </a>
+        <CartReturnNotice />
+        <RecentProductsPanel products={recentProductSummaries} />
         <ProductGrid products={products} />
       </PageShell>
       <BottomNav
@@ -27,4 +43,19 @@ export default async function ShopPage() {
       />
     </>
   );
+}
+
+function toRecentProductSummary(
+  product: ConsepotProduct,
+): RecentProductSummary {
+  const image = getProductListImage(product);
+
+  return {
+    href: `/shop/${product.slug}`,
+    imageAlt: image?.alt ?? product.titleKo,
+    imageSrc: image?.src ?? null,
+    price: formatProductPrice(product),
+    slug: product.slug,
+    title: product.titleKo,
+  };
 }

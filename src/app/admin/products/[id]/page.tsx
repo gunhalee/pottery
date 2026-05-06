@@ -20,6 +20,10 @@ import {
 } from "@/lib/shop";
 import { buildCafe24SyncPreview } from "@/lib/cafe24/product-sync";
 import {
+  buildCafe24ProductReadiness,
+  type Cafe24ProductReadiness,
+} from "@/lib/cafe24/product-status";
+import {
   getCafe24ConnectionStatus,
   type Cafe24ConnectionStatus,
 } from "@/lib/cafe24/oauth";
@@ -64,12 +68,14 @@ export default async function AdminProductEditPage({
     notFound();
   }
 
-  const [preview, syncLogs, cafe24Connection, mediaAssets] = await Promise.all([
-    buildCafe24SyncPreview(product),
-    readProductSyncLogs(product.id),
-    getCafe24ConnectionStatus(),
-    readMediaLibraryAssets(120),
-  ]);
+  const [preview, readiness, syncLogs, cafe24Connection, mediaAssets] =
+    await Promise.all([
+      buildCafe24SyncPreview(product),
+      buildCafe24ProductReadiness(product),
+      readProductSyncLogs(product.id),
+      getCafe24ConnectionStatus(),
+      readMediaLibraryAssets(120),
+    ]);
   const adminWarnings = getAdminWarnings(product, preview.warnings);
   const publicHref = product.published ? `/shop/${product.slug}` : null;
 
@@ -358,6 +364,8 @@ export default async function AdminProductEditPage({
 
           <Cafe24ConnectionPanel connection={cafe24Connection} />
 
+          <Cafe24ReadinessPanel readiness={readiness} />
+
           <section className="admin-sync-block">
             <h3>전송 미리보기</h3>
             <dl className="admin-sync-list">
@@ -575,6 +583,42 @@ function Cafe24ConnectionPanel({
       >
         {connection.connected ? "Cafe24 재인증" : "Cafe24 연결하기"}
       </a>
+    </section>
+  );
+}
+
+function Cafe24ReadinessPanel({
+  readiness,
+}: {
+  readiness: Cafe24ProductReadiness;
+}) {
+  return (
+    <section className="admin-sync-block">
+      <h3>구매 준비 체크</h3>
+      <div
+        className={`admin-publish-readiness ${
+          readiness.ready
+            ? "admin-publish-readiness-ok"
+            : "admin-publish-readiness-warning"
+        }`}
+      >
+        <strong>
+          {readiness.ready
+            ? "Cafe24 구매 준비가 완료되었습니다."
+            : "구매 전 확인이 필요합니다."}
+        </strong>
+        <ul>
+          {readiness.checks.map((check) => (
+            <li
+              className={`admin-readiness-check admin-readiness-check-${check.status}`}
+              key={check.id}
+            >
+              <span>{check.label}</span>
+              <em>{check.message}</em>
+            </li>
+          ))}
+        </ul>
+      </div>
     </section>
   );
 }

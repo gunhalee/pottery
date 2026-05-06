@@ -10,6 +10,12 @@ import {
 import { RichTextRenderer } from "@/components/content/rich-text-renderer";
 import { ProductActionLink } from "@/components/shop/product-action-link";
 import { ProductBadge } from "@/components/shop/product-badge";
+import {
+  CartReturnNotice,
+  ProductVisitTracker,
+  RecentProductsPanel,
+  type RecentProductSummary,
+} from "@/components/shop/recent-products";
 import { ProductSpecList } from "@/components/shop/product-spec-list";
 import { getPublishedContentEntries } from "@/lib/content-manager/content-store";
 import {
@@ -18,9 +24,12 @@ import {
   getProductBySlug,
   getProductCta,
   getProductDisplayImages,
+  getProductListImage,
   getProductPrimaryImage,
   getProductPurchaseKind,
   getProductSlugs,
+  getPublishedProducts,
+  type ConsepotProduct,
 } from "@/lib/shop";
 
 type ShopDetailPageProps = {
@@ -54,9 +63,10 @@ export default async function ShopDetailPage({
   params,
 }: ShopDetailPageProps) {
   const { slug } = await params;
-  const [product, galleryEntries] = await Promise.all([
+  const [product, galleryEntries, publishedProducts] = await Promise.all([
     getProductBySlug(slug),
     getPublishedContentEntries("gallery"),
+    getPublishedProducts(),
   ]);
 
   if (!product) {
@@ -67,12 +77,15 @@ export default async function ShopDetailPage({
   const displayImages = getProductDisplayImages(product);
   const cta = getProductCta(product);
   const purchaseKind = getProductPurchaseKind(product);
+  const currentProductSummary = toRecentProductSummary(product);
+  const recentProductSummaries = publishedProducts.map(toRecentProductSummary);
   const relatedGalleryEntries = galleryEntries
     .filter((entry) => entry.relatedProductSlug === product.slug)
     .slice(0, 3);
 
   return (
     <>
+      <ProductVisitTracker product={currentProductSummary} />
       <PageShell className="product-detail-shell">
         <div className="product-detail-layout">
           <div className="product-detail-media">
@@ -181,6 +194,12 @@ export default async function ShopDetailPage({
           </div>
         </section>
 
+        <CartReturnNotice />
+        <RecentProductsPanel
+          currentSlug={product.slug}
+          products={recentProductSummaries}
+        />
+
         <ProductSpecList
           items={[
             { label: "크기", value: product.size },
@@ -201,4 +220,19 @@ export default async function ShopDetailPage({
       />
     </>
   );
+}
+
+function toRecentProductSummary(
+  product: ConsepotProduct,
+): RecentProductSummary {
+  const image = getProductListImage(product);
+
+  return {
+    href: `/shop/${product.slug}`,
+    imageAlt: image?.alt ?? product.titleKo,
+    imageSrc: image?.src ?? null,
+    price: formatProductPrice(product),
+    slug: product.slug,
+    title: product.titleKo,
+  };
 }

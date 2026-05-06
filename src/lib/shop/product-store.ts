@@ -477,25 +477,16 @@ async function readProductsFromSupabaseQuery(options: ProductQueryOptions = {}) 
 }
 
 async function writeProductsToSupabase(products: ConsepotProduct[]) {
-  const supabase = getSupabaseAdminClient();
   const parsed = productListSchema.parse(products);
 
   for (const product of parsed) {
-    const { error: productError } = await supabase
-      .from("shop_products")
-      .upsert(toSupabaseProductRow(product), { onConflict: "id" });
-
-    if (productError) {
-      throw new Error(`Supabase ?곹뭹 ????ㅽ뙣: ${productError.message}`);
-    }
-
-    await replaceProductImages(product);
-    await upsertCafe24Mapping(product.id, product.cafe24);
+    await saveProductWithRelationsInSupabase(product, {
+      syncCafe24Mapping: true,
+    });
   }
 }
 
 async function createProductDraftInSupabase(input: ProductDraftInput) {
-  const supabase = getSupabaseAdminClient();
   const id = randomUUID();
   const slug = normalizeSlug(input.slug);
   const titleKo = input.titleKo.trim();
@@ -530,16 +521,9 @@ async function createProductDraftInSupabase(input: ProductDraftInput) {
     updatedAt: new Date().toISOString(),
   });
 
-  const { error } = await supabase.from("shop_products").insert(
-    toSupabaseProductRow(product),
-  );
-
-  if (error) {
-    throw new Error(`Supabase ?곹뭹 珥덉븞 ?앹꽦 ?ㅽ뙣: ${error.message}`);
-  }
-
-  await replaceProductImages(product);
-  await upsertCafe24Mapping(product.id, product.cafe24);
+  await saveProductWithRelationsInSupabase(product, {
+    syncCafe24Mapping: true,
+  });
 
   return (await getProductById(id)) ?? product;
 }
@@ -586,17 +570,9 @@ async function updateProductInSupabase(id: string, input: ProductUpdateInput) {
     usageNote: emptyToUndefined(input.usageNote),
   });
 
-  const supabase = getSupabaseAdminClient();
-  const { error } = await supabase
-    .from("shop_products")
-    .update(toSupabaseProductRow(product))
-    .eq("id", id);
-
-  if (error) {
-    throw new Error(`Supabase ?곹뭹 ?섏젙 ?ㅽ뙣: ${error.message}`);
-  }
-
-  await replaceProductImages(product);
+  await saveProductWithRelationsInSupabase(product, {
+    syncCafe24Mapping: false,
+  });
 
   return (await getProductById(id)) ?? product;
 }
@@ -828,41 +804,56 @@ async function writeJsonProducts(products: ConsepotProduct[]) {
   await writeFile(dataFilePath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
 }
 
-async function replaceProductImages(product: ConsepotProduct) {
-  await replaceMediaUsagesForOwner(
-    "product",
-    product.id,
-    product.images.flatMap((image, index) => {
-      if (!image.id || !image.src) {
-        return [];
-      }
+async function saveProductWithRelationsInSupabase(
+  product: ConsepotProduct,
+  options: { syncCafe24Mapping: boolean },
+) {
+  const supabase = getSupabaseAdminClient();
+  const { error } = await supabase.rpc("save_shop_product_with_relations", {
+    cafe24_row: options.syncCafe24Mapping
+      ? toSupabaseCafe24MappingRow(product.id, product.cafe24)
+      : null,
+    media_usage_rows: toSupabaseProductMediaUsageRows(product),
+    product_row: toSupabaseProductRow(product),
+  });
 
-      const hasExplicitRole =
-        image.isPrimary ||
-        image.isListImage ||
-        image.isDetail ||
-        image.isDescription;
-      const roles = [
-        image.isPrimary ? "cover" : null,
-        image.isListImage ? "list" : null,
-        image.isDetail || !hasExplicitRole ? "detail" : null,
-        image.isDescription ? "description" : null,
-      ].filter(
-        (
-          role,
-        ): role is "cover" | "description" | "detail" | "list" =>
-          Boolean(role),
-      );
+  if (error) {
+    throw new Error(`Supabase 상품 관계 저장 실패: ${error.message}`);
+  }
+}
 
-      return roles.map((role) => ({
-        altOverride: image.alt,
-        assetId: image.id!,
-        captionOverride: image.caption,
+function toSupabaseProductMediaUsageRows(product: ConsepotProduct) {
+  return product.images.flatMap((image, index) => {
+    if (!image.id || !image.src) {
+      return [];
+    }
+
+    const hasExplicitRole =
+      image.isPrimary ||
+      image.isListImage ||
+      image.isDetail ||
+      image.isDescription;
+    const roles = [
+      image.isPrimary ? "cover" : null,
+      image.isListImage ? "list" : null,
+      image.isDetail || !hasExplicitRole ? "detail" : null,
+      image.isDescription ? "description" : null,
+    ].filter(
+      (
         role,
-        sortOrder: index,
-      }));
-    }),
-  );
+      ): role is "cover" | "description" | "detail" | "list" =>
+        Boolean(role),
+    );
+
+    return roles.map((role) => ({
+      alt_override: image.alt,
+      asset_id: image.id!,
+      caption_override: image.caption ?? null,
+      layout: null,
+      role,
+      sort_order: index,
+    }));
+  });
 }
 
 async function upsertCafe24Mapping(
@@ -1038,6 +1029,13 @@ function mediaUsagesToProductImages(usages: MediaUsage[]) {
     grouped.set(usage.assetId, assetUsages);
   }
 
+  const sortOrderByAssetId = new Map(
+    [...grouped.entries()].map(([assetId, assetUsages]) => [
+      assetId,
+      Math.min(...assetUsages.map((usage) => usage.sortOrder)),
+    ]),
+  );
+
   return [...grouped.values()]
     .map((assetUsages) => {
       const asset = assetUsages[0]?.asset;
@@ -1077,16 +1075,8 @@ function mediaUsagesToProductImages(usages: MediaUsage[]) {
     })
     .filter((image): image is ProductImage => Boolean(image))
     .sort((a, b) => {
-      const aOrder = Math.min(
-        ...usages
-          .filter((usage) => usage.assetId === a.id)
-          .map((usage) => usage.sortOrder),
-      );
-      const bOrder = Math.min(
-        ...usages
-          .filter((usage) => usage.assetId === b.id)
-          .map((usage) => usage.sortOrder),
-      );
+      const aOrder = sortOrderByAssetId.get(a.id ?? "") ?? 0;
+      const bOrder = sortOrderByAssetId.get(b.id ?? "") ?? 0;
 
       return aOrder - bOrder;
     });

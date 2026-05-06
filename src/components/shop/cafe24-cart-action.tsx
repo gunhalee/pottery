@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export type Cafe24CartActionProps = {
   basketType: "A0000" | "A0001";
@@ -14,10 +14,17 @@ export type Cafe24CartActionProps = {
   productNo: string;
   productPrice: number;
   productCategoryNo: number;
+  statusEndpoint: string;
   variantCode: string;
 };
 
 type ActionStatus = "error" | "idle" | "loading";
+type PurchaseStatus = {
+  canPurchase: boolean;
+  maxQuantity: number;
+  messages: string[];
+  status: "error" | "not_configured" | "ready" | "unavailable";
+};
 
 export function Cafe24CartAction({
   basketType,
@@ -31,16 +38,70 @@ export function Cafe24CartAction({
   productName,
   productNo,
   productPrice,
+  statusEndpoint,
   variantCode,
 }: Cafe24CartActionProps) {
   const normalizedMaxQuantity = Math.max(1, maxQuantity);
+  const [liveMaxQuantity, setLiveMaxQuantity] = useState(normalizedMaxQuantity);
+  const [canPurchase, setCanPurchase] = useState(true);
+  const [checkingStatus, setCheckingStatus] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [status, setStatus] = useState<ActionStatus>("idle");
   const [message, setMessage] = useState<string | null>(null);
-  const clampedQuantity = clampQuantity(quantity, normalizedMaxQuantity);
+  const effectiveMaxQuantity = Math.max(1, liveMaxQuantity);
+  const clampedQuantity = clampQuantity(quantity, effectiveMaxQuantity);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function checkPurchaseStatus() {
+      setCheckingStatus(true);
+
+      try {
+        const response = await fetch(statusEndpoint, {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error("Cafe24 상품 상태를 확인하지 못했습니다.");
+        }
+
+        const payload = (await response.json()) as PurchaseStatus;
+
+        if (ignore) {
+          return;
+        }
+
+        const nextMaxQuantity = Math.max(1, payload.maxQuantity || 1);
+        setLiveMaxQuantity(nextMaxQuantity);
+        setQuantity((current) => clampQuantity(current, nextMaxQuantity));
+        setCanPurchase(payload.canPurchase);
+        setMessage(
+          payload.canPurchase
+            ? null
+            : payload.messages[0] ?? "현재 구매할 수 없는 상품입니다.",
+        );
+      } catch {
+        if (!ignore) {
+          setCanPurchase(false);
+          setMessage("Cafe24 구매 가능 상태를 확인하지 못했습니다.");
+        }
+      } finally {
+        if (!ignore) {
+          setCheckingStatus(false);
+        }
+      }
+    }
+
+    checkPurchaseStatus();
+
+    return () => {
+      ignore = true;
+    };
+  }, [statusEndpoint]);
 
   async function addToCart() {
-    if (status === "loading") {
+    if (status === "loading" || checkingStatus || !canPurchase) {
       return;
     }
 
@@ -68,6 +129,11 @@ export function Cafe24CartAction({
         mode: "no-cors",
       });
 
+      saveCartReturn({
+        cartHref: checkoutHref,
+        productHref: window.location.href,
+        productName,
+      });
       window.location.assign(checkoutHref);
     } catch {
       setStatus("error");
@@ -87,7 +153,7 @@ export function Cafe24CartAction({
             disabled={clampedQuantity <= 1 || status === "loading"}
             onClick={() =>
               setQuantity((current) =>
-                clampQuantity(current - 1, normalizedMaxQuantity),
+                clampQuantity(current - 1, effectiveMaxQuantity),
               )
             }
             type="button"
@@ -97,11 +163,11 @@ export function Cafe24CartAction({
           <input
             aria-label="구매 수량"
             inputMode="numeric"
-            max={normalizedMaxQuantity}
+            max={effectiveMaxQuantity}
             min={1}
             onChange={(event) =>
               setQuantity(
-                clampQuantity(Number(event.target.value), normalizedMaxQuantity),
+                clampQuantity(Number(event.target.value), effectiveMaxQuantity),
               )
             }
             type="number"
@@ -110,11 +176,11 @@ export function Cafe24CartAction({
           <button
             aria-label="수량 늘리기"
             disabled={
-              clampedQuantity >= normalizedMaxQuantity || status === "loading"
+              clampedQuantity >= effectiveMaxQuantity || status === "loading"
             }
             onClick={() =>
               setQuantity((current) =>
-                clampQuantity(current + 1, normalizedMaxQuantity),
+                clampQuantity(current + 1, effectiveMaxQuantity),
               )
             }
             type="button"
@@ -122,15 +188,19 @@ export function Cafe24CartAction({
             +
           </button>
         </div>
-        <small>최대 {normalizedMaxQuantity}개</small>
+        <small>최대 {effectiveMaxQuantity}개</small>
       </label>
       <button
         className={className}
-        disabled={status === "loading"}
+        disabled={status === "loading" || checkingStatus || !canPurchase}
         onClick={addToCart}
         type="button"
       >
-        {status === "loading" ? "장바구니로 이동 중" : "구매하기"}
+        {status === "loading"
+          ? "장바구니로 이동 중"
+          : checkingStatus
+            ? "구매 상태 확인 중"
+            : "구매하기"}
       </button>
       {message ? <p className="product-cart-error">{message}</p> : null}
     </div>
@@ -195,4 +265,28 @@ function clampQuantity(value: number, maxQuantity: number) {
   }
 
   return Math.min(Math.max(1, Math.floor(value)), maxQuantity);
+}
+
+function saveCartReturn({
+  cartHref,
+  productHref,
+  productName,
+}: {
+  cartHref: string;
+  productHref: string;
+  productName: string;
+}) {
+  try {
+    window.localStorage.setItem(
+      "consepot_recent_cart",
+      JSON.stringify({
+        cartHref,
+        productHref,
+        productName,
+        savedAt: Date.now(),
+      }),
+    );
+  } catch {
+    // localStorage can be unavailable in private browsing modes.
+  }
 }

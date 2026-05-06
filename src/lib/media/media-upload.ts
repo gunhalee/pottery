@@ -26,6 +26,8 @@ export type MediaImageUploadInput = {
   filename: string;
 };
 
+let ensureMediaAssetBucketPromise: Promise<void> | null = null;
+
 export async function uploadMediaImage(
   input: MediaImageUploadInput,
 ): Promise<MediaAsset> {
@@ -95,6 +97,17 @@ export async function uploadMediaImage(
 }
 
 export async function ensureMediaAssetBucket() {
+  ensureMediaAssetBucketPromise ??= ensureMediaAssetBucketExists().catch(
+    (error) => {
+      ensureMediaAssetBucketPromise = null;
+      throw error;
+    },
+  );
+
+  return ensureMediaAssetBucketPromise;
+}
+
+async function ensureMediaAssetBucketExists() {
   const supabase = getSupabaseAdminClient();
   const { error } = await supabase.storage.getBucket(mediaAssetBucket);
 

@@ -6,6 +6,7 @@ type Cafe24FetchOptions = {
   body?: unknown;
   method?: "GET" | "POST" | "PUT" | "DELETE";
   searchParams?: Record<string, number | string | undefined>;
+  timeoutMs?: number;
 };
 
 export class Cafe24ApiError extends Error {
@@ -26,6 +27,11 @@ export async function cafe24Fetch<T>(
   options: Cafe24FetchOptions = {},
 ): Promise<T> {
   const url = new URL(`${config.apiBaseUrl}${pathname}`);
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    options.timeoutMs ?? 15_000,
+  );
 
   for (const [key, value] of Object.entries(options.searchParams ?? {})) {
     if (value !== undefined) {
@@ -33,15 +39,33 @@ export async function cafe24Fetch<T>(
     }
   }
 
-  const response = await fetch(url, {
-    body: options.body ? JSON.stringify(options.body) : undefined,
-    headers: {
-      Authorization: `Bearer ${config.accessToken}`,
-      "Content-Type": "application/json",
-      "X-Cafe24-Api-Version": config.apiVersion,
-    },
-    method: options.method ?? "GET",
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(url, {
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      cache: "no-store",
+      headers: {
+        Authorization: `Bearer ${config.accessToken}`,
+        "Content-Type": "application/json",
+        "X-Cafe24-Api-Version": config.apiVersion,
+      },
+      method: options.method ?? "GET",
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Cafe24ApiError(
+        `Cafe24 API 요청 시간이 초과되었습니다 (${options.timeoutMs ?? 15_000}ms)`,
+        504,
+        null,
+      );
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const payload = await readJson(response);
 

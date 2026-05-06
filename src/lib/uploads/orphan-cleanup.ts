@@ -31,6 +31,15 @@ type MediaAssetReference = {
   updatedAt: string | null;
 };
 
+type MediaAssetReferenceRow = {
+  created_at: string | null;
+  id: string;
+  master_path: string;
+  media_variants?: Array<{ storage_path: string | null }> | null;
+  reserved: boolean;
+  updated_at: string | null;
+};
+
 type ReferencedStoragePaths = {
   mediaAssets: Map<string, MediaAssetReference>;
   mediaStoragePaths: Set<string>;
@@ -44,6 +53,7 @@ type CleanupCandidate = {
   bucket: string;
   reason: CleanupReason;
   storagePath: string;
+  storagePaths?: string[];
   timestamp: string;
 };
 
@@ -204,6 +214,7 @@ async function findCleanupCandidates(
         bucket: mediaAssetBucket,
         reason: "media_asset_unreferenced",
         storagePath: asset.masterPath,
+        storagePaths: asset.storagePaths,
         timestamp: asset.createdAt ?? asset.updatedAt ?? "",
       });
     }
@@ -235,33 +246,14 @@ async function readReferencedStoragePaths(): Promise<ReferencedStoragePaths> {
   const mediaAssets = new Map<string, MediaAssetReference>();
   const mediaStoragePaths = new Set<string>();
 
-  for (const row of (assetRows.data ?? []) as Array<{
-    created_at: string | null;
-    id: string;
-    master_path: string;
-    media_variants?: Array<{ storage_path: string | null }> | null;
-    reserved: boolean;
-    updated_at: string | null;
-  }>) {
-    const storagePaths = [
-      row.master_path,
-      ...(row.media_variants ?? [])
-        .map((variant) => variant.storage_path)
-        .filter((value): value is string => Boolean(value)),
-    ];
+  for (const row of (assetRows.data ?? []) as MediaAssetReferenceRow[]) {
+    const asset = toMediaAssetReference(row);
 
-    for (const storagePath of storagePaths) {
+    for (const storagePath of asset.storagePaths) {
       mediaStoragePaths.add(storagePath);
     }
 
-    mediaAssets.set(row.id, {
-      createdAt: row.created_at,
-      id: row.id,
-      masterPath: row.master_path,
-      reserved: row.reserved,
-      storagePaths,
-      updatedAt: row.updated_at,
-    });
+    mediaAssets.set(row.id, asset);
   }
 
   return {
@@ -326,23 +318,24 @@ async function listStorageFiles(bucket: string, prefix = "") {
 }
 
 async function isStillOrphan(candidate: CleanupCandidate) {
-  const references = await readReferencedStoragePaths();
-
   if (candidate.reason === "media_storage_orphan") {
-    return !references.mediaStoragePaths.has(candidate.storagePath);
+    return !(await storagePathHasMediaReference(candidate.storagePath));
   }
 
   if (!candidate.assetId) {
     return false;
   }
 
-  const asset = references.mediaAssets.get(candidate.assetId);
+  const [asset, used] = await Promise.all([
+    readMediaAssetReference(candidate.assetId),
+    mediaAssetHasUsage(candidate.assetId),
+  ]);
 
   return Boolean(
     asset &&
       !asset.reserved &&
       asset.masterPath === candidate.storagePath &&
-      !references.usedAssetIds.has(candidate.assetId),
+      !used,
   );
 }
 
@@ -350,9 +343,9 @@ async function deleteCandidate(candidate: CleanupCandidate) {
   const supabase = getSupabaseAdminClient();
 
   if (candidate.reason === "media_asset_unreferenced" && candidate.assetId) {
-    const references = await readReferencedStoragePaths();
-    const asset = references.mediaAssets.get(candidate.assetId);
-    const storagePaths = asset?.storagePaths ?? [candidate.storagePath];
+    const asset = await readMediaAssetReference(candidate.assetId);
+    const storagePaths =
+      asset?.storagePaths ?? candidate.storagePaths ?? [candidate.storagePath];
     const { error: storageError } = await supabase.storage
       .from(candidate.bucket)
       .remove(storagePaths);
@@ -380,6 +373,81 @@ async function deleteCandidate(candidate: CleanupCandidate) {
   if (storageError) {
     throw new Error(storageError.message);
   }
+}
+
+async function readMediaAssetReference(assetId: string) {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("media_assets")
+    .select("id, master_path, reserved, created_at, updated_at, media_variants (storage_path)")
+    .eq("id", assetId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to read media asset: ${error.message}`);
+  }
+
+  return data ? toMediaAssetReference(data as MediaAssetReferenceRow) : null;
+}
+
+async function mediaAssetHasUsage(assetId: string) {
+  const supabase = getSupabaseAdminClient();
+  const { count, error } = await supabase
+    .from("media_usages")
+    .select("asset_id", { count: "exact", head: true })
+    .eq("asset_id", assetId);
+
+  if (error) {
+    throw new Error(`Failed to read media usage count: ${error.message}`);
+  }
+
+  return (count ?? 0) > 0;
+}
+
+async function storagePathHasMediaReference(storagePath: string) {
+  const supabase = getSupabaseAdminClient();
+  const [assetRows, variantRows] = await Promise.all([
+    supabase
+      .from("media_assets")
+      .select("id")
+      .eq("master_path", storagePath)
+      .limit(1),
+    supabase
+      .from("media_variants")
+      .select("asset_id")
+      .eq("storage_path", storagePath)
+      .limit(1),
+  ]);
+
+  if (assetRows.error) {
+    throw new Error(`Failed to read media asset references: ${assetRows.error.message}`);
+  }
+
+  if (variantRows.error) {
+    throw new Error(
+      `Failed to read media variant references: ${variantRows.error.message}`,
+    );
+  }
+
+  return (
+    (assetRows.data?.length ?? 0) > 0 || (variantRows.data?.length ?? 0) > 0
+  );
+}
+
+function toMediaAssetReference(row: MediaAssetReferenceRow): MediaAssetReference {
+  return {
+    createdAt: row.created_at,
+    id: row.id,
+    masterPath: row.master_path,
+    reserved: row.reserved,
+    storagePaths: [
+      row.master_path,
+      ...(row.media_variants ?? [])
+        .map((variant) => variant.storage_path)
+        .filter((value): value is string => Boolean(value)),
+    ],
+    updatedAt: row.updated_at,
+  };
 }
 
 async function writeCleanupLog(input: CleanupLogInput) {

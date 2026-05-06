@@ -224,9 +224,9 @@ export async function createMediaAsset(input: MediaAssetCreateInput) {
 
   const supabase = getSupabaseAdminClient();
   const id = input.id ?? randomUUID();
-  const { data, error } = await supabase
-    .from("media_assets")
-    .insert({
+  const createdAt = new Date().toISOString();
+  const { error } = await supabase.rpc("create_media_asset_with_variants", {
+    asset_row: {
       alt: input.alt,
       artwork_title: emptyToNull(input.artworkTitle),
       bucket: mediaAssetBucket,
@@ -239,40 +239,38 @@ export async function createMediaAsset(input: MediaAssetCreateInput) {
       size_bytes: input.sizeBytes ?? null,
       src: input.src,
       width: input.width,
-    })
-    .select("*")
-    .single();
+    },
+    variant_rows: input.variants.map((variant) => ({
+      height: variant.height,
+      size_bytes: variant.sizeBytes ?? null,
+      src: variant.src,
+      storage_path: variant.storagePath,
+      variant: variant.variant,
+      width: variant.width,
+    })),
+  });
 
   if (error) {
     throw new Error(`Failed to create media asset: ${error.message}`);
   }
 
-  if (input.variants.length > 0) {
-    const { error: variantError } = await supabase
-      .from("media_variants")
-      .insert(
-        input.variants.map((variant) => ({
-          asset_id: id,
-          height: variant.height,
-          size_bytes: variant.sizeBytes ?? null,
-          src: variant.src,
-          storage_path: variant.storagePath,
-          variant: variant.variant,
-          width: variant.width,
-        })),
-      );
-
-    if (variantError) {
-      await supabase.from("media_assets").delete().eq("id", id);
-      throw new Error(`Failed to create media variants: ${variantError.message}`);
-    }
-  }
-
   return {
-    ...fromMediaAssetRow(data as MediaAssetRow, []),
+    alt: input.alt,
+    artworkTitle: input.artworkTitle,
+    bucket: mediaAssetBucket,
+    caption: input.caption,
+    createdAt,
+    height: input.height,
+    id,
+    masterPath: input.masterPath,
+    mimeType: "image/webp",
+    reserved: false,
+    sizeBytes: input.sizeBytes,
+    src: input.src,
+    updatedAt: createdAt,
     variants: input.variants.map((variant) => ({
       assetId: id,
-      createdAt: new Date().toISOString(),
+      createdAt,
       height: variant.height,
       id: `${id}-${variant.variant}`,
       sizeBytes: variant.sizeBytes,
@@ -281,6 +279,7 @@ export async function createMediaAsset(input: MediaAssetCreateInput) {
       variant: variant.variant,
       width: variant.width,
     })),
+    width: input.width,
   } satisfies MediaAsset;
 }
 

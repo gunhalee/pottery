@@ -21,7 +21,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://example.com"),
+  metadataBase: getSiteMetadataBase(),
   title: {
     default: siteConfig.name,
     template: `%s | ${siteConfig.name}`,
@@ -46,4 +46,18 @@ export default function RootLayout({
       </body>
     </html>
   );
+}
+
+function getSiteMetadataBase() {
+  const rawUrl = process.env.NEXT_PUBLIC_SITE_URL;
+
+  if (!rawUrl) {
+    return new URL("http://localhost:3000");
+  }
+
+  try {
+    return new URL(rawUrl);
+  } catch {
+    return new URL("http://localhost:3000");
+  }
 }
