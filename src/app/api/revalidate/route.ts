@@ -1,11 +1,20 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import {
+  consumeRateLimit,
+  getClientIp,
+  rateLimitHeaders,
+} from "@/lib/security/rate-limit";
 
 const payloadSchema = z.object({
   paths: z.array(z.string().trim().min(1)).default([]),
   tags: z.array(z.string().trim().min(1)).default([]),
 });
+const revalidateRateLimit = {
+  limit: 30,
+  windowMs: 60_000,
+};
 
 export async function POST(request: NextRequest) {
   const secret = process.env.REVALIDATE_SECRET;
@@ -17,6 +26,26 @@ export async function POST(request: NextRequest) {
         message: "REVALIDATE_SECRET is not configured.",
       },
       { status: 503 },
+    );
+  }
+
+  const rateLimit = await consumeRateLimit({
+    key: getClientIp(request.headers),
+    limit: revalidateRateLimit.limit,
+    namespace: "revalidate",
+    windowMs: revalidateRateLimit.windowMs,
+  });
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "Too many revalidation requests.",
+      },
+      {
+        headers: rateLimitHeaders(rateLimit),
+        status: 429,
+      },
     );
   }
 

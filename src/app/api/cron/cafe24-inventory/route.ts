@@ -1,10 +1,25 @@
 import { syncCafe24InventoryForMappedProducts } from "@/lib/cafe24/inventory-sync";
+import {
+  failCronRun,
+  finishCronRun,
+  startCronRun,
+} from "@/lib/ops/cron-run-log";
+import {
+  consumeRateLimit,
+  getClientIp,
+  rateLimitHeaders,
+} from "@/lib/security/rate-limit";
 import { revalidatePath } from "next/cache";
 import { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+const cronRateLimit = {
+  limit: 20,
+  windowMs: 10 * 60_000,
+};
 
 export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
@@ -20,6 +35,26 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const rateLimit = await consumeRateLimit({
+    key: getClientIp(request.headers),
+    limit: cronRateLimit.limit,
+    namespace: "cron-cafe24-inventory",
+    windowMs: cronRateLimit.windowMs,
+  });
+
+  if (!rateLimit.allowed) {
+    return Response.json(
+      {
+        error: "Too many cron requests.",
+        ok: false,
+      },
+      {
+        headers: rateLimitHeaders(rateLimit),
+        status: 429,
+      },
+    );
+  }
+
   if (authHeader !== `Bearer ${cronSecret}`) {
     return Response.json(
       {
@@ -29,6 +64,8 @@ export async function GET(request: NextRequest) {
       { status: 401 },
     );
   }
+
+  const cronRun = await startCronRun({ jobName: "cafe24_inventory" });
 
   try {
     const summary = await syncCafe24InventoryForMappedProducts();
@@ -44,14 +81,33 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const runSummary = {
+      changedSlugs,
+      summary,
+    };
+
+    if (summary.failed > 0) {
+      await failCronRun(
+        cronRun,
+        new Error(`Cafe24 inventory sync completed with ${summary.failed} failures.`),
+        runSummary,
+      );
+    } else {
+      await finishCronRun(cronRun, runSummary);
+    }
+
     return Response.json({
       changedSlugs,
+      cronRunId: cronRun.id,
       ok: summary.failed === 0,
       summary,
     });
   } catch (error) {
+    await failCronRun(cronRun, error);
+
     return Response.json(
       {
+        cronRunId: cronRun.id,
         error:
           error instanceof Error
             ? error.message

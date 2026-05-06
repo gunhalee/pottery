@@ -9,12 +9,12 @@ import {
   homeWorks,
 } from "@/lib/content/site-content";
 import { getOptionalPublicAsset } from "@/lib/site/public-assets";
-import { getPublishedProducts } from "@/lib/shop";
+import { getPublishedProductListItems } from "@/lib/shop";
 
 const heroVideoSrc = getOptionalPublicAsset("/asset/hero-video.mp4");
 
 export default async function HomePage() {
-  const products = await getPublishedProducts();
+  const products = await getPublishedProductListItems(3);
 
   return (
     <>

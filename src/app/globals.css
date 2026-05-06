@@ -1782,6 +1782,10 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   background: linear-gradient(90deg, rgba(161, 138, 82, 0.08), transparent 38%);
 }
 
+.admin-ops-row-danger {
+  background: linear-gradient(90deg, rgba(159, 106, 95, 0.12), transparent 38%);
+}
+
 .admin-edit-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);

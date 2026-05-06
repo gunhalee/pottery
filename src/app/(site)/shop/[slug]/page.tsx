@@ -14,23 +14,22 @@ import {
   CartReturnNotice,
   ProductVisitTracker,
   RecentProductsPanel,
-  type RecentProductSummary,
 } from "@/components/shop/recent-products";
 import { ProductSpecList } from "@/components/shop/product-spec-list";
-import { getPublishedContentEntries } from "@/lib/content-manager/content-store";
+import { getPublishedContentListEntries } from "@/lib/content-manager/content-store";
+import { mediaImageSizes } from "@/lib/media/media-image-sizes";
 import {
   formatProductPrice,
   getProductBadges,
   getProductBySlug,
   getProductCta,
   getProductDisplayImages,
-  getProductListImage,
   getProductPrimaryImage,
   getProductPurchaseKind,
   getProductSlugs,
-  getPublishedProducts,
-  type ConsepotProduct,
+  getPublishedProductListItems,
 } from "@/lib/shop";
+import { toProductListSummary } from "@/lib/shop/product-list-view";
 
 type ShopDetailPageProps = {
   params: Promise<{
@@ -63,10 +62,13 @@ export default async function ShopDetailPage({
   params,
 }: ShopDetailPageProps) {
   const { slug } = await params;
-  const [product, galleryEntries, publishedProducts] = await Promise.all([
+  const [product, relatedGalleryEntries, publishedProducts] = await Promise.all([
     getProductBySlug(slug),
-    getPublishedContentEntries("gallery"),
-    getPublishedProducts(),
+    getPublishedContentListEntries("gallery", {
+      limit: 3,
+      relatedProductSlug: slug,
+    }),
+    getPublishedProductListItems(),
   ]);
 
   if (!product) {
@@ -77,11 +79,8 @@ export default async function ShopDetailPage({
   const displayImages = getProductDisplayImages(product);
   const cta = getProductCta(product);
   const purchaseKind = getProductPurchaseKind(product);
-  const currentProductSummary = toRecentProductSummary(product);
-  const recentProductSummaries = publishedProducts.map(toRecentProductSummary);
-  const relatedGalleryEntries = galleryEntries
-    .filter((entry) => entry.relatedProductSlug === product.slug)
-    .slice(0, 3);
+  const currentProductSummary = toProductListSummary(product);
+  const recentProductSummaries = publishedProducts.map(toProductListSummary);
 
   return (
     <>
@@ -97,7 +96,7 @@ export default async function ShopDetailPage({
                 height={primaryImage.height}
                 loading="eager"
                 preload
-                sizes="(max-width: 900px) 100vw, 72vw"
+                sizes={mediaImageSizes.productDetailHero}
                 src={primaryImage.src}
                 width={primaryImage.width}
               />
@@ -116,7 +115,7 @@ export default async function ShopDetailPage({
                       alt={image.alt}
                       height={image.height}
                       key={image.id ?? image.src ?? image.alt}
-                      sizes="(max-width: 760px) 25vw, 180px"
+                      sizes={mediaImageSizes.productDetailThumbnail}
                       src={image.src}
                       width={image.width}
                     />
@@ -220,19 +219,4 @@ export default async function ShopDetailPage({
       />
     </>
   );
-}
-
-function toRecentProductSummary(
-  product: ConsepotProduct,
-): RecentProductSummary {
-  const image = getProductListImage(product);
-
-  return {
-    href: `/shop/${product.slug}`,
-    imageAlt: image?.alt ?? product.titleKo,
-    imageSrc: image?.src ?? null,
-    price: formatProductPrice(product),
-    slug: product.slug,
-    title: product.titleKo,
-  };
 }

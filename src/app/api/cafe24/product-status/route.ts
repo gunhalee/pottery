@@ -1,6 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getCafe24ProductPurchaseStatus } from "@/lib/cafe24/product-status";
-import { consumeRateLimit, getClientIp } from "@/lib/security/rate-limit";
+import {
+  consumeRateLimit,
+  getClientIp,
+  rateLimitHeaders,
+} from "@/lib/security/rate-limit";
 import { getProductBySlug } from "@/lib/shop";
 
 const statusRateLimit = {
@@ -9,7 +13,7 @@ const statusRateLimit = {
 };
 
 export async function GET(request: NextRequest) {
-  const rateLimit = consumeRateLimit({
+  const rateLimit = await consumeRateLimit({
     key: getClientIp(request.headers),
     limit: statusRateLimit.limit,
     namespace: "cafe24-product-status",
@@ -20,9 +24,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { error: "상품 상태 조회 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." },
       {
-        headers: {
-          "Retry-After": String(rateLimit.retryAfterSeconds),
-        },
+        headers: rateLimitHeaders(rateLimit),
         status: 429,
       },
     );

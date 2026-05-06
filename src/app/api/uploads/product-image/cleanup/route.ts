@@ -4,6 +4,11 @@ import {
   deleteProductImageAssets,
   getProductById,
 } from "@/lib/shop";
+import {
+  consumeRateLimit,
+  getClientIp,
+  rateLimitHeaders,
+} from "@/lib/security/rate-limit";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -13,7 +18,32 @@ type CleanupRequestBody = {
   storagePaths?: unknown;
 };
 
+const cleanupRateLimit = {
+  limit: 20,
+  windowMs: 60_000,
+};
+
 export async function POST(request: Request) {
+  const rateLimit = await consumeRateLimit({
+    key: getClientIp(request.headers),
+    limit: cleanupRateLimit.limit,
+    namespace: "admin-product-image-cleanup",
+    windowMs: cleanupRateLimit.windowMs,
+  });
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        message: "이미지 정리 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+        ok: false,
+      },
+      {
+        headers: rateLimitHeaders(rateLimit),
+        status: 429,
+      },
+    );
+  }
+
   const authenticated = await isAdminAuthenticated();
 
   if (!authenticated) {

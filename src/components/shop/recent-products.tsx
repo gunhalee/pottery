@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import { mediaImageSizes } from "@/lib/media/media-image-sizes";
 
 export type RecentProductSummary = {
   href: string;
@@ -93,7 +94,7 @@ export function RecentProductsPanel({
                 <Image
                   alt={product.imageAlt}
                   fill
-                  sizes="(max-width: 640px) 100vw, 220px"
+                  sizes={mediaImageSizes.recentProduct}
                   src={product.imageSrc}
                 />
               ) : null}

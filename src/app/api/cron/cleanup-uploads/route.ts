@@ -1,4 +1,14 @@
 import { cleanupOrphanUploads } from "@/lib/uploads/orphan-cleanup";
+import {
+  failCronRun,
+  finishCronRun,
+  startCronRun,
+} from "@/lib/ops/cron-run-log";
+import {
+  consumeRateLimit,
+  getClientIp,
+  rateLimitHeaders,
+} from "@/lib/security/rate-limit";
 import { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +18,10 @@ export const maxDuration = 60;
 const defaultMinAgeHours = 48;
 const defaultMaxDeletes = 100;
 const maxDeletesLimit = 500;
+const cronRateLimit = {
+  limit: 20,
+  windowMs: 10 * 60_000,
+};
 
 export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
@@ -20,6 +34,26 @@ export async function GET(request: NextRequest) {
         ok: false,
       },
       { status: 500 },
+    );
+  }
+
+  const rateLimit = await consumeRateLimit({
+    key: getClientIp(request.headers),
+    limit: cronRateLimit.limit,
+    namespace: "cron-cleanup-uploads",
+    windowMs: cronRateLimit.windowMs,
+  });
+
+  if (!rateLimit.allowed) {
+    return Response.json(
+      {
+        error: "Too many cron requests.",
+        ok: false,
+      },
+      {
+        headers: rateLimitHeaders(rateLimit),
+        status: 429,
+      },
     );
   }
 
@@ -46,6 +80,15 @@ export async function GET(request: NextRequest) {
     1,
     maxDeletesLimit,
   );
+  const requestSummary = {
+    dryRun,
+    maxDeletesPerRun,
+    minAgeHours,
+  };
+  const cronRun = await startCronRun({
+    jobName: "upload_cleanup",
+    summary: requestSummary,
+  });
 
   try {
     const summary = await cleanupOrphanUploads({
@@ -54,13 +97,32 @@ export async function GET(request: NextRequest) {
       minAgeHours,
     });
 
+    const runSummary = {
+      request: requestSummary,
+      summary,
+    };
+
+    if (summary.failed > 0) {
+      await failCronRun(
+        cronRun,
+        new Error(`Upload cleanup completed with ${summary.failed} failures.`),
+        runSummary,
+      );
+    } else {
+      await finishCronRun(cronRun, runSummary);
+    }
+
     return Response.json({
+      cronRunId: cronRun.id,
       ok: summary.failed === 0,
       summary,
     });
   } catch (error) {
+    await failCronRun(cronRun, error, requestSummary);
+
     return Response.json(
       {
+        cronRunId: cronRun.id,
         error:
           error instanceof Error
             ? error.message

@@ -7,10 +7,10 @@ import {
 } from "@/components/site/primitives";
 import { siteConfig } from "@/lib/config/site";
 import { scheduleItems } from "@/lib/content/site-content";
-import { getPublishedContentEntries } from "@/lib/content-manager/content-store";
+import { getPublishedContentListEntries } from "@/lib/content-manager/content-store";
 
 export default async function NewsPage() {
-  const newsItems = await getPublishedContentEntries("news");
+  const newsItems = await getPublishedContentListEntries("news");
 
   return (
     <>

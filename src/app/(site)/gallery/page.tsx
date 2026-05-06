@@ -8,10 +8,11 @@ import {
   PageShell,
 } from "@/components/site/primitives";
 import { getContentListImage } from "@/lib/content-manager/content-images";
-import { getPublishedContentEntries } from "@/lib/content-manager/content-store";
+import { getPublishedContentListEntries } from "@/lib/content-manager/content-store";
+import { mediaImageSizes } from "@/lib/media/media-image-sizes";
 
 export default async function GalleryPage() {
-  const galleryItems = await getPublishedContentEntries("gallery");
+  const galleryItems = await getPublishedContentListEntries("gallery");
 
   return (
     <>
@@ -39,7 +40,7 @@ export default async function GalleryPage() {
                       fill
                       height={image.height}
                       loading="lazy"
-                      sizes="(max-width: 760px) 50vw, (max-width: 1100px) 33vw, 384px"
+                      sizes={mediaImageSizes.galleryCard}
                       src={image.src}
                       width={image.width}
                     />

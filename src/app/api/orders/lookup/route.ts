@@ -5,7 +5,11 @@ import {
   lookupCafe24Order,
 } from "@/lib/cafe24/order-lookup";
 import { Cafe24ApiError } from "@/lib/cafe24/client";
-import { consumeRateLimit, getClientIp } from "@/lib/security/rate-limit";
+import {
+  consumeRateLimit,
+  getClientIp,
+  rateLimitHeaders,
+} from "@/lib/security/rate-limit";
 
 const maxLookupBodyBytes = 4 * 1024;
 const lookupRateLimit = {
@@ -25,7 +29,7 @@ const lookupPayloadSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const rateLimit = consumeRateLimit({
+  const rateLimit = await consumeRateLimit({
     key: getClientIp(request.headers),
     limit: lookupRateLimit.limit,
     namespace: "order-lookup",
@@ -36,9 +40,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "주문 조회 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." },
       {
-        headers: {
-          "Retry-After": String(rateLimit.retryAfterSeconds),
-        },
+        headers: rateLimitHeaders(rateLimit),
         status: 429,
       },
     );

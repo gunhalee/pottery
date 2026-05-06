@@ -1,6 +1,7 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   getSupabaseAdminClient,
   isSupabaseConfigured,
@@ -62,6 +63,11 @@ type MediaUsageRow = {
   updated_at: string;
 };
 
+type MediaUsageReadOptions = {
+  client?: SupabaseClient;
+  roles?: MediaUsageRole[];
+};
+
 export type MediaAssetCreateInput = {
   alt: string;
   artworkTitle?: string;
@@ -94,22 +100,56 @@ export type MediaUsageReplaceInput = {
 export async function readMediaUsagesByOwner(
   ownerType: MediaOwnerType,
   ownerIds: string[],
+  options: MediaUsageReadOptions = {},
 ) {
   const usageMap = new Map<string, MediaUsage[]>();
 
-  if (!isSupabaseConfigured() || ownerIds.length === 0) {
+  if ((!isSupabaseConfigured() && !options.client) || ownerIds.length === 0) {
     return usageMap;
   }
 
-  const supabase = getSupabaseAdminClient();
-  const { data, error } = await supabase
+  const supabase = options.client ?? getSupabaseAdminClient();
+  let query = supabase
     .from("media_usages")
     .select(
       `
-        *,
+        id,
+        owner_type,
+        owner_id,
+        asset_id,
+        role,
+        sort_order,
+        layout,
+        alt_override,
+        caption_override,
+        created_at,
+        updated_at,
         media_assets (
-          *,
-          media_variants (*)
+          id,
+          alt,
+          artwork_title,
+          bucket,
+          caption,
+          created_at,
+          height,
+          master_path,
+          mime_type,
+          reserved,
+          size_bytes,
+          src,
+          updated_at,
+          width,
+          media_variants (
+            id,
+            asset_id,
+            created_at,
+            height,
+            size_bytes,
+            src,
+            storage_path,
+            variant,
+            width
+          )
         )
       `,
     )
@@ -117,11 +157,17 @@ export async function readMediaUsagesByOwner(
     .in("owner_id", ownerIds)
     .order("sort_order", { ascending: true });
 
+  if (options.roles?.length) {
+    query = query.in("role", options.roles);
+  }
+
+  const { data, error } = await query;
+
   if (error) {
     throw new Error(`Failed to read media usages: ${error.message}`);
   }
 
-  for (const row of (data ?? []) as MediaUsageRow[]) {
+  for (const row of (data ?? []) as unknown as MediaUsageRow[]) {
     const usage = fromMediaUsageRow(row);
     const usages = usageMap.get(usage.ownerId) ?? [];
     usages.push(usage);

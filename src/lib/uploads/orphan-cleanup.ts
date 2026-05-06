@@ -5,6 +5,11 @@ import {
   getSupabaseAdminClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
+import {
+  markStorageUploadIntentCleaned,
+  readAbandonedStorageUploadIntents,
+  readStorageUploadIntentById,
+} from "@/lib/uploads/storage-upload-intent";
 
 type StorageFile = {
   createdAt: string | null;
@@ -46,11 +51,15 @@ type ReferencedStoragePaths = {
   usedAssetIds: Set<string>;
 };
 
-type CleanupReason = "media_asset_unreferenced" | "media_storage_orphan";
+type CleanupReason =
+  | "media_asset_unreferenced"
+  | "media_storage_orphan"
+  | "storage_upload_intent_abandoned";
 
 type CleanupCandidate = {
   assetId?: string;
   bucket: string;
+  intentId?: string;
   reason: CleanupReason;
   storagePath: string;
   storagePaths?: string[];
@@ -130,6 +139,7 @@ export async function cleanupOrphanUploads(
     reasons: {
       media_asset_unreferenced: 0,
       media_storage_orphan: 0,
+      storage_upload_intent_abandoned: 0,
     },
     skipped: candidates.length - eligibleCandidates.length,
   };
@@ -187,12 +197,39 @@ async function findCleanupCandidates(
   cutoff: Date,
 ) {
   const storageFiles = await listStorageFiles(mediaAssetBucket);
+  const abandonedUploadIntents = await readAbandonedStorageUploadIntents(cutoff);
+  const intentStoragePaths = new Set<string>();
   const candidates: CleanupCandidate[] = [];
+
+  for (const intent of abandonedUploadIntents) {
+    const storagePaths = [...new Set(intent.storagePaths)].filter(
+      (storagePath) => !references.mediaStoragePaths.has(storagePath),
+    );
+
+    if (storagePaths.length === 0) {
+      continue;
+    }
+
+    for (const storagePath of storagePaths) {
+      intentStoragePaths.add(storagePath);
+    }
+
+    candidates.push({
+      assetId: intent.assetId,
+      bucket: intent.bucket,
+      intentId: intent.id,
+      reason: "storage_upload_intent_abandoned",
+      storagePath: storagePaths[0],
+      storagePaths,
+      timestamp: intent.createdAt,
+    });
+  }
 
   for (const file of storageFiles) {
     if (
       isOlderThanCutoff(file, cutoff) &&
-      !references.mediaStoragePaths.has(file.path)
+      !references.mediaStoragePaths.has(file.path) &&
+      !intentStoragePaths.has(file.path)
     ) {
       candidates.push({
         bucket: mediaAssetBucket,
@@ -318,6 +355,28 @@ async function listStorageFiles(bucket: string, prefix = "") {
 }
 
 async function isStillOrphan(candidate: CleanupCandidate) {
+  if (candidate.reason === "storage_upload_intent_abandoned") {
+    if (!candidate.intentId) {
+      return false;
+    }
+
+    const intent = await readStorageUploadIntentById(candidate.intentId);
+
+    if (!intent || intent.status === "claimed" || intent.status === "cleaned") {
+      return false;
+    }
+
+    const storagePaths =
+      intent.storagePaths.length > 0
+        ? intent.storagePaths
+        : candidate.storagePaths ?? [candidate.storagePath];
+
+    return (
+      storagePaths.length > 0 &&
+      !(await storagePathsHaveMediaReference(storagePaths))
+    );
+  }
+
   if (candidate.reason === "media_storage_orphan") {
     return !(await storagePathHasMediaReference(candidate.storagePath));
   }
@@ -341,6 +400,29 @@ async function isStillOrphan(candidate: CleanupCandidate) {
 
 async function deleteCandidate(candidate: CleanupCandidate) {
   const supabase = getSupabaseAdminClient();
+
+  if (candidate.reason === "storage_upload_intent_abandoned") {
+    const storagePaths = [
+      ...new Set(candidate.storagePaths ?? [candidate.storagePath]),
+    ];
+    const { error: storageError } = await supabase.storage
+      .from(candidate.bucket)
+      .remove(storagePaths);
+
+    if (storageError) {
+      throw new Error(storageError.message);
+    }
+
+    if (candidate.intentId) {
+      await markStorageUploadIntentCleaned(
+        { id: candidate.intentId, persisted: true },
+        undefined,
+        storagePaths,
+      );
+    }
+
+    return;
+  }
 
   if (candidate.reason === "media_asset_unreferenced" && candidate.assetId) {
     const asset = await readMediaAssetReference(candidate.assetId);
@@ -434,6 +516,11 @@ async function storagePathHasMediaReference(storagePath: string) {
   );
 }
 
+async function storagePathsHaveMediaReference(storagePaths: string[]) {
+  const checks = await Promise.all(storagePaths.map(storagePathHasMediaReference));
+  return checks.some(Boolean);
+}
+
 function toMediaAssetReference(row: MediaAssetReferenceRow): MediaAssetReference {
   return {
     createdAt: row.created_at,
@@ -458,6 +545,7 @@ async function writeCleanupLog(input: CleanupLogInput) {
     error_message: input.errorMessage ?? null,
     metadata: {
       assetId: input.assetId ?? null,
+      intentId: input.intentId ?? null,
       timestamp: input.timestamp,
     },
     reason: input.reason,

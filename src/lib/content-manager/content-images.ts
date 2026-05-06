@@ -1,6 +1,8 @@
 import { pickVariantSource } from "@/lib/media/media-variant-policy";
 import type { ContentEntry, ContentImage } from "./content-model";
 
+type ContentImageSource = Pick<ContentEntry, "images">;
+
 export function getContentCoverImage(entry: ContentEntry) {
   const image = entry.images.find((item) => item.isCover) ?? null;
   return image ? withContentImageVariant(image, "detail") : null;
@@ -12,7 +14,7 @@ export function getContentDetailImages(entry: ContentEntry) {
     .map((image) => withContentImageVariant(image, "detail"));
 }
 
-export function getContentListImage(entry: ContentEntry) {
+export function getContentListImage(entry: ContentImageSource) {
   const image =
     entry.images.find((item) => item.isListImage) ??
     entry.images.find((item) => item.isCover) ??

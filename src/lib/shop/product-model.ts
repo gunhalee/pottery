@@ -122,6 +122,26 @@ export type ConsepotProduct = ProductContent & {
   cafe24: Cafe24ProductMapping;
 };
 
+export type ProductListItem = Pick<
+  ProductContent,
+  | "category"
+  | "commerce"
+  | "createdAt"
+  | "id"
+  | "images"
+  | "isArchived"
+  | "isLimited"
+  | "kind"
+  | "limitedType"
+  | "published"
+  | "publishedAt"
+  | "restockCtaType"
+  | "shortDescription"
+  | "slug"
+  | "titleKo"
+  | "updatedAt"
+>;
+
 export type ProductCta = {
   kind: ProductCtaKind;
   label: string;

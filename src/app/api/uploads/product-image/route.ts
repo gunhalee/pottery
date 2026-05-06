@@ -6,14 +6,44 @@ import {
   buildMediaVariantSources,
   pickMediaVariantForSurface,
 } from "@/lib/media/media-variant-policy";
+import {
+  consumeRateLimit,
+  getClientIp,
+  rateLimitHeaders,
+} from "@/lib/security/rate-limit";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
 const maxUploadBytes = 8 * 1024 * 1024;
 const acceptedMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+const uploadRateLimit = {
+  limit: 30,
+  windowMs: 60_000,
+};
 
 export async function POST(request: Request) {
+  const rateLimit = await consumeRateLimit({
+    key: getClientIp(request.headers),
+    limit: uploadRateLimit.limit,
+    namespace: "admin-product-image-upload",
+    windowMs: uploadRateLimit.windowMs,
+  });
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        code: "RATE_LIMITED",
+        message: "이미지 업로드 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+        ok: false,
+      },
+      {
+        headers: rateLimitHeaders(rateLimit),
+        status: 429,
+      },
+    );
+  }
+
   const authenticated = await isAdminAuthenticated();
 
   if (!authenticated) {
@@ -124,6 +154,8 @@ export async function POST(request: Request) {
       alt: buildAltText(file.name, product.titleKo),
       buffer: Buffer.from(await file.arrayBuffer()),
       filename: file.name,
+      ownerId: product.id,
+      ownerType: "product",
     });
     const detailVariant = pickMediaVariantForSurface(asset, "detail");
     const variants = buildMediaVariantSources(asset);

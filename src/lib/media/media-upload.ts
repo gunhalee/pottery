@@ -10,7 +10,17 @@ import {
   getSupabaseAdminClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
-import type { MediaAsset } from "./media-model";
+import {
+  createStorageUploadIntent,
+  markStorageUploadIntentClaimed,
+  markStorageUploadIntentCleaned,
+  markStorageUploadIntentCleanupPending,
+  markStorageUploadIntentFailed,
+  markStorageUploadIntentUploaded,
+  markStorageUploadIntentUploading,
+  setStorageUploadIntentPaths,
+} from "@/lib/uploads/storage-upload-intent";
+import type { MediaAsset, MediaOwnerType } from "./media-model";
 
 export type UploadedVariant = {
   data: Buffer;
@@ -24,6 +34,8 @@ export type MediaImageUploadInput = {
   alt: string;
   buffer: Buffer;
   filename: string;
+  ownerId?: string;
+  ownerType?: MediaOwnerType;
 };
 
 let ensureMediaAssetBucketPromise: Promise<void> | null = null;
@@ -42,8 +54,20 @@ export async function uploadMediaImage(
   await ensureMediaAssetBucket();
 
   const uploadedPaths: string[] = [];
+  const uploadIntent = await createStorageUploadIntent({
+    assetId,
+    bucket: mediaAssetBucket,
+    metadata: {
+      filename: input.filename,
+      variantCount: variants.length,
+    },
+    ownerId: input.ownerId,
+    ownerType: input.ownerType,
+  });
 
   try {
+    await markStorageUploadIntentUploading(uploadIntent);
+
     for (const variant of variants) {
       const { error } = await supabase.storage
         .from(mediaAssetBucket)
@@ -58,7 +82,10 @@ export async function uploadMediaImage(
       }
 
       uploadedPaths.push(variant.storagePath);
+      await setStorageUploadIntentPaths(uploadIntent, uploadedPaths);
     }
+
+    await markStorageUploadIntentUploaded(uploadIntent, uploadedPaths);
 
     const master = variants.find((variant) => variant.variant === "master");
 
@@ -70,7 +97,7 @@ export async function uploadMediaImage(
       supabase.storage.from(mediaAssetBucket).getPublicUrl(storagePath).data
         .publicUrl;
 
-    return await createMediaAsset({
+    const asset = await createMediaAsset({
       alt: input.alt || buildAltText(input.filename),
       height: master.height,
       id: assetId,
@@ -87,9 +114,32 @@ export async function uploadMediaImage(
       })),
       width: master.width,
     });
+    await markStorageUploadIntentClaimed(uploadIntent, uploadedPaths);
+
+    return asset;
   } catch (error) {
     if (uploadedPaths.length > 0) {
-      await supabase.storage.from(mediaAssetBucket).remove(uploadedPaths);
+      const { error: cleanupError } = await supabase.storage
+        .from(mediaAssetBucket)
+        .remove(uploadedPaths);
+
+      if (cleanupError) {
+        await markStorageUploadIntentCleanupPending(
+          uploadIntent,
+          new Error(
+            `${getErrorMessage(error)}; storage cleanup failed: ${cleanupError.message}`,
+          ),
+          uploadedPaths,
+        );
+      } else {
+        await markStorageUploadIntentCleaned(
+          uploadIntent,
+          error,
+          uploadedPaths,
+        );
+      }
+    } else {
+      await markStorageUploadIntentFailed(uploadIntent, error);
     }
 
     throw error;
@@ -192,4 +242,8 @@ function buildAltText(filename: string) {
     filename.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim() ||
     "업로드 이미지"
   );
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Unknown media upload error.";
 }

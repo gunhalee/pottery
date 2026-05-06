@@ -2,10 +2,15 @@ import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-let client: SupabaseClient | null = null;
+let adminClient: SupabaseClient | null = null;
+let publicClient: SupabaseClient | null = null;
 
 export function isSupabaseConfigured() {
   return Boolean(getSupabaseUrl() && getSupabaseServiceRoleKey());
+}
+
+export function isSupabasePublicReadConfigured() {
+  return Boolean(getSupabaseUrl() && getSupabasePublishableKey());
 }
 
 export function getSupabaseAdminClient() {
@@ -15,8 +20,8 @@ export function getSupabaseAdminClient() {
     );
   }
 
-  if (!client) {
-    client = createClient(
+  if (!adminClient) {
+    adminClient = createClient(
       getSupabaseUrl()!,
       getSupabaseServiceRoleKey()!,
       {
@@ -28,7 +33,30 @@ export function getSupabaseAdminClient() {
     );
   }
 
-  return client;
+  return adminClient;
+}
+
+export function getSupabasePublicClient() {
+  if (!isSupabasePublicReadConfigured()) {
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY environment variables are required.",
+    );
+  }
+
+  if (!publicClient) {
+    publicClient = createClient(
+      getSupabaseUrl()!,
+      getSupabasePublishableKey()!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      },
+    );
+  }
+
+  return publicClient;
 }
 
 function getSupabaseUrl() {
@@ -39,5 +67,13 @@ function getSupabaseServiceRoleKey() {
   return (
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.NEXT_SECRET_SUPABASE_SERVICE_ROLE_KEY
+  );
+}
+
+function getSupabasePublishableKey() {
+  return (
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_ANON_KEY
   );
 }

@@ -1,14 +1,14 @@
 import { ArrowLink, Section, WorkGrid } from "@/components/site/primitives";
 import { ProductGrid } from "@/components/shop/product-grid";
 import type { WorkItem } from "@/lib/content/site-content";
-import type { ConsepotProduct } from "@/lib/shop";
+import type { ProductListItem } from "@/lib/shop";
 
 export function HomeRecentWorksSection({
   fallbackItems,
   products,
 }: {
   fallbackItems: WorkItem[];
-  products: ConsepotProduct[];
+  products: ProductListItem[];
 }) {
   const recentProducts = products.slice(0, 3);
 

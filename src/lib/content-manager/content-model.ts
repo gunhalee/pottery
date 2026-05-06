@@ -48,6 +48,8 @@ export type ContentEntry = {
   updatedAt: string;
 };
 
+export type ContentEntryListItem = Omit<ContentEntry, "body">;
+
 export type ContentEntryDraftInput = {
   kind: ContentKind;
   slug: string;

@@ -1,7 +1,7 @@
-import type { ConsepotProduct } from "@/lib/shop";
+import type { ProductListItem } from "@/lib/shop";
 import { ProductCard } from "./product-card";
 
-export function ProductGrid({ products }: { products: ConsepotProduct[] }) {
+export function ProductGrid({ products }: { products: ProductListItem[] }) {
   return (
     <div className="product-grid">
       {products.map((product) => (
@@ -10,4 +10,3 @@ export function ProductGrid({ products }: { products: ConsepotProduct[] }) {
     </div>
   );
 }
-

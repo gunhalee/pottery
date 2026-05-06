@@ -4,6 +4,7 @@ import type {
   ProductCta,
   ProductCtaKind,
   ProductImage,
+  ProductListItem,
 } from "./product-model";
 import { pickVariantSource } from "@/lib/media/media-variant-policy";
 
@@ -11,6 +12,13 @@ type ProductActionHref = {
   external: boolean;
   href: string | null;
 };
+
+type ProductImageSource = Pick<ProductListItem, "images">;
+type ProductBadgeSource = Pick<
+  ProductListItem,
+  "commerce" | "isLimited" | "kind"
+>;
+type ProductPriceSource = Pick<ProductListItem, "commerce">;
 
 export type ProductPurchaseKind =
   | "cafe24_cart"
@@ -40,6 +48,7 @@ export {
   getProductById,
   getProductBySlug,
   getProductSlugs,
+  getPublishedProductListItems,
   getPublishedProducts,
   normalizeSlug,
   productImageBucket,
@@ -55,7 +64,7 @@ export {
   type ProductUpdateInput,
 } from "./product-store";
 
-export function getProductPrimaryImage(product: ConsepotProduct) {
+export function getProductPrimaryImage(product: ProductImageSource) {
   const image =
     product.images.find((image) => image.isPrimary && image.src) ??
     product.images.find((image) => image.src) ??
@@ -66,7 +75,7 @@ export function getProductPrimaryImage(product: ConsepotProduct) {
   return image ? withProductImageVariant(image, "detail") : null;
 }
 
-export function getProductListImage(product: ConsepotProduct) {
+export function getProductListImage(product: ProductImageSource) {
   const image =
     product.images.find((image) => image.isListImage && image.src) ??
     product.images.find((image) => image.isListImage) ??
@@ -75,7 +84,7 @@ export function getProductListImage(product: ConsepotProduct) {
   return image ? withProductImageVariant(image, "list") : null;
 }
 
-export function getProductDisplayImages(product: ConsepotProduct) {
+export function getProductDisplayImages(product: ProductImageSource) {
   return product.images
     .filter(
       (image) =>
@@ -89,7 +98,7 @@ export function getProductThumbnailImage(image: ProductImage) {
   return withProductImageVariant(image, "thumbnail");
 }
 
-export function getProductBadges(product: ConsepotProduct) {
+export function getProductBadges(product: ProductBadgeSource) {
   const badges: ProductBadgeKind[] = [];
 
   badges.push(product.commerce.availabilityStatus);
@@ -344,7 +353,7 @@ export function getKakaoProductHref(product: ConsepotProduct) {
   return href.toString();
 }
 
-export function formatProductPrice(product: ConsepotProduct) {
+export function formatProductPrice(product: ProductPriceSource) {
   if (product.commerce.price === null) {
     return "가격 입력 예정";
   }
@@ -424,6 +433,7 @@ export type {
   ProductCtaKind,
   ProductImage,
   ProductKind,
+  ProductListItem,
   ProductSyncLog,
   ProductSyncLogStatus,
   RestockCtaType,

@@ -3,6 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
 import { z } from "zod";
 import { publicCacheTags } from "@/lib/cache/public-cache-tags";
@@ -14,12 +15,12 @@ import {
 import {
   deleteMediaUsagesForAsset,
   readMediaUsagesByOwner,
-  replaceMediaUsagesForOwner,
-  setMediaAssetReserved,
 } from "@/lib/media/media-store";
 import {
   getSupabaseAdminClient,
+  getSupabasePublicClient,
   isSupabaseConfigured,
+  isSupabasePublicReadConfigured,
 } from "@/lib/supabase/server";
 import {
   emptyRichTextBody,
@@ -29,6 +30,7 @@ import { walkLexicalNodes } from "./rich-text-utils";
 import type {
   ContentEntry,
   ContentEntryDraftInput,
+  ContentEntryListItem,
   ContentEntryUpdateInput,
   ContentImage,
   ContentImageLayout,
@@ -58,6 +60,7 @@ type ContentEntryQueryOptions = {
   id?: string;
   kind?: ContentKind;
   limit?: number;
+  relatedProductSlug?: string;
   slug?: string;
   status?: "draft" | "published";
 };
@@ -127,7 +130,9 @@ const entrySchema = z.object({
   updatedAt: z.string(),
 });
 
+const entryListItemSchema = entrySchema.omit({ body: true });
 const entryListSchema = z.array(entrySchema);
+const publishedEntryListSchema = z.array(entryListItemSchema);
 
 export function normalizeContentSlug(slug: string) {
   return slug
@@ -155,6 +160,17 @@ export async function getPublishedContentEntries(kind: ContentKind) {
     : readPublishedNewsEntriesCached();
 }
 
+export async function getPublishedContentListEntries(
+  kind: ContentKind,
+  options: { limit?: number; relatedProductSlug?: string } = {},
+) {
+  return readPublishedContentListEntriesCached(
+    kind,
+    options.relatedProductSlug ?? null,
+    options.limit ?? null,
+  );
+}
+
 export async function getContentEntryById(id: string) {
   if (isSupabaseConfigured()) {
     return readContentEntryByIdFromSupabase(id);
@@ -165,8 +181,7 @@ export async function getContentEntryById(id: string) {
 }
 
 export async function getContentEntryBySlug(kind: ContentKind, slug: string) {
-  const entries = await getPublishedContentEntries(kind);
-  return entries.find((entry) => entry.slug === slug) ?? null;
+  return readPublishedContentEntryBySlugCached(kind, slug);
 }
 
 export async function getContentEntryPreviewBySlug(
@@ -183,8 +198,7 @@ export async function getContentEntryPreviewBySlug(
 }
 
 export async function getPublishedContentSlugs(kind: ContentKind) {
-  const entries = await getPublishedContentEntries(kind);
-  return entries.map((entry) => entry.slug);
+  return readPublishedContentSlugsCached(kind);
 }
 
 export async function createContentDraft(input: ContentEntryDraftInput) {
@@ -238,7 +252,6 @@ export async function deleteContentEntry(id: string) {
   }
 
   if (isSupabaseConfigured()) {
-    await replaceMediaUsagesForOwner("content_entry", entry.id, []);
     return deleteEntryInSupabase(entry);
   }
 
@@ -296,7 +309,77 @@ const readPublishedNewsEntriesCached = unstable_cache(
   },
 );
 
+const readPublishedContentListEntriesCached = unstable_cache(
+  (
+    kind: ContentKind,
+    relatedProductSlug: string | null,
+    limit: number | null,
+  ) =>
+    readPublishedListEntries(kind, {
+      limit: limit ?? undefined,
+      relatedProductSlug: relatedProductSlug ?? undefined,
+    }),
+  ["published-content-list"],
+  {
+    revalidate: 3600,
+    tags: [publicCacheTags.content],
+  },
+);
+
+const readPublishedContentEntryBySlugCached = unstable_cache(
+  async (kind: ContentKind, slug: string) => {
+    if (isSupabasePublicReadConfigured()) {
+      const entries = await readEntriesFromSupabase(
+        { kind, limit: 1, slug, status: "published" },
+        getSupabasePublicClient(),
+      );
+      return entries[0] ?? null;
+    }
+
+    if (isSupabaseConfigured()) {
+      const entries = await readEntriesFromSupabase({
+        kind,
+        limit: 1,
+        slug,
+        status: "published",
+      });
+      return entries[0] ?? null;
+    }
+
+    const entries = await readEntriesFromJson();
+    return (
+      entries.find(
+        (entry) =>
+          entry.kind === kind &&
+          entry.slug === slug &&
+          entry.status === "published",
+      ) ?? null
+    );
+  },
+  ["published-content-entry-by-slug"],
+  {
+    revalidate: 3600,
+    tags: [publicCacheTags.content],
+  },
+);
+
+const readPublishedContentSlugsCached = unstable_cache(
+  (kind: ContentKind) => readPublishedContentSlugs(kind),
+  ["published-content-slugs"],
+  {
+    revalidate: 3600,
+    tags: [publicCacheTags.content],
+  },
+);
+
 async function readPublishedEntries(kind: ContentKind) {
+  if (isSupabasePublicReadConfigured()) {
+    return readEntriesFromSupabase(
+      { kind, status: "published" },
+      getSupabasePublicClient(),
+    );
+  }
+
   if (isSupabaseConfigured()) {
     return readEntriesFromSupabase({ kind, status: "published" });
   }
@@ -307,13 +390,70 @@ async function readPublishedEntries(kind: ContentKind) {
   );
 }
 
+async function readPublishedListEntries(
+  kind: ContentKind,
+  options: { limit?: number; relatedProductSlug?: string } = {},
+) {
+  const queryOptions: ContentEntryQueryOptions = {
+    kind,
+    limit: options.limit,
+    relatedProductSlug: options.relatedProductSlug,
+    status: "published",
+  };
+
+  if (isSupabasePublicReadConfigured()) {
+    return readEntryListItemsFromSupabase(
+      queryOptions,
+      getSupabasePublicClient(),
+    );
+  }
+
+  if (isSupabaseConfigured()) {
+    return readEntryListItemsFromSupabase(queryOptions);
+  }
+
+  const entries = await readEntriesFromJson();
+  const filtered = entries.filter(
+    (entry) =>
+      entry.kind === kind &&
+      entry.status === "published" &&
+      (!options.relatedProductSlug ||
+        entry.relatedProductSlug === options.relatedProductSlug),
+  );
+  const limited =
+    typeof options.limit === "number" ? filtered.slice(0, options.limit) : filtered;
+
+  return publishedEntryListSchema.parse(limited.map(toContentEntryListItem));
+}
+
+async function readPublishedContentSlugs(kind: ContentKind) {
+  if (isSupabasePublicReadConfigured()) {
+    return readPublishedContentSlugsFromSupabase(
+      kind,
+      getSupabasePublicClient(),
+    );
+  }
+
+  if (isSupabaseConfigured()) {
+    return readPublishedContentSlugsFromSupabase(kind);
+  }
+
+  const entries = await readEntriesFromJson();
+  return entries
+    .filter((entry) => entry.kind === kind && entry.status === "published")
+    .map((entry) => entry.slug);
+}
+
 async function readContentEntryByIdFromSupabase(id: string) {
   const entries = await readEntriesFromSupabase({ id, limit: 1 });
   return entries[0] ?? null;
 }
 
-async function readEntriesFromSupabase(options: ContentEntryQueryOptions = {}) {
-  const supabase = getSupabaseAdminClient();
+async function readEntriesFromSupabase(
+  options: ContentEntryQueryOptions = {},
+  client?: SupabaseClient,
+) {
+  const supabase = client ?? getSupabaseAdminClient();
   let query = supabase
     .from("content_entries")
     .select("*")
@@ -329,6 +469,10 @@ async function readEntriesFromSupabase(options: ContentEntryQueryOptions = {}) {
 
   if (options.slug) {
     query = query.eq("slug", options.slug);
+  }
+
+  if (options.relatedProductSlug) {
+    query = query.eq("related_product_slug", options.relatedProductSlug);
   }
 
   if (options.status) {
@@ -353,6 +497,7 @@ async function readEntriesFromSupabase(options: ContentEntryQueryOptions = {}) {
   const usageMap = await readMediaUsagesByOwner(
     "content_entry",
     rows.map((row) => row.id),
+    { client: supabase },
   );
 
   return entryListSchema.parse(
@@ -360,15 +505,130 @@ async function readEntriesFromSupabase(options: ContentEntryQueryOptions = {}) {
   );
 }
 
-async function createEntryInSupabase(entry: ContentEntry) {
-  const supabase = getSupabaseAdminClient();
-  const { error } = await supabase.from("content_entries").insert(
-    toSupabaseEntryRow(entry),
-  );
+async function readEntryListItemsFromSupabase(
+  options: ContentEntryQueryOptions = {},
+  client?: SupabaseClient,
+) {
+  const supabase = client ?? getSupabaseAdminClient();
+  let query = supabase
+    .from("content_entries")
+    .select(
+      `
+        id,
+        kind,
+        slug,
+        title,
+        summary,
+        body_text,
+        display_date,
+        related_product_slug,
+        status,
+        published_at,
+        created_at,
+        updated_at
+      `,
+    )
+    .order("created_at", { ascending: false });
+
+  if (options.id) {
+    query = query.eq("id", options.id);
+  }
+
+  if (options.kind) {
+    query = query.eq("kind", options.kind);
+  }
+
+  if (options.slug) {
+    query = query.eq("slug", options.slug);
+  }
+
+  if (options.relatedProductSlug) {
+    query = query.eq("related_product_slug", options.relatedProductSlug);
+  }
+
+  if (options.status) {
+    query = query.eq("status", options.status);
+  }
+
+  if (options.limit) {
+    query = query.limit(options.limit);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
-    throw new Error(`Supabase 콘텐츠 초안 생성 실패: ${error.message}`);
+    if (isMissingContentTableError(error)) {
+      const entries = await readEntriesFromJson();
+      return publishedEntryListSchema.parse(
+        entries
+          .filter((entry) => {
+            if (options.kind && entry.kind !== options.kind) {
+              return false;
+            }
+
+            if (options.status && entry.status !== options.status) {
+              return false;
+            }
+
+            return !(
+              options.relatedProductSlug &&
+              entry.relatedProductSlug !== options.relatedProductSlug
+            );
+          })
+          .slice(0, options.limit)
+          .map(toContentEntryListItem),
+      );
+    }
+
+    throw new Error(`Supabase 콘텐츠 목록 조회 실패: ${error.message}`);
   }
+
+  const rows = (data ?? []) as Omit<ContentEntryRow, "body_json">[];
+  const usageMap = await readMediaUsagesByOwner(
+    "content_entry",
+    rows.map((row) => row.id),
+    { client: supabase, roles: ["cover", "detail", "list"] },
+  );
+
+  return publishedEntryListSchema.parse(
+    rows.map((row) =>
+      fromSupabaseEntryListRow(row, usageMap.get(row.id) ?? []),
+    ),
+  );
+}
+
+async function readPublishedContentSlugsFromSupabase(
+  kind: ContentKind,
+  client?: SupabaseClient,
+) {
+  const supabase = client ?? getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("content_entries")
+    .select("slug")
+    .eq("kind", kind)
+    .eq("status", "published")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    if (isMissingContentTableError(error)) {
+      const entries = await readEntriesFromJson();
+      return entries
+        .filter((entry) => entry.kind === kind && entry.status === "published")
+        .map((entry) => entry.slug);
+    }
+
+    throw new Error(`Supabase 콘텐츠 slug 조회 실패: ${error.message}`);
+  }
+
+  return ((data ?? []) as Array<{ slug: string }>).map((row) => row.slug);
+}
+
+async function createEntryInSupabase(entry: ContentEntry) {
+  await saveContentEntryWithRelationsInSupabase(
+    entry,
+    entry.images,
+    entry.body,
+  );
 
   return (await getContentEntryById(entry.id)) ?? entry;
 }
@@ -389,34 +649,16 @@ async function updateEntryInSupabase(
     images,
   });
   await assertUniqueContentSlug(entry.kind, entry.slug, id);
-  const supabase = getSupabaseAdminClient();
-  const { error } = await supabase
-    .from("content_entries")
-    .update(toSupabaseEntryRow(entry))
-    .eq("id", id);
+  await saveContentEntryWithRelationsInSupabase(entry, images, entry.body);
 
-  if (error) {
-    throw new Error(`Supabase 콘텐츠 저장 실패: ${error.message}`);
-  }
-
-  await updateImagesInSupabase(id, images, entry.body);
   return (await getContentEntryById(id)) ?? entry;
-}
-
-async function updateImagesInSupabase(
-  entryId: string,
-  images: ContentImageUpdateInput[],
-  body: unknown,
-) {
-  await syncContentMediaUsages(entryId, images, body);
 }
 
 async function deleteEntryInSupabase(entry: ContentEntry) {
   const supabase = getSupabaseAdminClient();
-  const { error } = await supabase
-    .from("content_entries")
-    .delete()
-    .eq("id", entry.id);
+  const { error } = await supabase.rpc("delete_content_entry_with_relations", {
+    target_entry_id: entry.id,
+  });
 
   if (error) {
     throw new Error(`Supabase 콘텐츠 삭제 실패: ${error.message}`);
@@ -536,6 +778,23 @@ async function writeJsonEntries(entries: ContentEntry[]) {
   await writeFile(dataFilePath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
 }
 
+async function saveContentEntryWithRelationsInSupabase(
+  entry: ContentEntry,
+  images: ContentImageUpdateInput[],
+  body: unknown,
+) {
+  const supabase = getSupabaseAdminClient();
+  const { error } = await supabase.rpc("save_content_entry_with_relations", {
+    entry_row: toSupabaseEntryRow(entry),
+    media_usage_rows: toSupabaseContentMediaUsageRows(images, body),
+    reserved_asset_rows: toSupabaseContentReservedAssetRows(images),
+  });
+
+  if (error) {
+    throw new Error(`Supabase 콘텐츠 관계 저장 실패: ${error.message}`);
+  }
+}
+
 function buildUpdatedEntry(
   current: ContentEntry,
   input: ContentEntryUpdateInput,
@@ -630,8 +889,7 @@ function mergeImageUpdates(
   });
 }
 
-async function syncContentMediaUsages(
-  entryId: string,
+function toSupabaseContentMediaUsageRows(
   images: ContentImageUpdateInput[],
   body: unknown,
 ) {
@@ -641,7 +899,7 @@ async function syncContentMediaUsages(
       .map((node) => node.id)
       .filter((id): id is string => typeof id === "string"),
   );
-  const usages = images.flatMap((image, index) => {
+  return images.flatMap((image, index) => {
     if (image.isReserved) {
       return [];
     }
@@ -656,19 +914,21 @@ async function syncContentMediaUsages(
     );
 
     return roles.map((role) => ({
-      altOverride: image.alt,
-      assetId: image.id,
-      captionOverride: image.caption,
+      alt_override: image.alt,
+      asset_id: image.id,
+      caption_override: image.caption ?? null,
       layout: image.layout,
       role,
-      sortOrder: index,
+      sort_order: index,
     }));
   });
+}
 
-  await Promise.all(
-    images.map((image) => setMediaAssetReserved(image.id, image.isReserved)),
-  );
-  await replaceMediaUsagesForOwner("content_entry", entryId, usages);
+function toSupabaseContentReservedAssetRows(images: ContentImageUpdateInput[]) {
+  return images.map((image) => ({
+    asset_id: image.id,
+    reserved: image.isReserved,
+  }));
 }
 
 function mediaUsagesToContentImages(usages: MediaUsage[]) {
@@ -751,6 +1011,45 @@ function fromSupabaseEntryRow(
     summary: row.summary,
     title: row.title,
     updatedAt: row.updated_at,
+  });
+}
+
+function fromSupabaseEntryListRow(
+  row: Omit<ContentEntryRow, "body_json">,
+  usages: MediaUsage[],
+): ContentEntryListItem {
+  return entryListItemSchema.parse({
+    bodyText: row.body_text,
+    createdAt: row.created_at,
+    displayDate: row.display_date ?? undefined,
+    id: row.id,
+    images: mediaUsagesToContentImages(usages),
+    kind: row.kind,
+    publishedAt: row.published_at,
+    relatedProductSlug: row.related_product_slug,
+    slug: row.slug,
+    status: row.status,
+    summary: row.summary,
+    title: row.title,
+    updatedAt: row.updated_at,
+  });
+}
+
+function toContentEntryListItem(entry: ContentEntry): ContentEntryListItem {
+  return entryListItemSchema.parse({
+    bodyText: entry.bodyText,
+    createdAt: entry.createdAt,
+    displayDate: entry.displayDate,
+    id: entry.id,
+    images: entry.images,
+    kind: entry.kind,
+    publishedAt: entry.publishedAt,
+    relatedProductSlug: entry.relatedProductSlug,
+    slug: entry.slug,
+    status: entry.status,
+    summary: entry.summary,
+    title: entry.title,
+    updatedAt: entry.updatedAt,
   });
 }
 

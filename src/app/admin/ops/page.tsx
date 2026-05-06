@@ -24,8 +24,8 @@ export default async function AdminOpsPage() {
           <p className="admin-eyebrow">Consepot Admin</p>
           <h1>운영 점검</h1>
           <p>
-            업로드 cleanup, 미디어 참조, 상품-콘텐츠 연결 상태를 한 곳에서
-            확인합니다.
+            업로드 cleanup, 미디어 참조, Cafe24 동기화, 상품-콘텐츠 연결 상태를
+            한 곳에서 확인합니다.
           </p>
         </div>
         <AdminNav />
@@ -45,15 +45,128 @@ export default async function AdminOpsPage() {
           value={dashboard.stats.bodyUnlinkedImages}
         />
         <StatCard
-          label="cleanup 실패 로그"
+          label="cleanup 실패"
           tone={dashboard.stats.cleanupFailures > 0 ? "danger" : "neutral"}
           value={dashboard.stats.cleanupFailures}
         />
         <StatCard
-          label="미디어 진단 이슈"
+          label="Cafe24 실패"
+          tone={dashboard.stats.cafe24SyncFailures > 0 ? "danger" : "neutral"}
+          value={dashboard.stats.cafe24SyncFailures}
+        />
+        <StatCard
+          label="Cron 실패"
+          tone={dashboard.stats.cronFailures > 0 ? "danger" : "neutral"}
+          value={dashboard.stats.cronFailures}
+        />
+        <StatCard
+          label="Rate limit 차단"
+          tone={dashboard.stats.rateLimitBlocked > 0 ? "warning" : "neutral"}
+          value={dashboard.stats.rateLimitBlocked}
+        />
+        <StatCard
+          label="미디어 이슈"
           tone={dashboard.stats.mediaVariantIssues > 0 ? "warning" : "neutral"}
           value={dashboard.stats.mediaVariantIssues}
         />
+      </section>
+
+      <section className="admin-panel">
+        <div className="admin-panel-head">
+          <h2>운영 상태</h2>
+          <span>최근 24시간 실패 기준</span>
+        </div>
+        <div className="admin-ops-table">
+          {dashboard.healthItems.map((item) => (
+            <article
+              className={`admin-ops-row admin-ops-row-${item.status}`}
+              key={item.label}
+            >
+              <div>
+                <strong>{item.label}</strong>
+                {item.href ? (
+                  <Link href={item.href} prefetch={false}>
+                    관련 화면 열기
+                  </Link>
+                ) : null}
+              </div>
+              <span>{healthStatusLabel(item.status)}</span>
+              <p>{item.detail}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="admin-panel">
+        <div className="admin-panel-head">
+          <h2>Rate limit 버킷</h2>
+          <span>최근 {dashboard.rateLimitBuckets.length}개</span>
+        </div>
+        {dashboard.rateLimitBuckets.length > 0 ? (
+          <div className="admin-ops-table">
+            {dashboard.rateLimitBuckets.map((bucket) => (
+              <article
+                className={`admin-ops-row ${
+                  bucket.blocked > 0 ? "admin-ops-row-warning" : ""
+                }`}
+                key={`${bucket.namespace}:${bucket.keyHash}:${bucket.windowStart}`}
+              >
+                <div>
+                  <strong>{bucket.namespace}</strong>
+                  <span>{formatRateLimitWindow(bucket.windowSeconds)}</span>
+                </div>
+                <code>{bucket.keyHash.slice(0, 12)}</code>
+                <span>
+                  {bucket.count}/{bucket.limit}
+                </span>
+                <span>
+                  {bucket.blocked > 0
+                    ? `${bucket.blocked}건 차단`
+                    : `${bucket.remaining}건 남음`}
+                </span>
+                <time dateTime={bucket.updatedAt}>
+                  {formatDateTime(bucket.updatedAt)}
+                </time>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="admin-empty-text">아직 rate limit 기록이 없습니다.</p>
+        )}
+      </section>
+
+      <section className="admin-panel">
+        <div className="admin-panel-head">
+          <h2>Cron 실행 로그</h2>
+          <span>최근 {dashboard.cronRunLogs.length}건</span>
+        </div>
+        {dashboard.cronRunLogs.length > 0 ? (
+          <div className="admin-ops-table">
+            {dashboard.cronRunLogs.map((log) => (
+              <article
+                className={`admin-ops-row ${
+                  log.status === "failed"
+                    ? "admin-ops-row-danger"
+                    : log.status === "running"
+                      ? "admin-ops-row-warning"
+                      : ""
+                }`}
+                key={log.id}
+              >
+                <div>
+                  <strong>{cronJobLabel(log.jobName)}</strong>
+                  <span>{log.triggerSource}</span>
+                </div>
+                <span>{cronStatusLabel(log.status)}</span>
+                <span>{formatDuration(log.durationMs)}</span>
+                <time dateTime={log.startedAt}>{formatDateTime(log.startedAt)}</time>
+                {log.errorMessage ? <p>{log.errorMessage}</p> : null}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="admin-empty-text">아직 cron 실행 로그가 없습니다.</p>
+        )}
       </section>
 
       <section className="admin-panel">
@@ -67,7 +180,7 @@ export default async function AdminOpsPage() {
           <article
             className={`admin-ops-row ${
               dashboard.mediaDiagnostics.stats.errorAssets > 0
-                ? "admin-ops-row-warning"
+                ? "admin-ops-row-danger"
                 : ""
             }`}
           >
@@ -108,13 +221,50 @@ export default async function AdminOpsPage() {
 
       <section className="admin-panel">
         <div className="admin-panel-head">
-          <h2>실삭제 cleanup 로그</h2>
+          <h2>Cafe24 동기화 로그</h2>
+          <span>최근 {dashboard.cafe24SyncLogs.length}건</span>
+        </div>
+        {dashboard.cafe24SyncLogs.length > 0 ? (
+          <div className="admin-ops-table">
+            {dashboard.cafe24SyncLogs.map((log) => (
+              <article
+                className={`admin-ops-row ${
+                  log.status === "failed" ? "admin-ops-row-danger" : ""
+                }`}
+                key={log.id}
+              >
+                <div>
+                  <strong>{log.productTitle}</strong>
+                  <Link href={log.productHref} prefetch={false}>
+                    {log.productSlug ?? log.productId}
+                  </Link>
+                </div>
+                <span>{syncActionLabel(log.action)}</span>
+                <span>{syncStatusLabel(log.status)}</span>
+                <time dateTime={log.createdAt}>{formatDateTime(log.createdAt)}</time>
+                {log.message ? <p>{log.message}</p> : null}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="admin-empty-text">아직 Cafe24 동기화 로그가 없습니다.</p>
+        )}
+      </section>
+
+      <section className="admin-panel">
+        <div className="admin-panel-head">
+          <h2>업로드 cleanup 로그</h2>
           <span>최근 {dashboard.cleanupLogs.length}건</span>
         </div>
         {dashboard.cleanupLogs.length > 0 ? (
           <div className="admin-ops-table">
             {dashboard.cleanupLogs.map((log) => (
-              <article className="admin-ops-row" key={log.id}>
+              <article
+                className={`admin-ops-row ${
+                  log.success ? "" : "admin-ops-row-danger"
+                }`}
+                key={log.id}
+              >
                 <div>
                   <strong>{log.reason}</strong>
                   <span>{log.bucket}</span>
@@ -248,6 +398,69 @@ function mediaStatusLabel(status: "attached" | "body-unlinked" | "referenced") {
     "body-unlinked": "본문 미연결",
     referenced: "참조 중",
   }[status];
+}
+
+function healthStatusLabel(status: "danger" | "neutral" | "warning") {
+  return {
+    danger: "확인 필요",
+    neutral: "정상",
+    warning: "주의",
+  }[status];
+}
+
+function cronJobLabel(jobName: "cafe24_inventory" | "upload_cleanup") {
+  return {
+    cafe24_inventory: "Cafe24 재고 동기화",
+    upload_cleanup: "업로드 cleanup",
+  }[jobName];
+}
+
+function cronStatusLabel(status: "failed" | "running" | "success") {
+  return {
+    failed: "실패",
+    running: "실행 중",
+    success: "성공",
+  }[status];
+}
+
+function syncActionLabel(action: "manual_mapping" | "preview" | "sync") {
+  return {
+    manual_mapping: "수동 매핑",
+    preview: "미리보기",
+    sync: "동기화",
+  }[action];
+}
+
+function syncStatusLabel(status: "failed" | "preview" | "success") {
+  return {
+    failed: "실패",
+    preview: "미리보기",
+    success: "성공",
+  }[status];
+}
+
+function formatDuration(value: number | null) {
+  if (value === null) {
+    return "-";
+  }
+
+  if (value < 1000) {
+    return `${value}ms`;
+  }
+
+  return `${(value / 1000).toFixed(1)}s`;
+}
+
+function formatRateLimitWindow(seconds: number) {
+  if (seconds < 60) {
+    return `${seconds}초`;
+  }
+
+  if (seconds < 60 * 60) {
+    return `${Math.round(seconds / 60)}분`;
+  }
+
+  return `${Math.round(seconds / 3600)}시간`;
 }
 
 function formatDateTime(value: string) {

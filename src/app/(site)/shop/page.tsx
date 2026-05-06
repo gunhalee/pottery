@@ -7,18 +7,13 @@ import { ProductGrid } from "@/components/shop/product-grid";
 import {
   CartReturnNotice,
   RecentProductsPanel,
-  type RecentProductSummary,
 } from "@/components/shop/recent-products";
-import {
-  formatProductPrice,
-  getProductListImage,
-  getPublishedProducts,
-  type ConsepotProduct,
-} from "@/lib/shop";
+import { getPublishedProductListItems } from "@/lib/shop";
+import { toProductListSummary } from "@/lib/shop/product-list-view";
 
 export default async function ShopPage() {
-  const products = await getPublishedProducts();
-  const recentProductSummaries = products.map(toRecentProductSummary);
+  const products = await getPublishedProductListItems();
+  const recentProductSummaries = products.map(toProductListSummary);
 
   return (
     <>
@@ -43,19 +38,4 @@ export default async function ShopPage() {
       />
     </>
   );
-}
-
-function toRecentProductSummary(
-  product: ConsepotProduct,
-): RecentProductSummary {
-  const image = getProductListImage(product);
-
-  return {
-    href: `/shop/${product.slug}`,
-    imageAlt: image?.alt ?? product.titleKo,
-    imageSrc: image?.src ?? null,
-    price: formatProductPrice(product),
-    slug: product.slug,
-    title: product.titleKo,
-  };
 }

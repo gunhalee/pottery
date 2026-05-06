@@ -1,15 +1,16 @@
 import { ArtworkImage } from "@/components/media/artwork-image";
 import { SiteLink } from "@/components/navigation/site-link";
 import { PlaceholderFrame } from "@/components/site/primitives";
+import { mediaImageSizes } from "@/lib/media/media-image-sizes";
 import {
   formatProductPrice,
   getProductBadges,
   getProductListImage,
-  type ConsepotProduct,
+  type ProductListItem,
 } from "@/lib/shop";
 import { ProductBadge } from "./product-badge";
 
-export function ProductCard({ product }: { product: ConsepotProduct }) {
+export function ProductCard({ product }: { product: ProductListItem }) {
   const primaryImage = getProductListImage(product);
 
   return (
@@ -25,7 +26,7 @@ export function ProductCard({ product }: { product: ConsepotProduct }) {
             className="product-card-image"
             fill
             loading="lazy"
-            sizes="(max-width: 760px) 50vw, (max-width: 1100px) 33vw, 384px"
+            sizes={mediaImageSizes.productCard}
             src={primaryImage.src}
           />
         ) : (

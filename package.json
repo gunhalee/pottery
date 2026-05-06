@@ -9,6 +9,7 @@
     "lint": "eslint",
     "media:migrate": "node scripts/migrate-media-assets.mjs",
     "media:migrate:apply": "node scripts/migrate-media-assets.mjs --apply",
+    "smoke:supabase": "node scripts/smoke-supabase-rpc.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

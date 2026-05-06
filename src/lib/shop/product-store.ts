@@ -3,6 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
 import { z } from "zod";
 import { publicCacheTags } from "@/lib/cache/public-cache-tags";
@@ -15,9 +16,13 @@ import {
   deleteUnusedMediaAssetsByMasterPaths,
   mediaAssetBucket,
   readMediaUsagesByOwner,
-  replaceMediaUsagesForOwner,
 } from "@/lib/media/media-store";
-import { getSupabaseAdminClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import {
+  getSupabaseAdminClient,
+  getSupabasePublicClient,
+  isSupabaseConfigured,
+  isSupabasePublicReadConfigured,
+} from "@/lib/supabase/server";
 import { cafe24ProductMap } from "./cafe24-product-map";
 import { productCatalog } from "./product-catalog";
 import type {
@@ -26,6 +31,7 @@ import type {
   ConsepotProduct,
   LimitedType,
   ProductImage,
+  ProductListItem,
   ProductSyncLog,
   ProductKind,
   RestockCtaType,
@@ -73,6 +79,28 @@ type ProductRow = {
   created_at: string;
   updated_at: string;
 };
+
+type ProductListRow = Pick<
+  ProductRow,
+  | "availability_status"
+  | "category"
+  | "created_at"
+  | "currency"
+  | "id"
+  | "is_archived"
+  | "is_limited"
+  | "kind"
+  | "limited_type"
+  | "price_krw"
+  | "published"
+  | "published_at"
+  | "restock_cta_type"
+  | "short_description"
+  | "slug"
+  | "stock_quantity"
+  | "title_ko"
+  | "updated_at"
+>;
 
 type Cafe24MappingRow = {
   category_no: number | null;
@@ -200,7 +228,27 @@ const productSchema = z.object({
   usageNote: z.string().optional(),
 });
 
+const productListItemSchema = productSchema.pick({
+  category: true,
+  commerce: true,
+  createdAt: true,
+  id: true,
+  images: true,
+  isArchived: true,
+  isLimited: true,
+  kind: true,
+  limitedType: true,
+  published: true,
+  publishedAt: true,
+  restockCtaType: true,
+  shortDescription: true,
+  slug: true,
+  titleKo: true,
+  updatedAt: true,
+});
+
 const productListSchema = z.array(productSchema);
+const productListItemListSchema = z.array(productListItemSchema);
 
 export type ProductDraftInput = {
   slug: string;
@@ -268,9 +316,12 @@ export async function getPublishedProducts() {
   return readPublishedProductsCached();
 }
 
+export async function getPublishedProductListItems(limit?: number) {
+  return readPublishedProductListItemsCached(limit ?? null);
+}
+
 export async function getProductBySlug(slug: string) {
-  const products = await getPublishedProducts();
-  return products.find((product) => product.slug === slug) ?? null;
+  return readPublishedProductBySlugCached(slug);
 }
 
 export async function getProductById(id: string) {
@@ -283,8 +334,7 @@ export async function getProductById(id: string) {
 }
 
 export async function getProductSlugs() {
-  const products = await getPublishedProducts();
-  return products.map((product) => product.slug);
+  return readPublishedProductSlugsCached();
 }
 
 export async function createProductDraft(input: ProductDraftInput) {
@@ -412,6 +462,13 @@ async function readProductsFromSupabase() {
 
 const readPublishedProductsCached = unstable_cache(
   async () => {
+    if (isSupabasePublicReadConfigured()) {
+      return readProductsFromSupabaseQuery(
+        { published: true },
+        getSupabasePublicClient(),
+      );
+    }
+
     if (isSupabaseConfigured()) {
       return readProductsFromSupabaseQuery({ published: true });
     }
@@ -426,13 +483,100 @@ const readPublishedProductsCached = unstable_cache(
   },
 );
 
+const readPublishedProductListItemsCached = unstable_cache(
+  async (limit: number | null) => {
+    if (isSupabasePublicReadConfigured()) {
+      return readProductListItemsFromSupabaseQuery(
+        { limit: limit ?? undefined, published: true },
+        getSupabasePublicClient(),
+      );
+    }
+
+    if (isSupabaseConfigured()) {
+      return readProductListItemsFromSupabaseQuery({
+        limit: limit ?? undefined,
+        published: true,
+      });
+    }
+
+    const products = await readProductsFromJson();
+    const items = productListItemListSchema.parse(
+      products.filter((product) => product.published).map(toProductListItem),
+    );
+
+    return typeof limit === "number" ? items.slice(0, limit) : items;
+  },
+  ["published-product-list-items"],
+  {
+    revalidate: 3600,
+    tags: [publicCacheTags.products],
+  },
+);
+
+const readPublishedProductBySlugCached = unstable_cache(
+  async (slug: string) => {
+    if (isSupabasePublicReadConfigured()) {
+      const products = await readProductsFromSupabaseQuery(
+        { limit: 1, published: true, slug },
+        getSupabasePublicClient(),
+      );
+      return products[0] ?? null;
+    }
+
+    if (isSupabaseConfigured()) {
+      const products = await readProductsFromSupabaseQuery({
+        limit: 1,
+        published: true,
+        slug,
+      });
+      return products[0] ?? null;
+    }
+
+    const products = await readProductsFromJson();
+    return (
+      products.find((product) => product.published && product.slug === slug) ??
+      null
+    );
+  },
+  ["published-product-by-slug"],
+  {
+    revalidate: 3600,
+    tags: [publicCacheTags.products],
+  },
+);
+
+const readPublishedProductSlugsCached = unstable_cache(
+  async () => {
+    if (isSupabasePublicReadConfigured()) {
+      return readPublishedProductSlugsFromSupabase(getSupabasePublicClient());
+    }
+
+    if (isSupabaseConfigured()) {
+      return readPublishedProductSlugsFromSupabase();
+    }
+
+    const products = await readProductsFromJson();
+    return products
+      .filter((product) => product.published)
+      .map((product) => product.slug);
+  },
+  ["published-product-slugs"],
+  {
+    revalidate: 3600,
+    tags: [publicCacheTags.products],
+  },
+);
+
 async function readProductByIdFromSupabase(id: string) {
   const products = await readProductsFromSupabaseQuery({ id, limit: 1 });
   return products[0] ?? null;
 }
 
-async function readProductsFromSupabaseQuery(options: ProductQueryOptions = {}) {
-  const supabase = getSupabaseAdminClient();
+async function readProductsFromSupabaseQuery(
+  options: ProductQueryOptions = {},
+  client?: SupabaseClient,
+) {
+  const supabase = client ?? getSupabaseAdminClient();
   let query = supabase
     .from("shop_products")
     .select(
@@ -469,11 +613,94 @@ async function readProductsFromSupabaseQuery(options: ProductQueryOptions = {}) 
   const usageMap = await readMediaUsagesByOwner(
     "product",
     rows.map((row) => row.id),
+    { client: supabase },
   );
 
   return productListSchema.parse(
     rows.map((row) => fromSupabaseRow(row, usageMap.get(row.id) ?? [])),
   );
+}
+
+async function readProductListItemsFromSupabaseQuery(
+  options: ProductQueryOptions = {},
+  client?: SupabaseClient,
+) {
+  const supabase = client ?? getSupabaseAdminClient();
+  let query = supabase
+    .from("shop_products")
+    .select(
+      `
+        id,
+        slug,
+        title_ko,
+        short_description,
+        category,
+        kind,
+        is_limited,
+        limited_type,
+        is_archived,
+        restock_cta_type,
+        availability_status,
+        price_krw,
+        stock_quantity,
+        currency,
+        published,
+        published_at,
+        created_at,
+        updated_at
+      `,
+    )
+    .order("created_at", { ascending: false });
+
+  if (options.id) {
+    query = query.eq("id", options.id);
+  }
+
+  if (options.slug) {
+    query = query.eq("slug", options.slug);
+  }
+
+  if (typeof options.published === "boolean") {
+    query = query.eq("published", options.published);
+  }
+
+  if (options.limit) {
+    query = query.limit(options.limit);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(`Supabase 상품 목록 조회 실패: ${error.message}`);
+  }
+
+  const rows = (data ?? []) as ProductListRow[];
+  const usageMap = await readMediaUsagesByOwner(
+    "product",
+    rows.map((row) => row.id),
+    { client: supabase, roles: ["cover", "detail", "list"] },
+  );
+
+  return productListItemListSchema.parse(
+    rows.map((row) =>
+      fromSupabaseProductListRow(row, usageMap.get(row.id) ?? []),
+    ),
+  );
+}
+
+async function readPublishedProductSlugsFromSupabase(client?: SupabaseClient) {
+  const supabase = client ?? getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("shop_products")
+    .select("slug")
+    .eq("published", true)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`Supabase 상품 slug 조회 실패: ${error.message}`);
+  }
+
+  return ((data ?? []) as Array<{ slug: string }>).map((row) => row.slug);
 }
 
 async function writeProductsToSupabase(products: ConsepotProduct[]) {
@@ -613,10 +840,10 @@ async function deleteProductInSupabase(id: string) {
     throw new Error("?곹뭹??李얠쓣 ???놁뒿?덈떎.");
   }
 
-  await replaceMediaUsagesForOwner("product", current.id, []);
-
   const supabase = getSupabaseAdminClient();
-  const { error } = await supabase.from("shop_products").delete().eq("id", id);
+  const { error } = await supabase.rpc("delete_shop_product_with_relations", {
+    target_product_id: id,
+  });
 
   if (error) {
     throw new Error(`Supabase ?곹뭹 ??젣 ?ㅽ뙣: ${error.message}`);
@@ -921,6 +1148,57 @@ function fromSupabaseRow(
     titleKo: row.title_ko,
     updatedAt: row.updated_at,
     usageNote: row.usage_note ?? undefined,
+  });
+}
+
+function fromSupabaseProductListRow(
+  row: ProductListRow,
+  usages: MediaUsage[],
+): ProductListItem {
+  return productListItemSchema.parse({
+    category: row.category,
+    commerce: {
+      availabilityStatus: row.availability_status,
+      currency: row.currency,
+      price: row.price_krw,
+      source: "cafe24",
+      stockQuantity: row.stock_quantity,
+    },
+    createdAt: row.created_at,
+    id: row.id,
+    images: mediaUsagesToProductImages(usages),
+    isArchived: row.is_archived,
+    isLimited: row.is_limited,
+    kind: row.kind,
+    limitedType: row.limited_type,
+    published: row.published,
+    publishedAt: row.published_at ?? undefined,
+    restockCtaType: row.restock_cta_type,
+    shortDescription: row.short_description,
+    slug: row.slug,
+    titleKo: row.title_ko,
+    updatedAt: row.updated_at,
+  });
+}
+
+function toProductListItem(product: ConsepotProduct): ProductListItem {
+  return productListItemSchema.parse({
+    category: product.category,
+    commerce: product.commerce,
+    createdAt: product.createdAt,
+    id: product.id,
+    images: product.images,
+    isArchived: product.isArchived,
+    isLimited: product.isLimited,
+    kind: product.kind,
+    limitedType: product.limitedType,
+    published: product.published,
+    publishedAt: product.publishedAt,
+    restockCtaType: product.restockCtaType,
+    shortDescription: product.shortDescription,
+    slug: product.slug,
+    titleKo: product.titleKo,
+    updatedAt: product.updatedAt,
   });
 }
 
