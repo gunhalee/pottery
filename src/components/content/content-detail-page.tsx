@@ -1,8 +1,11 @@
-/* eslint-disable @next/next/no-img-element */
-
 import Link from "next/link";
+import { ArtworkImage } from "@/components/media/artwork-image";
 import { MetaLabel, PageShell } from "@/components/site/primitives";
 import { RichTextRenderer } from "@/components/content/rich-text-renderer";
+import {
+  getContentCoverImage,
+  getContentDetailImages,
+} from "@/lib/content-manager/content-images";
 import type { ContentEntry } from "@/lib/content-manager/content-model";
 
 type ContentDetailPageProps = {
@@ -20,8 +23,8 @@ export function ContentDetailPage({
   preview = false,
   relatedProduct,
 }: ContentDetailPageProps) {
-  const coverImage = entry.images.find((image) => image.isCover) ?? null;
-  const detailImages = entry.images.filter((image) => image.isDetail);
+  const coverImage = getContentCoverImage(entry);
+  const detailImages = getContentDetailImages(entry);
   const reservedImageIds = entry.images
     .filter((image) => image.isReserved)
     .map((image) => image.id);
@@ -35,11 +38,13 @@ export function ContentDetailPage({
       <article className="content-detail">
         {coverImage ? (
           <figure className="content-detail-cover">
-            <img
+            <ArtworkImage
               alt={coverImage.alt}
-              decoding="async"
               height={coverImage.height}
               loading="eager"
+              preload
+              quality={75}
+              sizes="(max-width: 900px) 100vw, 1180px"
               src={coverImage.src}
               width={coverImage.width}
             />
@@ -63,11 +68,11 @@ export function ContentDetailPage({
           <div className="content-detail-image-strip">
             {detailImages.map((image) => (
               <figure key={image.id}>
-                <img
+                <ArtworkImage
                   alt={image.alt}
-                  decoding="async"
                   height={image.height}
                   loading="lazy"
+                  sizes="(max-width: 760px) 100vw, 50vw"
                   src={image.src}
                   width={image.width}
                 />

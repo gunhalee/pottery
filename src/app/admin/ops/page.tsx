@@ -49,6 +49,61 @@ export default async function AdminOpsPage() {
           tone={dashboard.stats.cleanupFailures > 0 ? "danger" : "neutral"}
           value={dashboard.stats.cleanupFailures}
         />
+        <StatCard
+          label="미디어 진단 이슈"
+          tone={dashboard.stats.mediaVariantIssues > 0 ? "warning" : "neutral"}
+          value={dashboard.stats.mediaVariantIssues}
+        />
+      </section>
+
+      <section className="admin-panel">
+        <div className="admin-panel-head">
+          <h2>미디어 진단 요약</h2>
+          <Link className="admin-text-button" href="/admin/media" prefetch={false}>
+            미디어에서 보기
+          </Link>
+        </div>
+        <div className="admin-ops-table">
+          <article
+            className={`admin-ops-row ${
+              dashboard.mediaDiagnostics.stats.errorAssets > 0
+                ? "admin-ops-row-warning"
+                : ""
+            }`}
+          >
+            <div>
+              <strong>variant 오류 asset</strong>
+              <span>master/detail/list/thumbnail 구성 확인</span>
+            </div>
+            <span>{dashboard.mediaDiagnostics.stats.errorAssets}</span>
+          </article>
+          <article
+            className={`admin-ops-row ${
+              dashboard.mediaDiagnostics.stats.fallbackUsages > 0
+                ? "admin-ops-row-warning"
+                : ""
+            }`}
+          >
+            <div>
+              <strong>fallback usage</strong>
+              <span>역할에 맞는 variant 대신 대체 이미지를 쓰는 참조</span>
+            </div>
+            <span>{dashboard.mediaDiagnostics.stats.fallbackUsages}</span>
+          </article>
+          <article
+            className={`admin-ops-row ${
+              dashboard.mediaDiagnostics.stats.orphanAssets > 0
+                ? "admin-ops-row-warning"
+                : ""
+            }`}
+          >
+            <div>
+              <strong>미사용 asset</strong>
+              <span>어디에도 연결되지 않아 cleanup 후보가 될 수 있음</span>
+            </div>
+            <span>{dashboard.mediaDiagnostics.stats.orphanAssets}</span>
+          </article>
+        </div>
       </section>
 
       <section className="admin-panel">

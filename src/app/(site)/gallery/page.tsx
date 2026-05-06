@@ -1,6 +1,5 @@
-/* eslint-disable @next/next/no-img-element */
-
 import Link from "next/link";
+import { ArtworkImage } from "@/components/media/artwork-image";
 import {
   BottomNav,
   MetaLabel,
@@ -8,6 +7,7 @@ import {
   PageIntro,
   PageShell,
 } from "@/components/site/primitives";
+import { getContentListImage } from "@/lib/content-manager/content-images";
 import { getPublishedContentEntries } from "@/lib/content-manager/content-store";
 
 export default async function GalleryPage() {
@@ -24,9 +24,7 @@ export default async function GalleryPage() {
         <div className="gallery-grid gallery-content-grid">
           {galleryItems.length > 0 ? (
             galleryItems.map((item) => {
-              const image =
-                item.images.find((entryImage) => entryImage.isListImage) ??
-                null;
+              const image = getContentListImage(item);
 
               return (
                 <Link
@@ -36,11 +34,12 @@ export default async function GalleryPage() {
                   prefetch={false}
                 >
                   {image ? (
-                    <img
+                    <ArtworkImage
                       alt={image.alt}
-                      decoding="async"
+                      fill
                       height={image.height}
                       loading="lazy"
+                      sizes="(max-width: 760px) 50vw, (max-width: 1100px) 33vw, 384px"
                       src={image.src}
                       width={image.width}
                     />

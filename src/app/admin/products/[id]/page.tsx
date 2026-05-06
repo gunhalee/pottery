@@ -22,6 +22,7 @@ import {
   getCafe24ConnectionStatus,
   type Cafe24ConnectionStatus,
 } from "@/lib/cafe24/oauth";
+import { readMediaLibraryAssets } from "@/lib/media/media-store";
 
 type AdminProductEditPageProps = {
   params: Promise<{
@@ -62,10 +63,11 @@ export default async function AdminProductEditPage({
     notFound();
   }
 
-  const [preview, syncLogs, cafe24Connection] = await Promise.all([
+  const [preview, syncLogs, cafe24Connection, mediaAssets] = await Promise.all([
     buildCafe24SyncPreview(product),
     readProductSyncLogs(product.id),
     getCafe24ConnectionStatus(),
+    readMediaLibraryAssets(120),
   ]);
   const adminWarnings = getAdminWarnings(product, preview.warnings);
 
@@ -103,8 +105,7 @@ export default async function AdminProductEditPage({
       ) : null}
       {flags.publish_error ? (
         <div className="admin-alert admin-alert-danger">
-          공개하려면 상품명, slug, 대표 이미지, 목록 이미지가 필요하고 판매중
-          상품은 가격도 필요합니다.
+          {getProductPublishErrorMessage(flags.publish_error)}
         </div>
       ) : null}
       {flags.synced ? (
@@ -173,6 +174,7 @@ export default async function AdminProductEditPage({
             <ProductImageManager
               formId="product-edit-form"
               initialImages={product.images}
+              mediaAssets={mediaAssets}
               productId={product.id}
             />
 
@@ -466,6 +468,21 @@ function getAdminWarnings(product: ConsepotProduct, previewWarnings: string[]) {
   }
 
   return [...new Set(warnings)];
+}
+
+function getProductPublishErrorMessage(code: string) {
+  return (
+    {
+      cover: "공개하려면 대표 이미지가 필요합니다.",
+      list: "공개하려면 목록 이미지가 필요합니다.",
+      price: "판매중 상품은 가격이 필요합니다.",
+      slug: "공개하려면 slug가 필요합니다.",
+      title: "공개하려면 상품명이 필요합니다.",
+      variant:
+        "공개하려면 선택된 이미지의 detail/list variant가 모두 생성되어 있어야 합니다. 미디어 화면에서 variant를 재생성해 주세요.",
+    }[code] ??
+    "공개에 필요한 필수 정보가 부족합니다. 상품명, slug, 대표 이미지, 목록 이미지, 이미지 variant를 확인해 주세요."
+  );
 }
 
 function Cafe24ConnectionPanel({

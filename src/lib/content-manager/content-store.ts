@@ -3,11 +3,16 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { unstable_cache } from "next/cache";
 import { z } from "zod";
+import { publicCacheTags } from "@/lib/cache/public-cache-tags";
 import type { MediaUsage } from "@/lib/media/media-model";
 import {
+  buildMediaVariantSources,
+  pickMediaVariantForRole,
+} from "@/lib/media/media-variant-policy";
+import {
   deleteMediaUsagesForAsset,
-  pickMediaVariant,
   readMediaUsagesByOwner,
   replaceMediaUsagesForOwner,
   setMediaAssetReserved,
@@ -49,6 +54,14 @@ type ContentEntryRow = {
   updated_at: string;
 };
 
+type ContentEntryQueryOptions = {
+  id?: string;
+  kind?: ContentKind;
+  limit?: number;
+  slug?: string;
+  status?: "draft" | "published";
+};
+
 const imageLayoutSchema = z.enum([
   "align-left",
   "align-right",
@@ -57,6 +70,23 @@ const imageLayoutSchema = z.enum([
   "two-column",
   "wide",
 ]);
+
+const imageVariantSourceSchema = z.object({
+  height: z.number().int().positive(),
+  src: z.string().min(1),
+  storagePath: z.string().optional(),
+  variant: z.enum(["detail", "list", "master", "thumbnail"]),
+  width: z.number().int().positive(),
+});
+
+const imageVariantsSchema = z
+  .object({
+    detail: imageVariantSourceSchema.optional(),
+    list: imageVariantSourceSchema.optional(),
+    master: imageVariantSourceSchema.optional(),
+    thumbnail: imageVariantSourceSchema.optional(),
+  })
+  .optional();
 
 const imageSchema = z.object({
   alt: z.string(),
@@ -73,6 +103,7 @@ const imageSchema = z.object({
   src: z.string().min(1),
   storagePath: z.string().min(1),
   updatedAt: z.string(),
+  variants: imageVariantsSchema,
   width: z.number().int().positive(),
 });
 
@@ -112,18 +143,23 @@ export function createFallbackContentSlug(prefix = "content") {
 
 export async function readContentEntries(kind?: ContentKind) {
   const entries = isSupabaseConfigured()
-    ? await readEntriesFromSupabase()
+    ? await readEntriesFromSupabase({ kind })
     : await readEntriesFromJson();
 
   return kind ? entries.filter((entry) => entry.kind === kind) : entries;
 }
 
 export async function getPublishedContentEntries(kind: ContentKind) {
-  const entries = await readContentEntries(kind);
-  return entries.filter((entry) => entry.status === "published");
+  return kind === "gallery"
+    ? readPublishedGalleryEntriesCached()
+    : readPublishedNewsEntriesCached();
 }
 
 export async function getContentEntryById(id: string) {
+  if (isSupabaseConfigured()) {
+    return readContentEntryByIdFromSupabase(id);
+  }
+
   const entries = await readContentEntries();
   return entries.find((entry) => entry.id === id) ?? null;
 }
@@ -137,6 +173,11 @@ export async function getContentEntryPreviewBySlug(
   kind: ContentKind,
   slug: string,
 ) {
+  if (isSupabaseConfigured()) {
+    const entries = await readEntriesFromSupabase({ kind, limit: 1, slug });
+    return entries[0] ?? null;
+  }
+
   const entries = await readContentEntries(kind);
   return entries.find((entry) => entry.slug === slug) ?? null;
 }
@@ -237,12 +278,68 @@ export function getContentPublicPath(kind: ContentKind) {
   return kind === "news" ? "/news" : "/gallery";
 }
 
-async function readEntriesFromSupabase() {
+const readPublishedGalleryEntriesCached = unstable_cache(
+  () => readPublishedEntries("gallery"),
+  ["published-content", "gallery"],
+  {
+    revalidate: 3600,
+    tags: [publicCacheTags.content, publicCacheTags.contentKind("gallery")],
+  },
+);
+
+const readPublishedNewsEntriesCached = unstable_cache(
+  () => readPublishedEntries("news"),
+  ["published-content", "news"],
+  {
+    revalidate: 3600,
+    tags: [publicCacheTags.content, publicCacheTags.contentKind("news")],
+  },
+);
+
+async function readPublishedEntries(kind: ContentKind) {
+  if (isSupabaseConfigured()) {
+    return readEntriesFromSupabase({ kind, status: "published" });
+  }
+
+  const entries = await readEntriesFromJson();
+  return entries.filter(
+    (entry) => entry.kind === kind && entry.status === "published",
+  );
+}
+
+async function readContentEntryByIdFromSupabase(id: string) {
+  const entries = await readEntriesFromSupabase({ id, limit: 1 });
+  return entries[0] ?? null;
+}
+
+async function readEntriesFromSupabase(options: ContentEntryQueryOptions = {}) {
   const supabase = getSupabaseAdminClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("content_entries")
     .select("*")
     .order("created_at", { ascending: false });
+
+  if (options.id) {
+    query = query.eq("id", options.id);
+  }
+
+  if (options.kind) {
+    query = query.eq("kind", options.kind);
+  }
+
+  if (options.slug) {
+    query = query.eq("slug", options.slug);
+  }
+
+  if (options.status) {
+    query = query.eq("status", options.status);
+  }
+
+  if (options.limit) {
+    query = query.limit(options.limit);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     if (isMissingContentTableError(error)) {
@@ -302,21 +399,16 @@ async function updateEntryInSupabase(
     throw new Error(`Supabase 콘텐츠 저장 실패: ${error.message}`);
   }
 
-  await updateImagesInSupabase(id, images);
+  await updateImagesInSupabase(id, images, entry.body);
   return (await getContentEntryById(id)) ?? entry;
 }
 
 async function updateImagesInSupabase(
   entryId: string,
   images: ContentImageUpdateInput[],
+  body: unknown,
 ) {
-  const current = await getContentEntryById(entryId);
-
-  if (!current) {
-    throw new Error("콘텐츠를 찾을 수 없습니다.");
-  }
-
-  await syncContentMediaUsages(entryId, images, current.body);
+  await syncContentMediaUsages(entryId, images, body);
 }
 
 async function deleteEntryInSupabase(entry: ContentEntry) {
@@ -402,6 +494,32 @@ async function assertUniqueContentSlug(
   slug: string,
   excludeId?: string,
 ) {
+  if (isSupabaseConfigured()) {
+    const supabase = getSupabaseAdminClient();
+    let query = supabase
+      .from("content_entries")
+      .select("id")
+      .eq("kind", kind)
+      .eq("slug", slug)
+      .limit(1);
+
+    if (excludeId) {
+      query = query.neq("id", excludeId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new Error(`Supabase content slug check failed: ${error.message}`);
+    }
+
+    if ((data ?? []).length > 0) {
+      throw new Error("?대? ?ъ슜 以묒씤 slug?낅땲??");
+    }
+
+    return;
+  }
+
   const entries = await readContentEntries(kind);
   const duplicate = entries.find(
     (entry) => entry.slug === slug && entry.id !== excludeId,
@@ -570,11 +688,14 @@ function mediaUsagesToContentImages(usages: MediaUsage[]) {
         assetUsages.find((usage) => usage.role === "detail") ??
         assetUsages.find((usage) => usage.role === "cover") ??
         assetUsages[0];
-      const imageVariant =
-        pickMediaVariant(asset, "detail") ??
-        pickMediaVariant(asset, "master") ??
-        asset.variants[0] ??
-        null;
+      const variantRole =
+        roles.has("list") ? "list" : (primaryUsage?.role ?? "detail");
+      const imageVariant = pickMediaVariantForRole(
+        asset,
+        "content_entry",
+        variantRole,
+      );
+      const variants = buildMediaVariantSources(asset);
 
       return imageSchema.parse({
         alt: primaryUsage?.altOverride ?? asset.alt,
@@ -591,6 +712,7 @@ function mediaUsagesToContentImages(usages: MediaUsage[]) {
         src: imageVariant?.src ?? asset.src,
         storagePath: asset.masterPath,
         updatedAt: asset.updatedAt,
+        variants,
         width: imageVariant?.width ?? asset.width,
       });
     })

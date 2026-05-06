@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { ContentAdminEditPage } from "@/components/admin/content-admin-edit-page";
 import { isAdminAuthenticated } from "@/lib/admin/auth";
 import { getContentEntryById } from "@/lib/content-manager/content-store";
+import { readMediaLibraryAssets } from "@/lib/media/media-store";
 
 type AdminNewsEditPageProps = {
   params: Promise<{
@@ -31,7 +32,11 @@ export default async function AdminNewsEditPage({
     redirect("/admin/login?next=/admin/news");
   }
 
-  const [{ id }, flags] = await Promise.all([params, searchParams]);
+  const [{ id }, flags, mediaAssets] = await Promise.all([
+    params,
+    searchParams,
+    readMediaLibraryAssets(120),
+  ]);
   const entry = await getContentEntryById(id);
 
   if (!entry || entry.kind !== "news") {
@@ -45,6 +50,7 @@ export default async function AdminNewsEditPage({
       entry={entry}
       imageDeleted={flags.image_deleted}
       kind="news"
+      mediaAssets={mediaAssets}
       publishError={flags.publish_error}
       saved={flags.saved}
       slugError={flags.slug_error}

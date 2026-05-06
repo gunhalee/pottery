@@ -40,7 +40,21 @@ import {
   deleteContentImageAction,
   updateContentEntryAction,
 } from "@/app/admin/actions";
+import { AdminUploadFeedbackMessage } from "@/components/admin/admin-upload-feedback-message";
+import {
+  MediaPicker,
+  type MediaPickerAsset,
+} from "@/components/admin/media-picker";
 import { RichTextRenderer } from "@/components/content/rich-text-renderer";
+import {
+  buildAdminUploadError,
+  readAdminUploadPayload,
+  uploadExceptionToFeedback,
+  type AdminUploadFeedback,
+  type AdminUploadPayload,
+} from "@/lib/admin/upload-feedback";
+import { withContentImageVariant } from "@/lib/content-manager/content-images";
+import { buildMediaVariantSources } from "@/lib/media/media-variant-policy";
 import type {
   ContentEntry,
   ContentImage,
@@ -64,6 +78,7 @@ import {
 
 type ContentEditorFormProps = {
   entry: ContentEntry;
+  mediaAssets?: MediaPickerAsset[];
   productOptions?: Array<{
     slug: string;
     title: string;
@@ -71,7 +86,7 @@ type ContentEditorFormProps = {
   previewHref: string;
 };
 
-type UploadedImageResponse = {
+type UploadedImageResponse = AdminUploadPayload & {
   image: ContentImage;
   ok: boolean;
 };
@@ -116,6 +131,7 @@ const editorTheme = {
 
 export function ContentEditorForm({
   entry,
+  mediaAssets = [],
   previewHref,
   productOptions = [],
 }: ContentEditorFormProps) {
@@ -318,8 +334,13 @@ export function ContentEditorForm({
             <EditorToolbar
               entryId={entry.id}
               kind={entry.kind}
+              mediaAssets={mediaAssets}
               onImageUploaded={(image) =>
-                setImages((current) => [...current, image])
+                setImages((current) =>
+                  current.some((item) => item.id === image.id)
+                    ? current
+                    : [...current, image],
+                )
               }
             />
             <div className="editor-shell">
@@ -396,7 +417,10 @@ export function ContentEditorForm({
         <article className="admin-live-preview">
           {coverImage ? (
             <figure className="admin-live-preview-cover">
-              <img alt={coverImage.alt} src={coverImage.src} />
+              <img
+                alt={coverImage.alt}
+                src={withContentImageVariant(coverImage, "detail").src}
+              />
             </figure>
           ) : null}
           <p className="admin-preview-date">{displayDate}</p>
@@ -412,15 +436,19 @@ export function ContentEditorForm({
 function EditorToolbar({
   entryId,
   kind,
+  mediaAssets,
   onImageUploaded,
 }: {
   entryId: string;
   kind: ContentKind;
+  mediaAssets: MediaPickerAsset[];
   onImageUploaded: (image: ContentImage) => void;
 }) {
   const [editor] = useLexicalComposerContext();
   const [uploadLayout, setUploadLayout] =
     useState<ContentImageLayout>("default");
+  const [uploadFeedback, setUploadFeedback] =
+    useState<AdminUploadFeedback | null>(null);
   const [uploading, setUploading] = useState(false);
 
   function formatBlock(type: "paragraph" | "quote" | HeadingTagType | "code") {
@@ -480,6 +508,11 @@ function EditorToolbar({
 
   async function uploadImage(file: File) {
     setUploading(true);
+    setUploadFeedback({
+      description: "본문에 삽입할 이미지를 webp variant로 변환하고 있습니다.",
+      title: "본문 이미지 업로드 중",
+      tone: "info",
+    });
 
     try {
       const formData = new FormData();
@@ -492,17 +525,12 @@ function EditorToolbar({
         body: formData,
         method: "POST",
       });
+      const payload = await readAdminUploadPayload<UploadedImageResponse>(
+        response,
+      );
 
-      if (!response.ok) {
-        window.alert("이미지 업로드에 실패했습니다.");
-        return;
-      }
-
-      const payload = (await response.json()) as UploadedImageResponse;
-
-      if (!payload.ok) {
-        window.alert("이미지 업로드에 실패했습니다.");
-        return;
+      if (!response.ok || !payload?.ok || !payload.image) {
+        throw buildAdminUploadError(response, payload, "content-image");
       }
 
       onImageUploaded(payload.image);
@@ -519,121 +547,202 @@ function EditorToolbar({
           }),
         ]),
       );
+      setUploadFeedback({
+        description: "이미지를 본문에 삽입했습니다. 저장하면 글에 반영됩니다.",
+        title: "본문 이미지를 업로드했습니다",
+        tone: "success",
+      });
+    } catch (error) {
+      const feedback = uploadExceptionToFeedback(error, "content-image");
+      setUploadFeedback(feedback);
     } finally {
       setUploading(false);
     }
   }
 
-  return (
-    <div className="editor-toolbar" role="toolbar" aria-label="본문 편집 도구">
-      <button onClick={() => formatBlock("paragraph")} title="문단" type="button">
-        P
-      </button>
-      <button onClick={() => formatBlock("h2")} title="제목 2" type="button">
-        H2
-      </button>
-      <button onClick={() => formatBlock("h3")} title="제목 3" type="button">
-        H3
-      </button>
-      <button onClick={() => formatBlock("quote")} title="인용" type="button">
-        “”
-      </button>
-      <button onClick={() => formatBlock("code")} title="코드블록" type="button">
-        {"</>"}
-      </button>
-      <span className="editor-toolbar-separator" />
-      <button
-        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold")}
-        title="굵게"
-        type="button"
-      >
-        B
-      </button>
-      <button
-        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic")}
-        title="기울임"
-        type="button"
-      >
-        I
-      </button>
-      <button
-        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "underline")}
-        title="밑줄"
-        type="button"
-      >
-        U
-      </button>
-      <button
-        onClick={() =>
-          editor.dispatchCommand(FORMAT_TEXT_COMMAND, "strikethrough")
-        }
-        title="취소선"
-        type="button"
-      >
-        S
-      </button>
-      <button
-        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "code")}
-        title="인라인 코드"
-        type="button"
-      >
-        ``
-      </button>
-      <span className="editor-toolbar-separator" />
-      <button
-        onClick={() => editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)}
-        title="불릿 목록"
-        type="button"
-      >
-        •
-      </button>
-      <button
-        onClick={() => editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)}
-        title="번호 목록"
-        type="button"
-      >
-        1.
-      </button>
-      <button onClick={toggleLink} title="링크" type="button">
-        Link
-      </button>
-      <button onClick={insertYouTube} title="YouTube" type="button">
-        YouTube
-      </button>
-      <button onClick={insertInstagram} title="Instagram" type="button">
-        Instagram
-      </button>
-      <label className="editor-upload-control">
-        <span>Image</span>
-        <input
-          accept="image/jpeg,image/png,image/webp"
-          disabled={uploading}
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.target.value = "";
+  function insertLibraryImage(asset: MediaPickerAsset) {
+    const image = mediaAssetToContentImage(asset, uploadLayout);
 
-            if (file) {
-              void uploadImage(file);
-            }
-          }}
-          type="file"
+    onImageUploaded(image);
+    editor.update(() =>
+      $insertNodes([
+        $createContentImageNode({
+          alt: image.alt,
+          caption: image.caption,
+          height: image.height,
+          id: image.id,
+          layout: image.layout,
+          src: image.src,
+          width: image.width,
+        }),
+      ]),
+    );
+    setUploadFeedback({
+      description: "선택한 미디어를 본문에 삽입했습니다. 저장하면 글에 반영됩니다.",
+      title: "라이브러리 이미지를 삽입했습니다",
+      tone: "success",
+    });
+  }
+
+  return (
+    <>
+      <div className="editor-toolbar" role="toolbar" aria-label="본문 편집 도구">
+        <button onClick={() => formatBlock("paragraph")} title="문단" type="button">
+          P
+        </button>
+        <button onClick={() => formatBlock("h2")} title="제목 2" type="button">
+          H2
+        </button>
+        <button onClick={() => formatBlock("h3")} title="제목 3" type="button">
+          H3
+        </button>
+        <button onClick={() => formatBlock("quote")} title="인용" type="button">
+          “”
+        </button>
+        <button onClick={() => formatBlock("code")} title="코드블록" type="button">
+          {"</>"}
+        </button>
+        <span className="editor-toolbar-separator" />
+        <button
+          onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold")}
+          title="굵게"
+          type="button"
+        >
+          B
+        </button>
+        <button
+          onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic")}
+          title="기울임"
+          type="button"
+        >
+          I
+        </button>
+        <button
+          onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "underline")}
+          title="밑줄"
+          type="button"
+        >
+          U
+        </button>
+        <button
+          onClick={() =>
+            editor.dispatchCommand(FORMAT_TEXT_COMMAND, "strikethrough")
+          }
+          title="취소선"
+          type="button"
+        >
+          S
+        </button>
+        <button
+          onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "code")}
+          title="인라인 코드"
+          type="button"
+        >
+          ``
+        </button>
+        <span className="editor-toolbar-separator" />
+        <button
+          onClick={() =>
+            editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)
+          }
+          title="불릿 목록"
+          type="button"
+        >
+          •
+        </button>
+        <button
+          onClick={() =>
+            editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)
+          }
+          title="번호 목록"
+          type="button"
+        >
+          1.
+        </button>
+        <button onClick={toggleLink} title="링크" type="button">
+          Link
+        </button>
+        <button onClick={insertYouTube} title="YouTube" type="button">
+          YouTube
+        </button>
+        <button onClick={insertInstagram} title="Instagram" type="button">
+          Instagram
+        </button>
+        <label className="editor-upload-control">
+          <span>Image</span>
+          <input
+            accept="image/jpeg,image/png,image/webp"
+            disabled={uploading}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+
+              if (file) {
+                void uploadImage(file);
+              }
+            }}
+            type="file"
+          />
+        </label>
+        <select
+          aria-label="이미지 레이아웃"
+          onChange={(event) =>
+            setUploadLayout(event.target.value as ContentImageLayout)
+          }
+          value={uploadLayout}
+        >
+          {imageLayoutOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      {uploadFeedback ? (
+        <AdminUploadFeedbackMessage feedback={uploadFeedback} />
+      ) : null}
+      {mediaAssets.length > 0 ? (
+        <MediaPicker
+          assets={mediaAssets}
+          onSelect={insertLibraryImage}
+          title="본문 이미지로 재사용"
         />
-      </label>
-      <select
-        aria-label="이미지 레이아웃"
-        onChange={(event) =>
-          setUploadLayout(event.target.value as ContentImageLayout)
-        }
-        value={uploadLayout}
-      >
-        {imageLayoutOptions.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
+      ) : null}
+    </>
   );
+}
+
+function mediaAssetToContentImage(
+  asset: MediaPickerAsset,
+  layout: ContentImageLayout,
+): ContentImage {
+  const variants = buildMediaVariantSources(asset);
+  const detail = withContentImageVariant(
+    {
+      alt: asset.alt,
+      caption: asset.caption,
+      createdAt: asset.createdAt,
+      height: asset.height,
+      id: asset.id,
+      isCover: false,
+      isDetail: false,
+      isListImage: false,
+      isReserved: asset.reserved,
+      layout,
+      sortOrder: 0,
+      src: asset.src,
+      storagePath: asset.masterPath,
+      updatedAt: asset.updatedAt,
+      variants,
+      width: asset.width,
+    },
+    "detail",
+  );
+
+  return {
+    ...detail,
+    variants,
+  };
 }
 
 function ImageSettings({
@@ -646,10 +755,11 @@ function ImageSettings({
   onChange: (patch: Partial<ContentImage>) => void;
 }) {
   const exposureSummary = getImageExposureSummary(image, imageInBody);
+  const previewImage = withContentImageVariant(image, "thumbnail");
 
   return (
     <article className="admin-image-item">
-      <img alt={image.alt} src={image.src} />
+      <img alt={image.alt} src={previewImage.src} />
       <div className="admin-form">
         <div className="admin-image-role-summary">
           <span>노출 위치</span>

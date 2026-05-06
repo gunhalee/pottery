@@ -1,5 +1,4 @@
-/* eslint-disable @next/next/no-img-element */
-
+import { ArtworkImage } from "@/components/media/artwork-image";
 import { SiteLink } from "@/components/navigation/site-link";
 import { PlaceholderFrame } from "@/components/site/primitives";
 import {
@@ -21,10 +20,12 @@ export function ProductCard({ product }: { product: ConsepotProduct }) {
         href={`/shop/${product.slug}`}
       >
         {primaryImage?.src ? (
-          <img
+          <ArtworkImage
             alt={primaryImage.alt}
             className="product-card-image"
+            fill
             loading="lazy"
+            sizes="(max-width: 760px) 50vw, (max-width: 1100px) 33vw, 384px"
             src={primaryImage.src}
           />
         ) : (

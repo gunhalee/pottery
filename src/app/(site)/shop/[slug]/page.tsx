@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArtworkImage } from "@/components/media/artwork-image";
 import {
   BottomNav,
   PageShell,
@@ -76,11 +77,16 @@ export default async function ShopDetailPage({
         <div className="product-detail-layout">
           <div className="product-detail-media">
             {primaryImage?.src ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <ArtworkImage
                 alt={primaryImage.alt}
                 className="product-detail-image product-detail-photo"
+                fetchPriority="high"
+                height={primaryImage.height}
+                loading="eager"
+                preload
+                sizes="(max-width: 900px) 100vw, 72vw"
                 src={primaryImage.src}
+                width={primaryImage.width}
               />
             ) : (
               <PlaceholderFrame
@@ -91,14 +97,18 @@ export default async function ShopDetailPage({
             )}
             {displayImages.length > 1 ? (
               <div className="product-detail-gallery">
-                {displayImages.map((image) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    alt={image.alt}
-                    key={image.id ?? image.src ?? image.alt}
-                    src={image.src}
-                  />
-                ))}
+                {displayImages.map((image) =>
+                  image.src ? (
+                    <ArtworkImage
+                      alt={image.alt}
+                      height={image.height}
+                      key={image.id ?? image.src ?? image.alt}
+                      sizes="(max-width: 760px) 25vw, 180px"
+                      src={image.src}
+                      width={image.width}
+                    />
+                  ) : null,
+                )}
               </div>
             ) : null}
           </div>

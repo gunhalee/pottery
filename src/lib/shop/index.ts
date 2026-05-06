@@ -3,7 +3,9 @@ import type {
   ProductBadgeKind,
   ProductCta,
   ProductCtaKind,
+  ProductImage,
 } from "./product-model";
+import { pickVariantSource } from "@/lib/media/media-variant-policy";
 
 type ProductActionHref = {
   external: boolean;
@@ -54,26 +56,37 @@ export {
 } from "./product-store";
 
 export function getProductPrimaryImage(product: ConsepotProduct) {
-  return (
+  const image =
     product.images.find((image) => image.isPrimary && image.src) ??
     product.images.find((image) => image.src) ??
     product.images.find((image) => image.isPrimary) ??
     product.images[0] ??
-    null
-  );
+    null;
+
+  return image ? withProductImageVariant(image, "detail") : null;
 }
 
 export function getProductListImage(product: ConsepotProduct) {
-  return (
+  const image =
     product.images.find((image) => image.isListImage && image.src) ??
-    getProductPrimaryImage(product)
-  );
+    product.images.find((image) => image.isListImage) ??
+    getProductPrimaryImage(product);
+
+  return image ? withProductImageVariant(image, "list") : null;
 }
 
 export function getProductDisplayImages(product: ConsepotProduct) {
-  return product.images.filter(
-    (image) => Boolean(image.src) && (image.isDetail || image.isPrimary),
-  );
+  return product.images
+    .filter(
+      (image) =>
+        Boolean(image.src || pickVariantSource(image.variants, "detail")) &&
+        (image.isDetail || image.isPrimary),
+    )
+    .map((image) => withProductImageVariant(image, "detail"));
+}
+
+export function getProductThumbnailImage(image: ProductImage) {
+  return withProductImageVariant(image, "thumbnail");
 }
 
 export function getProductBadges(product: ConsepotProduct) {
@@ -90,6 +103,25 @@ export function getProductBadges(product: ConsepotProduct) {
   }
 
   return badges;
+}
+
+function withProductImageVariant(
+  image: ProductImage,
+  surface: "detail" | "list" | "master" | "thumbnail",
+) {
+  const variant = pickVariantSource(image.variants, surface);
+
+  if (!variant) {
+    return image;
+  }
+
+  return {
+    ...image,
+    height: variant.height,
+    src: variant.src,
+    storagePath: variant.storagePath ?? image.storagePath,
+    width: variant.width,
+  };
 }
 
 export function getProductCta(product: ConsepotProduct): ProductCta {

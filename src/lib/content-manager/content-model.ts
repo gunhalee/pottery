@@ -1,3 +1,5 @@
+import type { MediaVariantSourceMap } from "@/lib/media/media-model";
+
 export type ContentKind = "gallery" | "news";
 
 export type ContentStatus = "draft" | "published";
@@ -25,6 +27,7 @@ export type ContentImage = {
   src: string;
   storagePath: string;
   updatedAt: string;
+  variants?: MediaVariantSourceMap;
   width: number;
 };
 

@@ -11,8 +11,11 @@ import {
   homeStory,
   homeWorks,
 } from "@/lib/content/site-content";
+import { getContentListImage } from "@/lib/content-manager/content-images";
+import type { ContentEntry } from "@/lib/content-manager/content-model";
 import { getPublishedContentEntries } from "@/lib/content-manager/content-store";
 import {
+  getProductPrimaryImage,
   getProductListImage,
   getPublishedProducts,
   type ConsepotProduct,
@@ -39,25 +42,30 @@ export default async function HomePage() {
 
 function buildHeroMediaItems(
   products: ConsepotProduct[],
-  galleryItems: Awaited<ReturnType<typeof getPublishedContentEntries>>,
+  galleryItems: ContentEntry[],
 ) {
-  const productImages: HomeHeroMediaItem[] = products.flatMap((product) => {
-    const image = getProductListImage(product);
+  const productImages: HomeHeroMediaItem[] = products.flatMap(
+    (product, index) => {
+      const image =
+        index === 0
+          ? getProductPrimaryImage(product)
+          : getProductListImage(product);
 
-    if (!image?.src) {
-      return [];
-    }
+      if (!image?.src) {
+        return [];
+      }
 
-    return [
-      {
-        alt: image.alt,
-        label: product.titleKo,
-        src: image.src,
-      },
-    ];
-  });
+      return [
+        {
+          alt: image.alt,
+          label: product.titleKo,
+          src: image.src,
+        },
+      ];
+    },
+  );
   const galleryImages: HomeHeroMediaItem[] = galleryItems.flatMap((entry) => {
-    const image = entry.images.find((item) => item.isListImage) ?? null;
+    const image = getContentListImage(entry);
 
     if (!image?.src) {
       return [];

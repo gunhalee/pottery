@@ -1,7 +1,6 @@
-/* eslint-disable @next/next/no-img-element */
-
 import Image from "next/image";
 import heroPoster from "../../../public/asset/hero-image.jpg";
+import { ArtworkImage } from "@/components/media/artwork-image";
 import { SiteLink } from "@/components/navigation/site-link";
 import { PlaceholderFrame } from "@/components/site/primitives";
 import type { HomeHeroAction } from "@/lib/content/site-content";
@@ -39,10 +38,15 @@ export function HomeHero({
         {mosaicItems.map((item, index) => (
           <div className="hero-mosaic-cell" key={`${item.label}-${index}`}>
             {item.src ? (
-              <img
+              <ArtworkImage
                 alt={item.alt}
                 className="hero-mosaic-image"
+                fetchPriority={index === 0 ? "high" : "auto"}
+                fill
                 loading={index === 0 ? "eager" : "lazy"}
+                preload={index === 0}
+                quality={70}
+                sizes="(max-width: 640px) 50vw, 33vw"
                 src={item.src}
               />
             ) : index === 0 ? (

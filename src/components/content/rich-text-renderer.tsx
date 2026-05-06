@@ -1,7 +1,7 @@
-/* eslint-disable @next/next/no-img-element */
-
 import type { ReactNode } from "react";
 import { InstagramEmbed } from "@/components/content/instagram-embed";
+import { ArtworkImage } from "@/components/media/artwork-image";
+import { withContentImageVariant } from "@/lib/content-manager/content-images";
 import type { ContentImage } from "@/lib/content-manager/content-model";
 
 type RichTextRendererProps = {
@@ -206,16 +206,22 @@ function renderContentImage(
 
   const image =
     typeof node.id === "string" ? imageById.get(node.id) ?? null : null;
-  const src = image?.src ?? (typeof node.src === "string" ? node.src : "");
-  const alt = image?.alt ?? (typeof node.alt === "string" ? node.alt : "");
+  const displayImage = image ? withContentImageVariant(image, "detail") : null;
+  const src =
+    displayImage?.src ?? (typeof node.src === "string" ? node.src : "");
+  const alt = displayImage?.alt ?? (typeof node.alt === "string" ? node.alt : "");
   const caption =
-    image?.caption ?? (typeof node.caption === "string" ? node.caption : "");
+    displayImage?.caption ??
+    (typeof node.caption === "string" ? node.caption : "");
   const layout =
-    image?.layout ?? (typeof node.layout === "string" ? node.layout : "default");
+    displayImage?.layout ??
+    (typeof node.layout === "string" ? node.layout : "default");
   const width =
-    image?.width ?? (typeof node.width === "number" ? node.width : undefined);
+    displayImage?.width ??
+    (typeof node.width === "number" ? node.width : undefined);
   const height =
-    image?.height ?? (typeof node.height === "number" ? node.height : undefined);
+    displayImage?.height ??
+    (typeof node.height === "number" ? node.height : undefined);
 
   if (!src) {
     return null;
@@ -223,17 +229,37 @@ function renderContentImage(
 
   return (
     <figure className={`rich-text-image rich-text-image-${layout}`} key={key}>
-      <img
+      <ArtworkImage
         alt={alt}
-        decoding="async"
         height={height}
         loading="lazy"
+        sizes={getRichTextImageSizes(layout)}
         src={src}
         width={width}
       />
       {caption ? <figcaption>{caption}</figcaption> : null}
     </figure>
   );
+}
+
+function getRichTextImageSizes(layout: string) {
+  if (layout === "full") {
+    return "100vw";
+  }
+
+  if (layout === "wide") {
+    return "(max-width: 900px) 100vw, 1120px";
+  }
+
+  if (
+    layout === "two-column" ||
+    layout === "align-left" ||
+    layout === "align-right"
+  ) {
+    return "(max-width: 760px) 100vw, 50vw";
+  }
+
+  return "(max-width: 900px) 100vw, 760px";
 }
 
 function renderYouTube(node: RichNode, key: string) {

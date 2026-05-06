@@ -1,6 +1,7 @@
 import "server-only";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { publicCacheTags } from "@/lib/cache/public-cache-tags";
 import type { ContentKind } from "@/lib/content-manager/content-model";
 import {
   getContentAdminPath,
@@ -8,6 +9,7 @@ import {
 } from "@/lib/content-manager/content-store";
 
 export function revalidateProductSurfaces(slug: string, previousSlug?: string) {
+  revalidateTag(publicCacheTags.products, "max");
   revalidatePath("/");
   revalidatePath("/shop");
   revalidatePath(`/shop/${slug}`);
@@ -41,6 +43,8 @@ export function revalidateContentSurfaces({
   const adminPath = getContentAdminPath(kind);
   const publicPath = getContentPublicPath(kind);
 
+  revalidateTag(publicCacheTags.content, "max");
+  revalidateTag(publicCacheTags.contentKind(kind), "max");
   revalidatePath("/");
   revalidatePath(adminPath);
   revalidatePath(`${adminPath}/${id}`);

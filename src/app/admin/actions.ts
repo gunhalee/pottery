@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
   assertAdmin,
@@ -34,6 +35,7 @@ import type {
 import {
   extractPlainTextFromLexicalJson,
   removeContentImageNodeFromLexicalJson,
+  walkLexicalNodes,
 } from "@/lib/content-manager/rich-text-utils";
 import {
   buildCafe24SyncRequestSnapshot,
@@ -44,6 +46,11 @@ import {
   revalidateDeletedProductSurfaces,
   revalidateProductSurfaces,
 } from "@/lib/revalidation/admin-revalidation";
+import {
+  findMissingMediaVariantRequirements,
+  regenerateMediaAssetVariants,
+  type MediaVariantRequirement,
+} from "@/lib/media/media-maintenance";
 
 const draftSchema = z.object({
   slug: z.string(),
@@ -160,6 +167,11 @@ const contentImageDeleteSchema = z.object({
   kind: z.enum(["gallery", "news"]),
 });
 
+const mediaAssetActionSchema = z.object({
+  assetId: z.string().min(1),
+  returnTo: z.string().optional(),
+});
+
 export async function loginAdminAction(formData: FormData) {
   const password = String(formData.get("password") ?? "");
   const next = safeNextPath(String(formData.get("next") ?? "/admin/products"));
@@ -245,7 +257,7 @@ export async function updateContentEntryAction(formData: FormData) {
     redirect(`${adminPath}?missing=1`);
   }
 
-  const publishError = getContentPublishError(parsed);
+  const publishError = await getContentPublishError(parsed);
 
   if (publishError) {
     redirect(`${adminPath}/${parsed.id}?publish_error=${publishError}`);
@@ -369,7 +381,7 @@ export async function updateProductAction(formData: FormData) {
 
   const beforeUpdate = await getProductById(parsed.id);
 
-  const publishError = getProductPublishError(parsed);
+  const publishError = await getProductPublishError(parsed);
 
   if (publishError) {
     redirect(`/admin/products/${parsed.id}?publish_error=${publishError}`);
@@ -415,6 +427,31 @@ export async function deleteProductImageAction(formData: FormData) {
 
   revalidateProductPaths(updated.slug, beforeUpdate.slug);
   redirect(`/admin/products/${updated.id}?image_deleted=1`);
+}
+
+export async function regenerateMediaAssetVariantsAction(formData: FormData) {
+  await assertAdmin();
+
+  const parsed = mediaAssetActionSchema.parse({
+    assetId: stringValue(formData.get("assetId")),
+    returnTo: safeNextPath(String(formData.get("returnTo") ?? "/admin/media")),
+  });
+  let target = "";
+
+  try {
+    await regenerateMediaAssetVariants(parsed.assetId);
+    revalidatePath("/admin/media");
+    revalidatePath("/admin/ops");
+    target = withQuery(parsed.returnTo ?? "/admin/media", "regenerated", "1");
+  } catch (error) {
+    target = withQuery(
+      parsed.returnTo ?? "/admin/media",
+      "regenerate_error",
+      getErrorMessage(error),
+    );
+  }
+
+  redirect(target);
 }
 
 export async function redirectToProductEditorAction(formData: FormData) {
@@ -585,7 +622,7 @@ function parseProductUpdateFormData(formData: FormData) {
   });
 }
 
-function getContentPublishError(input: z.infer<typeof contentUpdateSchema>) {
+async function getContentPublishError(input: z.infer<typeof contentUpdateSchema>) {
   if (input.status !== "published") {
     return null;
   }
@@ -606,10 +643,50 @@ function getContentPublishError(input: z.infer<typeof contentUpdateSchema>) {
     return "list";
   }
 
+  const bodyImageIds = new Set(
+    walkLexicalNodes(input.body)
+      .filter((node) => node.type === "content-image")
+      .map((node) => node.id)
+      .filter((id): id is string => typeof id === "string"),
+  );
+  const submittedImageIds = new Set(input.images.map((image) => image.id));
+
+  if ([...bodyImageIds].some((imageId) => !submittedImageIds.has(imageId))) {
+    return "body-image";
+  }
+
+  const missingVariants = await findMissingMediaVariantRequirements(
+    input.images.flatMap((image): MediaVariantRequirement[] => {
+      const requirements: MediaVariantRequirement[] = [];
+
+      if (image.isCover || image.isDetail || bodyImageIds.has(image.id)) {
+        requirements.push({
+          assetId: image.id,
+          label: image.alt || image.id,
+          surface: "detail",
+        });
+      }
+
+      if (image.isListImage) {
+        requirements.push({
+          assetId: image.id,
+          label: image.alt || image.id,
+          surface: "list",
+        });
+      }
+
+      return requirements;
+    }),
+  );
+
+  if (missingVariants.length > 0) {
+    return "variant";
+  }
+
   return null;
 }
 
-function getProductPublishError(input: z.infer<typeof productUpdateSchema>) {
+async function getProductPublishError(input: z.infer<typeof productUpdateSchema>) {
   if (!input.published) {
     return null;
   }
@@ -635,6 +712,38 @@ function getProductPublishError(input: z.infer<typeof productUpdateSchema>) {
     (input.price === null || input.price < 0)
   ) {
     return "price";
+  }
+
+  const missingVariants = await findMissingMediaVariantRequirements(
+    input.images.flatMap((image): MediaVariantRequirement[] => {
+      if (!image.id) {
+        return [];
+      }
+
+      const requirements: MediaVariantRequirement[] = [];
+
+      if (image.isPrimary || image.isDetail || image.isDescription) {
+        requirements.push({
+          assetId: image.id,
+          label: image.alt || image.id,
+          surface: "detail",
+        });
+      }
+
+      if (image.isListImage) {
+        requirements.push({
+          assetId: image.id,
+          label: image.alt || image.id,
+          surface: "list",
+        });
+      }
+
+      return requirements;
+    }),
+  );
+
+  if (missingVariants.length > 0) {
+    return "variant";
   }
 
   return null;
@@ -703,6 +812,14 @@ function safeNextPath(value: string) {
   }
 
   return value;
+}
+
+function withQuery(path: string, key: string, value: string) {
+  const [pathname, hash = ""] = path.split("#");
+  const separator = pathname.includes("?") ? "&" : "?";
+  const suffix = hash ? `#${hash}` : "";
+
+  return `${pathname}${separator}${key}=${encodeURIComponent(value)}${suffix}`;
 }
 
 function getErrorMessage(error: unknown) {

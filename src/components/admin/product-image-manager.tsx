@@ -11,6 +11,23 @@ import {
   type SetStateAction,
 } from "react";
 import { deleteProductImageAction } from "@/app/admin/actions";
+import { AdminUploadFeedbackMessage } from "@/components/admin/admin-upload-feedback-message";
+import {
+  MediaPicker,
+  type MediaPickerAsset,
+} from "@/components/admin/media-picker";
+import {
+  buildAdminUploadError,
+  readAdminUploadPayload,
+  uploadExceptionToFeedback,
+  type AdminUploadFeedback,
+  type AdminUploadPayload,
+} from "@/lib/admin/upload-feedback";
+import {
+  buildMediaVariantSources,
+  pickMediaVariantForSurface,
+  pickVariantSource,
+} from "@/lib/media/media-variant-policy";
 import type { ProductImage } from "@/lib/shop/product-model";
 
 type EditableProductImage = ProductImage & {
@@ -21,21 +38,22 @@ type EditableProductImage = ProductImage & {
   isPrimary: boolean;
 };
 
-type ProductImageUploadResponse = {
+type ProductImageUploadResponse = AdminUploadPayload & {
   image?: ProductImage;
-  message?: string;
   ok: boolean;
 };
 
 type ProductImageManagerProps = {
   formId: string;
   initialImages: ProductImage[];
+  mediaAssets?: MediaPickerAsset[];
   productId: string;
 };
 
 export function ProductImageManager({
   formId,
   initialImages,
+  mediaAssets = [],
   productId,
 }: ProductImageManagerProps) {
   const initialStoragePaths = useMemo(
@@ -52,7 +70,7 @@ export function ProductImageManager({
       initialImages.map((image, index) => normalizeEditableImage(image, index)),
     ),
   );
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState<AdminUploadFeedback | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formSubmittingRef = useRef(false);
@@ -72,6 +90,7 @@ export function ProductImageManager({
           placeholderLabel: image.placeholderLabel,
           src: image.src,
           storagePath: image.storagePath,
+          variants: image.variants,
           width: image.width,
         })),
       ),
@@ -167,7 +186,11 @@ export function ProductImageManager({
 
   async function uploadImage(file: File) {
     setIsUploading(true);
-    setStatus("업로드 중입니다.");
+    setStatus({
+      description: "이미지를 webp로 변환하고 역할별 variant를 생성하고 있습니다.",
+      title: "상품 이미지 업로드 중",
+      tone: "info",
+    });
 
     const formData = new FormData();
     formData.append("productId", productId);
@@ -178,10 +201,11 @@ export function ProductImageManager({
         body: formData,
         method: "POST",
       });
-      const payload = (await response.json()) as ProductImageUploadResponse;
+      const payload =
+        await readAdminUploadPayload<ProductImageUploadResponse>(response);
 
-      if (!response.ok || !payload.ok || !payload.image) {
-        throw new Error(payload.message || "이미지 업로드에 실패했습니다.");
+      if (!response.ok || !payload?.ok || !payload.image) {
+        throw buildAdminUploadError(response, payload, "product-image");
       }
 
       setImages((current) => {
@@ -203,9 +227,13 @@ export function ProductImageManager({
           },
         ]);
       });
-      setStatus("업로드했습니다. 상품 저장을 눌러야 공개 페이지에 반영됩니다.");
+      setStatus({
+        description: "상품 저장을 누르면 공개 페이지에 반영됩니다.",
+        title: "상품 이미지를 업로드했습니다",
+        tone: "success",
+      });
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "업로드에 실패했습니다.");
+      setStatus(uploadExceptionToFeedback(error, "product-image"));
     } finally {
       setIsUploading(false);
 
@@ -220,7 +248,11 @@ export function ProductImageManager({
       return;
     }
 
-    setStatus("저장 전 업로드 이미지를 정리하는 중입니다.");
+    setStatus({
+      description: "저장하지 않은 이미지를 storage에서 제거하고 있습니다.",
+      title: "업로드 이미지 정리 중",
+      tone: "info",
+    });
 
     try {
       await cleanupPendingProductImages(productId, pendingStoragePaths);
@@ -232,10 +264,61 @@ export function ProductImageManager({
           ),
         ),
       );
-      setStatus("저장하지 않은 업로드 이미지를 정리했습니다.");
+      setStatus({
+        description: "저장 전 업로드된 이미지가 목록에서 제거되었습니다.",
+        title: "업로드 이미지를 정리했습니다",
+        tone: "success",
+      });
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "이미지 정리에 실패했습니다.");
+      setStatus({
+        action: "편집 화면을 새로고침한 뒤 이미지 목록을 다시 확인해 주세요.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "저장하지 않은 이미지 정리에 실패했습니다.",
+        title: "업로드 이미지 정리 실패",
+        tone: "error",
+      });
     }
+  }
+
+  function addLibraryImage(asset: MediaPickerAsset) {
+    if (images.some((image) => image.id === asset.id)) {
+      setStatus({
+        description: "이미 이 상품에 연결된 미디어입니다.",
+        title: "이미지 연결 안내",
+        tone: "info",
+      });
+      return;
+    }
+
+    setImages((current) => {
+      const retainedImages = current.filter(hasRealImageSource);
+      const shouldBecomePrimary = !retainedImages.some((image) => image.src);
+      const nextImage = normalizeEditableImage(
+        mediaAssetToProductImage(asset),
+        current.length,
+      );
+
+      return ensureSinglePrimary([
+        ...retainedImages.map((image) => ({
+          ...image,
+          isListImage: shouldBecomePrimary ? false : image.isListImage,
+          isPrimary: shouldBecomePrimary ? false : image.isPrimary,
+        })),
+        {
+          ...nextImage,
+          isDetail: !shouldBecomePrimary,
+          isListImage: shouldBecomePrimary,
+          isPrimary: shouldBecomePrimary,
+        },
+      ]);
+    });
+    setStatus({
+      description: "상품 저장을 누르면 이 미디어 연결이 반영됩니다.",
+      title: "라이브러리 이미지를 연결했습니다",
+      tone: "success",
+    });
   }
 
   async function cancelPendingImage(image: EditableProductImage) {
@@ -243,16 +326,32 @@ export function ProductImageManager({
       return;
     }
 
-    setStatus("업로드 이미지를 정리하는 중입니다.");
+    setStatus({
+      description: "선택한 업로드 이미지를 storage에서 제거하고 있습니다.",
+      title: "업로드 이미지 정리 중",
+      tone: "info",
+    });
 
     try {
       await cleanupPendingProductImages(productId, [image.storagePath]);
       setImages((current) =>
         ensureSinglePrimary(current.filter((item) => item.id !== image.id)),
       );
-      setStatus("저장하지 않은 업로드 이미지를 정리했습니다.");
+      setStatus({
+        description: "선택한 이미지가 목록에서 제거되었습니다.",
+        title: "업로드 이미지를 정리했습니다",
+        tone: "success",
+      });
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "이미지 정리에 실패했습니다.");
+      setStatus({
+        action: "편집 화면을 새로고침한 뒤 이미지 목록을 다시 확인해 주세요.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "이미지 정리에 실패했습니다.",
+        title: "업로드 이미지 정리 실패",
+        tone: "error",
+      });
     }
   }
 
@@ -283,11 +382,7 @@ export function ProductImageManager({
         </label>
       </div>
 
-      {status ? (
-        <p aria-live="polite" className="admin-upload-status">
-          {status}
-        </p>
-      ) : null}
+      {status ? <AdminUploadFeedbackMessage feedback={status} /> : null}
       {pendingStoragePaths.length > 0 ? (
         <div className="admin-pending-upload-actions">
           <span>{pendingStoragePaths.length}개 이미지가 아직 저장되지 않았습니다.</span>
@@ -303,12 +398,27 @@ export function ProductImageManager({
         </div>
       ) : null}
 
+      {mediaAssets.length > 0 ? (
+        <MediaPicker
+          assets={mediaAssets}
+          disabledAssetIds={images
+            .map((image) => image.id)
+            .filter((id): id is string => Boolean(id))}
+          onSelect={addLibraryImage}
+          title="상품 이미지로 재사용"
+        />
+      ) : null}
+
       {images.length > 0 ? (
         <div className="admin-product-image-list">
-          {images.map((image, index) => (
-            <article className="admin-product-image-item" key={image.id}>
-              {image.src ? (
-                <img alt={image.alt} src={image.src} />
+          {images.map((image, index) => {
+            const previewSrc =
+              pickVariantSource(image.variants, "thumbnail")?.src ?? image.src;
+
+            return (
+              <article className="admin-product-image-item" key={image.id}>
+              {previewSrc ? (
+                <img alt={image.alt} src={previewSrc} />
               ) : (
                 <div className="admin-product-image-placeholder">
                   {image.placeholderLabel ?? "이미지 없음"}
@@ -423,14 +533,34 @@ export function ProductImageManager({
                   )}
                 </div>
               </div>
-            </article>
-          ))}
+              </article>
+            );
+          })}
         </div>
       ) : (
         <p className="admin-empty-text">아직 등록된 상품 이미지가 없습니다.</p>
       )}
     </section>
   );
+}
+
+function mediaAssetToProductImage(asset: MediaPickerAsset): ProductImage {
+  const detail = pickMediaVariantForSurface(asset, "detail");
+  const variants = buildMediaVariantSources(asset);
+
+  return {
+    alt: asset.alt,
+    caption: asset.caption,
+    height: detail?.height ?? asset.height,
+    id: asset.id,
+    isDetail: true,
+    isListImage: false,
+    isPrimary: false,
+    src: detail?.src ?? asset.src,
+    storagePath: asset.masterPath,
+    variants,
+    width: detail?.width ?? asset.width,
+  };
 }
 
 function normalizeEditableImage(
@@ -540,10 +670,10 @@ async function cleanupPendingProductImages(
   }
 
   const response = await request;
-  const payload = (await response.json().catch(() => null)) as {
+  const payload = await readAdminUploadPayload<{
     message?: string;
     ok?: boolean;
-  } | null;
+  }>(response);
 
   if (!response.ok || !payload?.ok) {
     throw new Error(payload?.message || "이미지 정리에 실패했습니다.");

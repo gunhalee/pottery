@@ -3,12 +3,17 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { unstable_cache } from "next/cache";
 import { z } from "zod";
+import { publicCacheTags } from "@/lib/cache/public-cache-tags";
 import type { MediaUsage } from "@/lib/media/media-model";
+import {
+  buildMediaVariantSources,
+  pickMediaVariantForRole,
+} from "@/lib/media/media-variant-policy";
 import {
   deleteUnusedMediaAssetsByMasterPaths,
   mediaAssetBucket,
-  pickMediaVariant,
   readMediaUsagesByOwner,
   replaceMediaUsagesForOwner,
 } from "@/lib/media/media-store";
@@ -97,6 +102,30 @@ type ProductSelectRow = ProductRow & {
   shop_product_cafe24_mappings?: Cafe24MappingRow | Cafe24MappingRow[] | null;
 };
 
+type ProductQueryOptions = {
+  id?: string;
+  limit?: number;
+  published?: boolean;
+  slug?: string;
+};
+
+const imageVariantSourceSchema = z.object({
+  height: z.number().int().positive(),
+  src: z.string().min(1),
+  storagePath: z.string().optional(),
+  variant: z.enum(["detail", "list", "master", "thumbnail"]),
+  width: z.number().int().positive(),
+});
+
+const imageVariantsSchema = z
+  .object({
+    detail: imageVariantSourceSchema.optional(),
+    list: imageVariantSourceSchema.optional(),
+    master: imageVariantSourceSchema.optional(),
+    thumbnail: imageVariantSourceSchema.optional(),
+  })
+  .optional();
+
 const imageSchema = z.object({
   alt: z.string().min(1),
   cafe24ImagePath: z.string().optional(),
@@ -110,6 +139,7 @@ const imageSchema = z.object({
   placeholderLabel: z.string().optional(),
   src: z.string().optional(),
   storagePath: z.string().optional(),
+  variants: imageVariantsSchema,
   width: z.number().int().positive().optional(),
 });
 
@@ -235,8 +265,7 @@ export async function writeProducts(products: ConsepotProduct[]) {
 }
 
 export async function getPublishedProducts() {
-  const products = await readProducts();
-  return products.filter((product) => product.published);
+  return readPublishedProductsCached();
 }
 
 export async function getProductBySlug(slug: string) {
@@ -245,6 +274,10 @@ export async function getProductBySlug(slug: string) {
 }
 
 export async function getProductById(id: string) {
+  if (isSupabaseConfigured()) {
+    return readProductByIdFromSupabase(id);
+  }
+
   const products = await readProducts();
   return products.find((product) => product.id === id) ?? null;
 }
@@ -374,8 +407,33 @@ export function normalizeSlug(slug: string) {
 }
 
 async function readProductsFromSupabase() {
+  return readProductsFromSupabaseQuery();
+}
+
+const readPublishedProductsCached = unstable_cache(
+  async () => {
+    if (isSupabaseConfigured()) {
+      return readProductsFromSupabaseQuery({ published: true });
+    }
+
+    const products = await readProductsFromJson();
+    return products.filter((product) => product.published);
+  },
+  ["published-products"],
+  {
+    revalidate: 3600,
+    tags: [publicCacheTags.products],
+  },
+);
+
+async function readProductByIdFromSupabase(id: string) {
+  const products = await readProductsFromSupabaseQuery({ id, limit: 1 });
+  return products[0] ?? null;
+}
+
+async function readProductsFromSupabaseQuery(options: ProductQueryOptions = {}) {
   const supabase = getSupabaseAdminClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("shop_products")
     .select(
       `
@@ -384,6 +442,24 @@ async function readProductsFromSupabase() {
       `,
     )
     .order("created_at", { ascending: false });
+
+  if (options.id) {
+    query = query.eq("id", options.id);
+  }
+
+  if (options.slug) {
+    query = query.eq("slug", options.slug);
+  }
+
+  if (typeof options.published === "boolean") {
+    query = query.eq("published", options.published);
+  }
+
+  if (options.limit) {
+    query = query.limit(options.limit);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(`Supabase ?곹뭹 議고쉶 ?ㅽ뙣: ${error.message}`);
@@ -975,11 +1051,14 @@ function mediaUsagesToProductImages(usages: MediaUsage[]) {
         assetUsages.find((usage) => usage.role === "cover") ??
         assetUsages.find((usage) => usage.role === "list") ??
         assetUsages[0];
-      const imageVariant =
-        pickMediaVariant(asset, "detail") ??
-        pickMediaVariant(asset, "master") ??
-        asset.variants[0] ??
-        null;
+      const variantRole =
+        roles.has("list") ? "list" : (primaryUsage?.role ?? "detail");
+      const imageVariant = pickMediaVariantForRole(
+        asset,
+        "product",
+        variantRole,
+      );
+      const variants = buildMediaVariantSources(asset);
 
       return imageSchema.parse({
         alt: primaryUsage?.altOverride ?? asset.alt,
@@ -992,6 +1071,7 @@ function mediaUsagesToProductImages(usages: MediaUsage[]) {
         isPrimary: roles.has("cover"),
         src: imageVariant?.src ?? asset.src,
         storagePath: asset.masterPath,
+        variants,
         width: imageVariant?.width ?? asset.width,
       });
     })
@@ -1027,6 +1107,7 @@ function normalizeProductImages(images: ProductImage[], fallbackTitle: string) {
       placeholderLabel: emptyToUndefined(image.placeholderLabel),
       src: emptyToUndefined(image.src),
       storagePath: emptyToUndefined(image.storagePath),
+      variants: image.variants,
       width: image.width,
     }))
     .filter(

@@ -168,6 +168,26 @@ export async function readMediaLibraryAssets(limit = 80) {
   }));
 }
 
+export async function readMediaAssetsByIds(assetIds: string[]) {
+  if (!isSupabaseConfigured() || assetIds.length === 0) {
+    return [] satisfies MediaAsset[];
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("media_assets")
+    .select("*, media_variants (*)")
+    .in("id", [...new Set(assetIds)]);
+
+  if (error) {
+    throw new Error(`Failed to read media assets: ${error.message}`);
+  }
+
+  return ((data ?? []) as Array<
+    MediaAssetRow & { media_variants?: MediaVariantRow[] | null }
+  >).map((row) => fromMediaAssetRow(row, row.media_variants ?? []));
+}
+
 export async function readMediaUsageRowsForAsset(assetId: string) {
   if (!isSupabaseConfigured()) {
     return [] satisfies MediaUsage[];

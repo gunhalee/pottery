@@ -1,3 +1,5 @@
+import type { MediaVariantSourceMap } from "@/lib/media/media-model";
+
 export type ProductKind = "regular" | "one_of_a_kind";
 
 export type AvailabilityStatus =
@@ -63,6 +65,7 @@ export type ProductImage = {
   placeholderLabel?: string;
   src?: string;
   storagePath?: string;
+  variants?: MediaVariantSourceMap;
   width?: number;
 };
 

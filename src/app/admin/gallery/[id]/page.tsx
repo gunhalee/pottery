@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { ContentAdminEditPage } from "@/components/admin/content-admin-edit-page";
 import { isAdminAuthenticated } from "@/lib/admin/auth";
 import { getContentEntryById } from "@/lib/content-manager/content-store";
+import { readMediaLibraryAssets } from "@/lib/media/media-store";
 import { readProducts } from "@/lib/shop";
 
 type AdminGalleryEditPageProps = {
@@ -32,10 +33,11 @@ export default async function AdminGalleryEditPage({
     redirect("/admin/login?next=/admin/gallery");
   }
 
-  const [{ id }, flags, products] = await Promise.all([
+  const [{ id }, flags, products, mediaAssets] = await Promise.all([
     params,
     searchParams,
     readProducts(),
+    readMediaLibraryAssets(120),
   ]);
   const entry = await getContentEntryById(id);
 
@@ -50,6 +52,7 @@ export default async function AdminGalleryEditPage({
       entry={entry}
       imageDeleted={flags.image_deleted}
       kind="gallery"
+      mediaAssets={mediaAssets}
       productOptions={products.map((product) => ({
         slug: product.slug,
         title: product.titleKo,

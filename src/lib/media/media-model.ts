@@ -39,6 +39,18 @@ export type MediaVariant = {
   width: number;
 };
 
+export type MediaVariantSource = {
+  height: number;
+  src: string;
+  storagePath?: string;
+  variant: MediaVariantName;
+  width: number;
+};
+
+export type MediaVariantSourceMap = Partial<
+  Record<MediaVariantName, MediaVariantSource>
+>;
+
 export type MediaUsage = {
   altOverride?: string;
   asset: MediaAsset;

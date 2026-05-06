@@ -12,7 +12,7 @@ import {
 } from "@/lib/supabase/server";
 import type { MediaAsset } from "./media-model";
 
-type UploadedVariant = {
+export type UploadedVariant = {
   data: Buffer;
   height: number;
   storagePath: string;
@@ -120,7 +120,7 @@ export async function ensureMediaAssetBucket() {
   }
 }
 
-async function buildImageVariants(buffer: Buffer, assetId: string) {
+export async function buildImageVariants(buffer: Buffer, assetId: string) {
   const normalized = sharp(buffer).rotate();
   const variantInputs = [
     {

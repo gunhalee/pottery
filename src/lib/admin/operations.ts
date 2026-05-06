@@ -5,6 +5,10 @@ import {
   getContentAdminPath,
 } from "@/lib/content-manager/content-store";
 import { mediaAssetBucket } from "@/lib/media/media-store";
+import {
+  getMediaDiagnostics,
+  type MediaDiagnosticsDashboard,
+} from "@/lib/media/media-maintenance";
 import { walkLexicalNodes } from "@/lib/content-manager/rich-text-utils";
 import { readProducts } from "@/lib/shop/product-store";
 import {
@@ -47,6 +51,7 @@ export type ProductContentLinkItem = {
 export type OperationsDashboardData = {
   cleanupLogs: UploadCleanupLog[];
   cleanupPreview: Awaited<ReturnType<typeof inspectOrphanUploads>>;
+  mediaDiagnostics: MediaDiagnosticsDashboard;
   mediaReferences: MediaReferenceItem[];
   productContentLinks: ProductContentLinkItem[];
   stats: {
@@ -54,6 +59,7 @@ export type OperationsDashboardData = {
     cleanupFailures: number;
     cleanupPreviewCandidates: number;
     contentImages: number;
+    mediaVariantIssues: number;
     productContentLinks: number;
     productImages: number;
   };
@@ -71,11 +77,13 @@ type CleanupLogRow = {
 };
 
 export async function getOperationsDashboardData(): Promise<OperationsDashboardData> {
-  const [cleanupLogs, cleanupPreview, products, entries] = await Promise.all([
+  const [cleanupLogs, cleanupPreview, products, entries, mediaDiagnostics] =
+    await Promise.all([
     readUploadCleanupLogs(),
     inspectOrphanUploads({ maxCandidates: 30, minAgeHours: 48 }),
     readProducts(),
     readContentEntries(),
+    getMediaDiagnostics(120),
   ]);
   const productBySlug = new Map(products.map((product) => [product.slug, product]));
   const mediaReferences: MediaReferenceItem[] = [];
@@ -162,6 +170,7 @@ export async function getOperationsDashboardData(): Promise<OperationsDashboardD
   return {
     cleanupLogs,
     cleanupPreview,
+    mediaDiagnostics,
     mediaReferences: mediaReferences.sort((a, b) =>
       a.ownerTitle.localeCompare(b.ownerTitle, "ko-KR"),
     ),
@@ -173,6 +182,10 @@ export async function getOperationsDashboardData(): Promise<OperationsDashboardD
       cleanupFailures: cleanupLogs.filter((log) => !log.success).length,
       cleanupPreviewCandidates: cleanupPreview.candidates.length,
       contentImages,
+      mediaVariantIssues:
+        mediaDiagnostics.stats.errorAssets +
+        mediaDiagnostics.stats.warningAssets +
+        mediaDiagnostics.stats.brokenUsages,
       productContentLinks: productContentLinks.length,
       productImages,
     },
