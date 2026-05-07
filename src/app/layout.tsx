@@ -1,22 +1,13 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Gowun_Batang, Outfit } from "next/font/google";
+import { Gothic_A1, Gowun_Batang } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { siteConfig } from "@/lib/config/site";
 import "./globals.css";
 
-const cormorant = Cormorant_Garamond({
-  variable: "--font-cormorant",
-  subsets: ["latin"],
-  weight: "variable",
-  style: ["normal", "italic"],
-  preload: false,
-});
-
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
-  weight: "variable",
+const gothicA1 = Gothic_A1({
+  variable: "--font-gothic-a1",
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
   preload: false,
 });
 
@@ -43,7 +34,7 @@ export default function RootLayout({
   return (
     <html
       lang="ko"
-      className={`${cormorant.variable} ${outfit.variable} ${gowunBatang.variable} h-full`}
+      className={`${gothicA1.variable} ${gowunBatang.variable} h-full`}
     >
       <body className="min-h-full">
         {children}

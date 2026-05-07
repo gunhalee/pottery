@@ -46,9 +46,9 @@
   --color-muted: var(--tx2);
   --color-border: var(--brd);
   --color-accent: var(--acc);
-  --font-sans: "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Cormorant Garamond", "Cormorant Garamond Fallback", ui-serif, Georgia, serif;
-  --font-mono: "Outfit", "Outfit Fallback", ui-monospace, monospace;
+  --font-sans: var(--font-gothic-a1), "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-gothic-a1), "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-gothic-a1), "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
 }
 
 * {
@@ -212,7 +212,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 }
 
 .serif {
-  font-family: var(--font-cormorant), ui-serif, Georgia, serif;
+  font-family: var(--font-sans);
 }
 
 .meta-label {
@@ -1375,7 +1375,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 .admin-eyebrow {
   margin: 0 0 10px;
   color: var(--tx3);
-  font-family: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -1419,7 +1419,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 
 .admin-panel-head span {
   color: var(--tx3);
-  font-family: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-size: 11px;
 }
 
@@ -3701,7 +3701,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 
 .inline-code {
   color: var(--tx);
-  font-family: var(--font-outfit), ui-monospace, monospace;
+  font-family: var(--font-sans);
   font-size: 0.95em;
 }
 
