@@ -1,14 +1,13 @@
 import Image from "next/image";
 import heroPoster from "../../../public/asset/hero-image.jpg";
-import { SiteLink } from "@/components/navigation/site-link";
-import type { HomeHeroAction } from "@/lib/content/site-content";
+import type { HomeHeroTagline } from "@/lib/content/site-content";
 
 export function HomeHero({
-  actions,
+  taglines,
   title,
   videoSrc,
 }: {
-  actions: ReadonlyArray<HomeHeroAction>;
+  taglines: ReadonlyArray<HomeHeroTagline>;
   title: string;
   videoSrc: string | null;
 }) {
@@ -41,15 +40,11 @@ export function HomeHero({
       </div>
       <div className="hero-overlay">
         <h1 className="hero-title">{title}</h1>
-        <div className="hero-cta">
-          {actions.map((action) => (
-            <SiteLink
-              href={action.href}
-              className={`hero-button hero-button-${action.tone}`}
-              key={action.label}
-            >
-              {action.label}
-            </SiteLink>
+        <div className="hero-taglines" aria-label="태그라인">
+          {taglines.map((tagline) => (
+            <span className="hero-tagline" key={tagline}>
+              {tagline}
+            </span>
           ))}
         </div>
       </div>

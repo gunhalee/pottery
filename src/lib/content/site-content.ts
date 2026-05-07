@@ -27,11 +27,7 @@ export type DetailItem = {
   value: string;
 };
 
-export type HomeHeroAction = {
-  href: LinkHref;
-  label: string;
-  tone: "primary" | "ghost";
-};
+export type HomeHeroTagline = string;
 
 export type HomeEntryCard = {
   description: string;
@@ -50,13 +46,10 @@ export type HomeStoryContent = {
 };
 
 export const homeHero = {
-  actions: [
-    { href: "/gallery", label: "작품 보기", tone: "primary" },
-    { href: "/shop", label: "소장 가능한 작품", tone: "ghost" },
-  ],
+  taglines: ["흙의 결을 따라 천천히 빚고", "일상에 오래 머무는 쓰임을 만듭니다"],
   title: "조용한 쓰임을 위한 도자",
 } as const satisfies {
-  actions: ReadonlyArray<HomeHeroAction>;
+  taglines: ReadonlyArray<HomeHeroTagline>;
   title: string;
 };
 
