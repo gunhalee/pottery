@@ -111,7 +111,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) {
 }
 
 body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link {
-  opacity: 0.74;
+  opacity: 0.86;
 }
 
 body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
@@ -148,15 +148,17 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 
 .nav-link {
   font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 400;
-  letter-spacing: 0.02em;
-  line-height: 1.4;
-  opacity: 0.56;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.45;
+  opacity: 0.74;
   text-transform: none;
   white-space: nowrap;
   word-break: keep-all;
-  transition: opacity 0.2s ease;
+  transition:
+    color 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .nav-link:hover {
@@ -3788,7 +3790,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   }
 
   .nav-link {
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .scroll-top-button {
