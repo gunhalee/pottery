@@ -77,7 +77,7 @@ export const homeEntryCards = [
     description: "원데이 · 정기 클래스",
     href: "/class",
     label: "함께하기",
-    title: "함께하기",
+    title: "콩새와 도자기숲",
   },
   {
     description: "현재 소장 가능한 작품",
