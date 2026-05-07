@@ -85,7 +85,7 @@ export default async function NewsPage() {
       </PageShell>
       <BottomNav
         links={[
-          { href: "/shop", label: "작품 소장하기" },
+          { href: "/shop", label: "소장하기" },
           { href: "/class", label: "클래스" },
         ]}
       />

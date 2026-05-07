@@ -51,7 +51,7 @@ export default async function GalleryPage() {
             })
           ) : (
             <div className="gallery-item gallery-content-empty">
-              <span>공개된 작품 아카이브가 아직 없습니다.</span>
+              <span>공개된 초록과 도자기가 아직 없습니다.</span>
             </div>
           )}
         </div>
@@ -74,7 +74,7 @@ export default async function GalleryPage() {
       </PageShell>
       <BottomNav
         links={[
-          { href: "/shop", label: "작품 소장하기" },
+          { href: "/shop", label: "소장하기" },
           { href: "/class", label: "클래스 예약" },
         ]}
       />

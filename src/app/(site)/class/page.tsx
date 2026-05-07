@@ -55,7 +55,7 @@ export default function ClassPage() {
       <BottomNav
         links={[
           { href: "/gallery", label: "작품 갤러리" },
-          { href: "/shop", label: "작품 소장하기" },
+          { href: "/shop", label: "소장하기" },
         ]}
       />
     </>

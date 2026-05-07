@@ -62,28 +62,28 @@ export const homeHero = {
 
 export const homeEntryCards = [
   {
-    description: "현재 소장 가능한 작품",
-    href: "/shop",
-    label: "소장",
-    title: "작품 소장",
-  },
-  {
-    description: "원데이 · 정기 클래스",
-    href: "/class",
-    label: "수업",
-    title: "직접 해보기",
+    description: "일정 · 신작 · 작업 일지",
+    href: "/news",
+    label: "소식",
+    title: "공방 이야기",
   },
   {
     description: "작업 과정과 완성작",
     href: "/gallery",
     label: "작품",
-    title: "작품 아카이브",
+    title: "초록과 도자기",
   },
   {
-    description: "일정 · 신작 · 작업 일지",
-    href: "/news",
-    label: "소식",
-    title: "공방 소식",
+    description: "원데이 · 정기 클래스",
+    href: "/class",
+    label: "함께하기",
+    title: "함께하기",
+  },
+  {
+    description: "현재 소장 가능한 작품",
+    href: "/shop",
+    label: "소장하기",
+    title: "소장하기",
   },
 ] as const satisfies ReadonlyArray<HomeEntryCard>;
 
