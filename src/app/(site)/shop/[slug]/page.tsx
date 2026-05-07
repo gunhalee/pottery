@@ -62,13 +62,13 @@ export default async function ShopDetailPage({
   params,
 }: ShopDetailPageProps) {
   const { slug } = await params;
-  const [product, relatedGalleryEntries, publishedProducts] = await Promise.all([
+  const [product, relatedGalleryEntries, recentProductSummaries] = await Promise.all([
     getProductBySlug(slug),
     getPublishedContentListEntries("gallery", {
       limit: 3,
       relatedProductSlug: slug,
     }),
-    getPublishedProductListItems(),
+    getRecentProductSummaries(),
   ]);
 
   if (!product) {
@@ -80,7 +80,6 @@ export default async function ShopDetailPage({
   const cta = getProductCta(product);
   const purchaseKind = getProductPurchaseKind(product);
   const currentProductSummary = toProductListSummary(product);
-  const recentProductSummaries = publishedProducts.map(toProductListSummary);
 
   return (
     <>
@@ -219,4 +218,17 @@ export default async function ShopDetailPage({
       />
     </>
   );
+}
+
+async function getRecentProductSummaries() {
+  try {
+    const products = await getPublishedProductListItems();
+    return products.map(toProductListSummary);
+  } catch (error) {
+    console.warn(
+      "[shop/detail] Failed to load recent product summaries.",
+      error,
+    );
+    return [];
+  }
 }
