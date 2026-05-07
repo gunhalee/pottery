@@ -183,7 +183,15 @@ export async function regenerateMediaAssetVariants(assetId: string) {
   }
 
   if (!asset.masterPath) {
-    throw new Error("master 이미지 경로가 없어 variant를 재생성할 수 없습니다.");
+    throw new Error(
+      "원본 이미지 경로가 없어 variant를 재생성할 수 없습니다. 실제 이미지를 다시 업로드한 뒤 시도하세요.",
+    );
+  }
+
+  if (asset.bucket !== mediaAssetBucket) {
+    throw new Error(
+      `이 asset은 ${mediaAssetBucket} 버킷의 이미지가 아니어서 자동 재생성을 실행할 수 없습니다.`,
+    );
   }
 
   const supabase = getSupabaseAdminClient();
@@ -194,9 +202,7 @@ export async function regenerateMediaAssetVariants(assetId: string) {
     .download(asset.masterPath);
 
   if (error || !data) {
-    throw new Error(
-      `master 이미지를 읽지 못했습니다: ${error?.message ?? "응답 없음"}`,
-    );
+    throw new Error(buildMasterDownloadErrorMessage(error?.message));
   }
 
   const variants = await buildImageVariants(
@@ -281,6 +287,16 @@ export async function regenerateMediaAssetVariants(assetId: string) {
   return updated ?? asset;
 }
 
+function buildMasterDownloadErrorMessage(message?: string) {
+  const storageMessage = message ?? "응답 없음";
+
+  if (/not found/i.test(storageMessage)) {
+    return "원본 이미지 파일을 Storage에서 찾지 못했습니다. 이 asset은 현재 variant 재생성이 불가능하니 실제 이미지를 다시 업로드하거나, 어디에도 연결되지 않았다면 cleanup으로 삭제하세요.";
+  }
+
+  return `원본 이미지 파일을 읽지 못했습니다. 잠시 후 다시 시도하고, 계속 실패하면 이미지를 다시 업로드하세요. Storage 응답: ${storageMessage}`;
+}
+
 async function readRawMediaUsages() {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
@@ -352,7 +368,7 @@ function diagnoseAsset(
 
   return {
     asset,
-    canRegenerate: Boolean(asset.masterPath),
+    canRegenerate: Boolean(asset.masterPath && asset.bucket === mediaAssetBucket),
     fallbackCount,
     health: getHealth(issues),
     issues,

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { regenerateMediaAssetVariantsAction } from "@/app/admin/actions";
 import { AdminNav } from "@/components/admin/admin-nav";
+import { MediaVariantRegenerateSubmit } from "@/components/admin/media-variant-regenerate-submit";
 import { isAdminAuthenticated } from "@/lib/admin/auth";
 import {
   getMediaDiagnostics,
@@ -51,11 +52,15 @@ export default async function AdminMediaPage({
       </header>
 
       {flags.regenerated ? (
-        <div className="admin-alert">이미지 variant를 재생성했습니다.</div>
+        <div className="admin-alert">
+          이미지 variant를 재생성했습니다. list, detail, thumbnail 이미지가 다시
+          준비되었습니다.
+        </div>
       ) : null}
       {flags.regenerate_error ? (
         <div className="admin-alert admin-alert-danger">
-          variant 재생성 실패: {flags.regenerate_error}
+          <strong>variant 재생성에 실패했습니다.</strong>
+          <span>{flags.regenerate_error}</span>
         </div>
       ) : null}
 
@@ -151,7 +156,12 @@ function MediaDiagnosticCard({ item }: { item: MediaAssetDiagnostic }) {
           ))}
         </ul>
       </div>
-      <RegenerateForm assetId={item.asset.id} disabled={!item.canRegenerate} />
+      <RegenerateForm
+        assetId={item.asset.id}
+        disabled={!item.canRegenerate}
+        disabledReason={getRegenerateDisabledReason(item)}
+        returnTo={`/admin/media#asset-${item.asset.id}`}
+      />
     </article>
   );
 }
@@ -174,7 +184,12 @@ function MediaLibraryItem({ item }: { item: MediaAssetDiagnostic }) {
       </div>
       <code>{item.asset.masterPath}</code>
       {item.health !== "ok" ? (
-        <RegenerateForm assetId={item.asset.id} disabled={!item.canRegenerate} />
+        <RegenerateForm
+          assetId={item.asset.id}
+          disabled={!item.canRegenerate}
+          disabledReason={getRegenerateDisabledReason(item)}
+          returnTo={`/admin/media#library-asset-${item.asset.id}`}
+        />
       ) : null}
     </article>
   );
@@ -183,23 +198,43 @@ function MediaLibraryItem({ item }: { item: MediaAssetDiagnostic }) {
 function RegenerateForm({
   assetId,
   disabled,
+  disabledReason,
+  returnTo,
 }: {
   assetId: string;
   disabled: boolean;
+  disabledReason?: string;
+  returnTo: string;
 }) {
   return (
-    <form action={regenerateMediaAssetVariantsAction}>
+    <form
+      action={regenerateMediaAssetVariantsAction}
+      className="admin-regenerate-form"
+    >
       <input name="assetId" type="hidden" value={assetId} />
-      <input name="returnTo" type="hidden" value="/admin/media" />
-      <button
-        className="admin-secondary-button"
-        disabled={disabled}
-        type="submit"
-      >
-        variant 재생성
-      </button>
+      <input name="returnTo" type="hidden" value={returnTo} />
+      <MediaVariantRegenerateSubmit disabled={disabled} />
+      {disabledReason ? (
+        <p className="admin-regenerate-help">{disabledReason}</p>
+      ) : null}
     </form>
   );
+}
+
+function getRegenerateDisabledReason(item: MediaAssetDiagnostic) {
+  if (item.canRegenerate) {
+    return undefined;
+  }
+
+  if (!item.asset.masterPath) {
+    return "원본 이미지 경로가 없어 재생성할 수 없습니다. 실제 이미지를 다시 업로드한 뒤 시도하세요.";
+  }
+
+  if (item.asset.bucket !== "media-assets") {
+    return "media-assets 버킷의 이미지가 아니어서 자동 재생성을 실행할 수 없습니다.";
+  }
+
+  return "이 asset은 현재 variant 재생성을 실행할 수 없습니다.";
 }
 
 function StatCard({

@@ -444,6 +444,10 @@ export async function regenerateMediaAssetVariantsAction(formData: FormData) {
     revalidatePath("/admin/ops");
     target = withQuery(parsed.returnTo ?? "/admin/media", "regenerated", "1");
   } catch (error) {
+    console.error("[admin-media-variant-regenerate]", {
+      assetId: parsed.assetId,
+      error,
+    });
     target = withQuery(
       parsed.returnTo ?? "/admin/media",
       "regenerate_error",
