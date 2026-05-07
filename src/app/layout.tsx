@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Outfit } from "next/font/google";
+import { Cormorant_Garamond, Gowun_Batang, Outfit } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { siteConfig } from "@/lib/config/site";
@@ -20,6 +20,12 @@ const outfit = Outfit({
   preload: false,
 });
 
+const gowunBatang = Gowun_Batang({
+  variable: "--font-gowun-batang",
+  weight: ["400", "700"],
+  preload: false,
+});
+
 export const metadata: Metadata = {
   metadataBase: getSiteMetadataBase(),
   title: {
@@ -37,7 +43,7 @@ export default function RootLayout({
   return (
     <html
       lang="ko"
-      className={`${cormorant.variable} ${outfit.variable} h-full`}
+      className={`${cormorant.variable} ${outfit.variable} ${gowunBatang.variable} h-full`}
     >
       <body className="min-h-full">
         {children}
