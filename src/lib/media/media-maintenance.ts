@@ -386,22 +386,48 @@ function getMissingStoredVariants(asset: MediaAsset) {
 }
 
 function getDuplicatedVariantPaths(asset: MediaAsset) {
-  const counts = new Map<string, number>();
+  const entries: Array<{ path: string; source: string }> = [];
 
-  for (const path of [
-    asset.masterPath,
-    ...asset.variants.map((variant) => variant.storagePath),
-  ]) {
-    if (!path) {
+  if (asset.masterPath) {
+    entries.push({ path: asset.masterPath, source: "asset_master" });
+  }
+
+  for (const variant of asset.variants) {
+    if (!variant.storagePath) {
       continue;
     }
 
-    counts.set(path, (counts.get(path) ?? 0) + 1);
+    entries.push({
+      path: variant.storagePath,
+      source: `variant:${variant.variant}`,
+    });
   }
 
-  return [...counts.entries()]
-    .filter(([, count]) => count > 1)
+  const grouped = new Map<string, string[]>();
+
+  for (const entry of entries) {
+    grouped.set(entry.path, [...(grouped.get(entry.path) ?? []), entry.source]);
+  }
+
+  return [...grouped.entries()]
+    .filter(([, sources]) => {
+      if (sources.length <= 1) {
+        return false;
+      }
+
+      return !isExpectedMasterPathMirror(sources);
+    })
     .map(([path]) => path);
+}
+
+function isExpectedMasterPathMirror(sources: string[]) {
+  const uniqueSources = new Set(sources);
+
+  return (
+    sources.length === 2 &&
+    uniqueSources.has("asset_master") &&
+    uniqueSources.has("variant:master")
+  );
 }
 
 function isRoleUsingFallback(asset: MediaAsset, role: MediaUsageRole) {
