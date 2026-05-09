@@ -5,6 +5,9 @@ export const siteConfig = {
   instagramUrl: "https://www.instagram.com/",
   kakaoChannelUrl:
     process.env.NEXT_PUBLIC_KAKAO_CHANNEL_URL || "https://pf.kakao.com/",
+  naverBlogUrl:
+    process.env.NEXT_PUBLIC_NAVER_BLOG_URL || "https://blog.naver.com/",
+  youtubeUrl: process.env.NEXT_PUBLIC_YOUTUBE_URL || "https://www.youtube.com/",
   navigation: [
     { href: "/intro", label: "소개" },
     { href: "/news", label: "소식" },

@@ -11,7 +11,6 @@ import {
   type ProductGalleryImage,
 } from "@/components/shop/product-image-gallery";
 import { ProductPurchasePanel } from "@/components/shop/product-purchase-panel";
-import { ProductVisitTracker } from "@/components/shop/recent-products";
 import { ProductSpecList } from "@/components/shop/product-spec-list";
 import { getPublishedContentListEntries } from "@/lib/content-manager/content-store";
 import {
@@ -26,7 +25,6 @@ import {
   getPublishedProductListItems,
 } from "@/lib/shop";
 import { getProductFeedbackSummary } from "@/lib/shop/product-feedback";
-import { toProductListSummary } from "@/lib/shop/product-list-view";
 
 type ShopDetailPageProps = {
   params: Promise<{
@@ -75,7 +73,6 @@ export default async function ShopDetailPage({
   const primaryImage = getProductPrimaryImage(product);
   const displayImages = getProductDisplayImages(product);
   const cta = getProductCta(product);
-  const currentProductSummary = toProductListSummary(product);
   const feedbackSummary = await getProductFeedbackSummary(product.id);
   const galleryImages = getGalleryImages({
     displayImages,
@@ -87,131 +84,124 @@ export default async function ShopDetailPage({
     .slice(0, 3);
 
   return (
-    <>
-      <ProductVisitTracker product={currentProductSummary} />
-      <PageShell className="product-detail-shell">
-        <nav className="product-detail-backbar" aria-label="상품 상세 탐색">
-          <Link className="product-detail-backlink" href="/shop" prefetch={false}>
-            <ArrowLeftIcon />
-            목록으로
-          </Link>
-        </nav>
+    <PageShell className="product-detail-shell">
+      <nav className="product-detail-backbar" aria-label="상품 상세 탐색">
+        <Link className="product-detail-backlink" href="/shop" prefetch={false}>
+          <ArrowLeftIcon />
+          목록으로
+        </Link>
+      </nav>
 
-        <div className="product-detail-layout">
-          <div className="product-detail-media">
-            <ProductImageGallery
-              images={galleryImages}
-              productTitle={product.titleKo}
-            />
-          </div>
-
-          <article className="product-detail-info">
-            <div className="product-detail-heading">
-              <h1 className="product-detail-title">{product.titleKo}</h1>
-            </div>
-            <div className="product-badge-row">
-              {getProductBadges(product).map((badge) => (
-                <ProductBadge key={badge} kind={badge} />
-              ))}
-            </div>
-            <p className="product-detail-price">{formatProductPrice(product)}</p>
-            <p className="product-detail-lead">{product.shortDescription}</p>
-            <ProductPurchasePanel
-              availabilityLabel={cta.label}
-              currency={product.commerce.currency}
-              isPurchasable={cta.kind === "buy"}
-              maxQuantity={product.commerce.stockQuantity}
-              price={product.commerce.price}
-              productSlug={product.slug}
-              productTitle={product.titleKo}
-            />
-          </article>
+      <div className="product-detail-layout">
+        <div className="product-detail-media">
+          <ProductImageGallery
+            images={galleryImages}
+            productTitle={product.titleKo}
+          />
         </div>
 
-        <nav className="product-detail-tabs" aria-label="상품 정보">
-          <a href="#product-detail-description">상세정보</a>
-          <span aria-hidden="true">|</span>
-          <a href="#product-reviews">구매평</a>
-          <span aria-hidden="true">|</span>
-          <a href="#product-inquiries">문의사항</a>
-        </nav>
-
-        <section
-          className="product-detail-section product-detail-story-section"
-          id="product-detail-description"
-        >
-          <div className="product-section-header product-detail-story-head">
-            <h2>상세정보</h2>
+        <article className="product-detail-info">
+          <div className="product-detail-heading">
+            <h1 className="product-detail-title">{product.titleKo}</h1>
           </div>
-          <div className="product-detail-story-body">
-            <h3 className="product-detail-story-title">작업물 이야기</h3>
-            <p className="product-detail-lead product-detail-story-lead">
-              {product.shortDescription}
+          <div className="product-badge-row">
+            {getProductBadges(product).map((badge) => (
+              <ProductBadge key={badge} kind={badge} />
+            ))}
+          </div>
+          <p className="product-detail-price">{formatProductPrice(product)}</p>
+          <p className="product-detail-lead">{product.shortDescription}</p>
+          <ProductPurchasePanel
+            availabilityLabel={cta.label}
+            currency={product.commerce.currency}
+            isPurchasable={cta.kind === "buy"}
+            maxQuantity={product.commerce.stockQuantity}
+            price={product.commerce.price}
+            productSlug={product.slug}
+            productTitle={product.titleKo}
+          />
+        </article>
+      </div>
+
+      <nav className="product-detail-tabs" aria-label="상품 정보">
+        <a href="#product-detail-description">상세정보</a>
+        <span aria-hidden="true">|</span>
+        <a href="#product-reviews">구매평</a>
+      </nav>
+
+      <section
+        className="product-detail-section product-detail-story-section"
+        id="product-detail-description"
+      >
+        <div className="product-section-header product-detail-story-head">
+          <h2>상세정보</h2>
+        </div>
+        <div className="product-detail-story-body">
+          <h3 className="product-detail-story-title">작업물 이야기</h3>
+          <p className="product-detail-lead product-detail-story-lead">
+            {product.shortDescription}
+          </p>
+          {product.storyBody ? (
+            <RichTextRenderer body={product.storyBody} />
+          ) : (
+            <p className="body-copy">
+              {product.story ?? product.shortDescription}
             </p>
-            {product.storyBody ? (
-              <RichTextRenderer body={product.storyBody} />
-            ) : (
-              <p className="body-copy">
-                {product.story ?? product.shortDescription}
-              </p>
-            )}
+          )}
+        </div>
+      </section>
+
+      {relatedGalleryEntries.length > 0 ? (
+        <section className="product-linked-content">
+          <div>
+            <p className="small-caps">작업물 기록</p>
+            <h2>이 상품과 연결된 작업물 이야기</h2>
+          </div>
+          <div className="product-linked-content-list">
+            {relatedGalleryEntries.map((entry) => (
+              <Link
+                className="product-linked-content-card"
+                href={`/gallery/${entry.slug}`}
+                key={entry.id}
+                prefetch={false}
+              >
+                <span>{entry.displayDate ?? entry.publishedAt ?? "작업물"}</span>
+                <strong>{entry.title}</strong>
+                {entry.summary ? <p>{entry.summary}</p> : null}
+              </Link>
+            ))}
           </div>
         </section>
+      ) : null}
 
-        {relatedGalleryEntries.length > 0 ? (
-          <section className="product-linked-content">
-            <div>
-              <p className="small-caps">작업물 기록</p>
-              <h2>이 상품과 연결된 작업물 이야기</h2>
-            </div>
-            <div className="product-linked-content-list">
-              {relatedGalleryEntries.map((entry) => (
-                <Link
-                  className="product-linked-content-card"
-                  href={`/gallery/${entry.slug}`}
-                  key={entry.id}
-                  prefetch={false}
-                >
-                  <span>{entry.displayDate ?? entry.publishedAt ?? "작업물"}</span>
-                  <strong>{entry.title}</strong>
-                  {entry.summary ? <p>{entry.summary}</p> : null}
-                </Link>
-              ))}
-            </div>
-          </section>
-        ) : null}
+      <ProductSpecList
+        items={[
+          { label: "크기", value: product.size },
+          { label: "소재", value: product.material },
+          { label: "유약", value: product.glaze },
+          { label: "안내", value: product.usageNote },
+          { label: "배송", value: product.shippingNote },
+        ]}
+      />
 
-        <ProductSpecList
-          items={[
-            { label: "크기", value: product.size },
-            { label: "소재", value: product.material },
-            { label: "유약", value: product.glaze },
-            { label: "안내", value: product.usageNote },
-            { label: "배송", value: product.shippingNote },
-          ]}
-        />
+      <ProductFeedbackPanel
+        productId={product.id}
+        productSlug={product.slug}
+        reviewCount={feedbackSummary.reviewCount}
+        reviews={feedbackSummary.reviews}
+      />
 
-        <ProductFeedbackPanel
-          inquiries={feedbackSummary.inquiries}
-          inquiryCount={feedbackSummary.inquiryCount}
-          productId={product.id}
-          productSlug={product.slug}
-          reviewCount={feedbackSummary.reviewCount}
-          reviews={feedbackSummary.reviews}
-        />
-
-        {relatedProducts.length > 0 ? (
-          <section className="product-related-section" aria-label="연관 상품">
-            <h2>+ 연관 상품</h2>
-            <div className="product-related-grid">
-              {relatedProducts.map((relatedProduct) => (
-                <ProductCard key={relatedProduct.id} product={relatedProduct} />
-              ))}
-            </div>
-          </section>
-        ) : null}
-      </PageShell>
-    </>
+      {relatedProducts.length > 0 ? (
+        <section className="product-related-section" aria-label="연관 상품">
+          <h2>+ 연관 상품</h2>
+          <div className="product-related-grid">
+            {relatedProducts.map((relatedProduct) => (
+              <ProductCard key={relatedProduct.id} product={relatedProduct} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </PageShell>
   );
 }
 

@@ -1,28 +1,7 @@
 import { SiteLink } from "@/components/navigation/site-link";
+import { SocialIconLink } from "@/components/site/social-icon-link";
 import { siteConfig } from "@/lib/config/site";
-
-const footerSocialLinks = [
-  {
-    href: siteConfig.instagramUrl,
-    icon: <InstagramIcon />,
-    label: "Instagram",
-  },
-  {
-    href: siteConfig.kakaoChannelUrl,
-    icon: <KakaoIcon />,
-    label: "카카오채널",
-  },
-  {
-    href: null,
-    icon: <YouTubeIcon />,
-    label: "YouTube",
-  },
-  {
-    href: null,
-    icon: <BlogIcon />,
-    label: "Blog",
-  },
-];
+import { footerSocialLinks } from "@/lib/config/social-links";
 
 const footerInfoGroups = [
   [
@@ -43,29 +22,13 @@ export function SiteFooter() {
           <div className="footer-brand">
             <div className="footer-logo">{siteConfig.name}</div>
             <div className="footer-social-links" aria-label="외부 연결">
-              {footerSocialLinks.map((link) =>
-                link.href ? (
-                  <a
-                    aria-label={link.label}
-                    className="footer-social-link"
-                    href={link.href}
-                    key={link.label}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    {link.icon}
-                  </a>
-                ) : (
-                  <span
-                    aria-label={`${link.label} 링크 준비 중`}
-                    className="footer-social-link footer-social-link-placeholder"
-                    key={link.label}
-                    role="img"
-                  >
-                    {link.icon}
-                  </span>
-                ),
-              )}
+              {footerSocialLinks.map((link) => (
+                <SocialIconLink
+                  key={link.key}
+                  link={link}
+                  variant="footer"
+                />
+              ))}
             </div>
           </div>
           <div className="footer-info" aria-label="공방 정보">
@@ -94,41 +57,5 @@ export function SiteFooter() {
         </div>
       </div>
     </footer>
-  );
-}
-
-function InstagramIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
-      <rect height="17" rx="5" width="17" x="3.5" y="3.5" />
-      <circle cx="12" cy="12" r="4" />
-      <path d="M17.5 6.8h.01" />
-    </svg>
-  );
-}
-
-function KakaoIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
-      <path d="M12 4.2c-4.7 0-8.4 2.9-8.4 6.5 0 2.3 1.5 4.3 3.8 5.5l-.8 3 3.4-2.1c.6.1 1.3.2 2 .2 4.7 0 8.4-2.9 8.4-6.6 0-3.6-3.7-6.5-8.4-6.5Z" />
-    </svg>
-  );
-}
-
-function YouTubeIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
-      <rect height="13" rx="3" width="18" x="3" y="5.5" />
-      <path d="m10.5 9 4.4 3-4.4 3V9Z" />
-    </svg>
-  );
-}
-
-function BlogIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
-      <path d="M5 5h14v11H9l-4 3V5Z" />
-      <path d="M8 9h8M8 12h5" />
-    </svg>
   );
 }

@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { ArtworkImage } from "@/components/media/artwork-image";
-import {
-  CtaCardLink,
-  PageIntro,
-  PageShell,
-  Section,
-} from "@/components/site/primitives";
+import { PageBottomCtaSection } from "@/components/site/page-bottom-cta-section";
+import { PageSocialIntro } from "@/components/site/page-social-intro";
+import { PageShell } from "@/components/site/primitives";
+import { pageSocialLinks } from "@/lib/config/social-links";
+import { pageBottomCtas } from "@/lib/content/page-ctas";
 import { getContentListImage } from "@/lib/content-manager/content-images";
 import { getPublishedContentListEntries } from "@/lib/content-manager/content-store";
 import { mediaImageSizes } from "@/lib/media/media-image-sizes";
@@ -16,7 +15,8 @@ export default async function GalleryPage() {
   return (
     <>
       <PageShell>
-        <PageIntro
+        <PageSocialIntro
+          socials={pageSocialLinks.gallery}
           subtitle="완성작과 작업 과정의 기록입니다."
           title="작업물"
         />
@@ -54,16 +54,10 @@ export default async function GalleryPage() {
           )}
         </div>
       </PageShell>
-      <Section className="intro-gallery-cta gallery-cta-section">
-        <div className="gallery-cta-list">
-          <CtaCardLink href="/shop" label="소장하기">
-            <p className="body-copy">작업물을 소장하고 싶다면</p>
-          </CtaCardLink>
-          <CtaCardLink href="/class" label="클래스 신청하기">
-            <p className="body-copy">직접 만들어보고 싶다면</p>
-          </CtaCardLink>
-        </div>
-      </Section>
+      <PageBottomCtaSection
+        className="gallery-cta-section"
+        ctas={pageBottomCtas.gallery}
+      />
     </>
   );
 }

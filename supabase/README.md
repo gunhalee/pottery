@@ -2,7 +2,7 @@
 
 1. Supabase 프로젝트를 만든다.
 2. SQL editor 또는 Supabase CLI로 `migrations/*.sql`을 파일명 순서대로 적용한다.
-   구매평/문의사항 저장은 `202605090001_shop_product_feedback.sql`에서 생성되는
+   구매평 저장은 `202605090001_shop_product_feedback.sql`에서 생성되는
    `public.shop_product_feedback` 테이블을 사용한다.
    익명 찜 저장은 `202605090002_shop_wishlists.sql`에서 생성되는
    `public.shop_wishlists`, `public.shop_wishlist_items` 테이블을 사용한다.

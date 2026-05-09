@@ -27,6 +27,14 @@ export type DetailItem = {
   value: string;
 };
 
+export type ClassItem = {
+  action: string;
+  description: string;
+  details: readonly DetailItem[];
+  eyebrow: string;
+  title: string;
+};
+
 export type HomeHeroTagline = string;
 
 export type HomeEntryCard = {
@@ -239,7 +247,7 @@ export const classItems = [
     eyebrow: "맞춤",
     title: "핸드빌딩",
   },
-] as const;
+] as const satisfies readonly ClassItem[];
 
 export const classReviews = [
   {

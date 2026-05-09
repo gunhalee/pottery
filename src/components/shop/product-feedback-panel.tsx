@@ -2,19 +2,15 @@
 
 import { useState, type FormEvent } from "react";
 
-type ProductFeedbackKind = "inquiry" | "review";
-
 type ProductFeedbackEntry = {
   authorName: string;
   body: string;
   createdAt: string;
   id: string;
-  rating: number | null;
+  rating: number;
 };
 
 type ProductFeedbackPanelProps = {
-  inquiries: ProductFeedbackEntry[];
-  inquiryCount: number;
   productId: string;
   productSlug: string;
   reviewCount: number;
@@ -27,27 +23,21 @@ type FeedbackFormStatus = {
 } | null;
 
 export function ProductFeedbackPanel({
-  inquiries,
-  inquiryCount,
   productId,
   productSlug,
   reviewCount,
   reviews,
 }: ProductFeedbackPanelProps) {
-  const [openForm, setOpenForm] = useState<ProductFeedbackKind | null>(null);
-  const [submittingKind, setSubmittingKind] =
-    useState<ProductFeedbackKind | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<FeedbackFormStatus>(null);
 
-  const toggleForm = (kind: ProductFeedbackKind) => {
-    setOpenForm((current) => (current === kind ? null : kind));
+  const toggleForm = () => {
+    setIsFormOpen((current) => !current);
     setStatus(null);
   };
 
-  const handleSubmit = async (
-    event: FormEvent<HTMLFormElement>,
-    kind: ProductFeedbackKind,
-  ) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const form = event.currentTarget;
@@ -56,18 +46,13 @@ export function ProductFeedbackPanel({
       authorName: getFormValue(formData, "authorName"),
       body: getFormValue(formData, "body"),
       contact: getFormValue(formData, "contact"),
-      isPrivate: kind === "inquiry",
-      kind,
       productId,
       productSlug,
+      rating: Number(getFormValue(formData, "rating")),
       website: getFormValue(formData, "website"),
     };
 
-    if (kind === "review") {
-      payload.rating = Number(getFormValue(formData, "rating"));
-    }
-
-    setSubmittingKind(kind);
+    setIsSubmitting(true);
     setStatus(null);
 
     try {
@@ -101,95 +86,52 @@ export function ProductFeedbackPanel({
             : "접수 중 오류가 발생했습니다.",
       });
     } finally {
-      setSubmittingKind(null);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <>
-      <section className="product-feedback-section" id="product-reviews">
-        <div className="product-feedback-head">
-          <div className="product-feedback-title">
-            <h2>
-              구매평<span>({reviewCount})</span>
-            </h2>
-          </div>
-          <button type="button" onClick={() => toggleForm("review")}>
-            구매평 작성
-          </button>
+    <section className="product-feedback-section" id="product-reviews">
+      <div className="product-feedback-head">
+        <div className="product-feedback-title">
+          <h2>
+            구매평<span>({reviewCount})</span>
+          </h2>
         </div>
-        {openForm === "review" ? (
-          <ProductFeedbackForm
-            kind="review"
-            onSubmit={handleSubmit}
-            status={status}
-            submitting={submittingKind === "review"}
-          />
-        ) : null}
-        <label className="product-photo-review-filter">
-          <input type="checkbox" disabled />
-          포토 구매평만 보기
-        </label>
-        <ProductFeedbackList
-          emptyText="등록된 구매평이 없습니다."
-          entries={reviews}
-          kind="review"
+        <button type="button" onClick={toggleForm}>
+          구매평 작성
+        </button>
+      </div>
+      {isFormOpen ? (
+        <ProductFeedbackForm
+          onSubmit={handleSubmit}
+          status={status}
+          submitting={isSubmitting}
         />
-      </section>
-
-      <section className="product-feedback-section" id="product-inquiries">
-        <div className="product-feedback-head">
-          <div className="product-feedback-title">
-            <h2>
-              문의사항<span>({inquiryCount})</span>
-            </h2>
-          </div>
-          <button type="button" onClick={() => toggleForm("inquiry")}>
-            문의사항 작성
-          </button>
-        </div>
-        <p className="product-inquiry-copy">
-          상품 구매에 대해 자유롭게 문의주세요.
-        </p>
-        {openForm === "inquiry" ? (
-          <ProductFeedbackForm
-            kind="inquiry"
-            onSubmit={handleSubmit}
-            status={status}
-            submitting={submittingKind === "inquiry"}
-          />
-        ) : null}
-        <ProductFeedbackList
-          emptyText="등록된 문의사항이 없습니다."
-          entries={inquiries}
-          kind="inquiry"
-        />
-      </section>
-    </>
+      ) : null}
+      <label className="product-photo-review-filter">
+        <input type="checkbox" disabled />
+        포토 구매평만 보기
+      </label>
+      <ProductFeedbackList
+        emptyText="등록된 구매평이 없습니다."
+        entries={reviews}
+      />
+    </section>
   );
 }
 
 function ProductFeedbackForm({
-  kind,
   onSubmit,
   status,
   submitting,
 }: {
-  kind: ProductFeedbackKind;
-  onSubmit: (
-    event: FormEvent<HTMLFormElement>,
-    kind: ProductFeedbackKind,
-  ) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   status: FeedbackFormStatus;
   submitting: boolean;
 }) {
-  const isReview = kind === "review";
-
   return (
-    <form
-      className="product-feedback-form"
-      onSubmit={(event) => onSubmit(event, kind)}
-    >
+    <form className="product-feedback-form" onSubmit={onSubmit}>
       <label className="product-feedback-field product-feedback-honeypot">
         홈페이지
         <input autoComplete="off" name="website" tabIndex={-1} type="text" />
@@ -202,22 +144,16 @@ function ProductFeedbackForm({
         연락처 또는 이메일
         <input name="contact" type="text" maxLength={120} />
       </label>
-      {isReview ? (
-        <label className="product-feedback-field">
-          평점
-          <select name="rating" required defaultValue="5">
-            <option value="5">5점</option>
-            <option value="4">4점</option>
-            <option value="3">3점</option>
-            <option value="2">2점</option>
-            <option value="1">1점</option>
-          </select>
-        </label>
-      ) : (
-        <p className="product-feedback-note">
-          문의사항은 비공개로 접수됩니다.
-        </p>
-      )}
+      <label className="product-feedback-field">
+        평점
+        <select name="rating" required defaultValue="5">
+          <option value="5">5점</option>
+          <option value="4">4점</option>
+          <option value="3">3점</option>
+          <option value="2">2점</option>
+          <option value="1">1점</option>
+        </select>
+      </label>
       <label className="product-feedback-field product-feedback-field-wide">
         내용
         <textarea name="body" required minLength={5} maxLength={1200} />
@@ -242,11 +178,9 @@ function ProductFeedbackForm({
 function ProductFeedbackList({
   emptyText,
   entries,
-  kind,
 }: {
   emptyText: string;
   entries: ProductFeedbackEntry[];
-  kind: ProductFeedbackKind;
 }) {
   if (entries.length === 0) {
     return <p className="product-empty-state">{emptyText}</p>;
@@ -259,9 +193,7 @@ function ProductFeedbackList({
           <div className="product-feedback-meta">
             <strong>{entry.authorName}</strong>
             <span>{formatFeedbackDate(entry.createdAt)}</span>
-            {kind === "review" && entry.rating ? (
-              <span>평점 {entry.rating}점</span>
-            ) : null}
+            <span>평점 {entry.rating}점</span>
           </div>
           <p className="product-feedback-body">{entry.body}</p>
         </li>

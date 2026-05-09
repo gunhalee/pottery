@@ -3,7 +3,7 @@ import {
   PageIntro,
   PageShell,
 } from "@/components/site/primitives";
-import { CartReturnNotice } from "@/components/shop/recent-products";
+import { CartReturnNotice } from "@/components/shop/cart-return-notice";
 import { OrderLookupForm } from "@/components/shop/order-lookup-form";
 
 export const metadata: Metadata = {

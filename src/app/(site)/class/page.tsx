@@ -1,11 +1,7 @@
-import {
-  ExternalButtonLink,
-  ExternalCtaCardLink,
-  FollowCTA,
-  PageIntro,
-  PageShell,
-  Section,
-} from "@/components/site/primitives";
+import { ClassCardGrid } from "@/components/site/class-card-grid";
+import { PageIntro, PageShell } from "@/components/site/primitives";
+import { PageBottomCtaSection } from "@/components/site/page-bottom-cta-section";
+import { pageBottomCtas } from "@/lib/content/page-ctas";
 import { classItems, classReviews } from "@/lib/content/site-content";
 import { siteConfig } from "@/lib/config/site";
 
@@ -18,28 +14,10 @@ export default function ClassPage() {
           title="함께하기"
         />
 
-        <div className="class-grid section-gap">
-          {classItems.map((item) => (
-            <article className="class-card" key={item.eyebrow}>
-              <div className="small-caps">{item.eyebrow}</div>
-              <h2 className="card-title">{item.title}</h2>
-              <p className="body-copy">{item.description}</p>
-              <ul className="detail-list">
-                {item.details.map((detail) => (
-                  <li key={detail.label}>
-                    {detail.label}
-                    <span>{detail.value}</span>
-                  </li>
-                ))}
-              </ul>
-              <ExternalButtonLink href={siteConfig.kakaoChannelUrl}>
-                {item.action}
-              </ExternalButtonLink>
-            </article>
-          ))}
-        </div>
-
-        <FollowCTA title="다음 클래스 오픈 소식을 받으려면" />
+        <ClassCardGrid
+          actionHref={siteConfig.kakaoChannelUrl}
+          items={classItems}
+        />
 
         <div>
           <div className="review-title">후기</div>
@@ -53,14 +31,11 @@ export default function ClassPage() {
           </div>
         </div>
       </PageShell>
-      <Section className="intro-gallery-cta class-inquiry-cta" id="class-inquiries">
-        <ExternalCtaCardLink
-          href={siteConfig.kakaoChannelUrl}
-          label="카카오채널 문의하기"
-        >
-          <p className="body-copy">클래스 문의를 하고 싶다면</p>
-        </ExternalCtaCardLink>
-      </Section>
+      <PageBottomCtaSection
+        className="class-inquiry-cta"
+        ctas={pageBottomCtas.class}
+        id="class-inquiries"
+      />
     </>
   );
 }

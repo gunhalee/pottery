@@ -131,7 +131,6 @@ export function Cafe24CartAction({
 
       saveCartReturn({
         cartHref: checkoutHref,
-        productHref: window.location.href,
         productName,
       });
       window.location.assign(checkoutHref);
@@ -269,11 +268,9 @@ function clampQuantity(value: number, maxQuantity: number) {
 
 function saveCartReturn({
   cartHref,
-  productHref,
   productName,
 }: {
   cartHref: string;
-  productHref: string;
   productName: string;
 }) {
   try {
@@ -281,7 +278,6 @@ function saveCartReturn({
       "consepot_recent_cart",
       JSON.stringify({
         cartHref,
-        productHref,
         productName,
         savedAt: Date.now(),
       }),

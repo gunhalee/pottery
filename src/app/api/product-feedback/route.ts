@@ -21,22 +21,14 @@ const baseFeedbackPayloadSchema = z.object({
   authorName: z.string().trim().min(1).max(40),
   body: z.string().trim().min(5).max(1200),
   contact: z.string().trim().max(120).optional(),
-  isPrivate: z.boolean().optional(),
   productId: z.string().uuid(),
   productSlug: z.string().trim().min(1).max(120).regex(slugPattern),
   website: z.string().trim().max(120).optional(),
 });
 
-const feedbackPayloadSchema = z.discriminatedUnion("kind", [
-  baseFeedbackPayloadSchema.extend({
-    kind: z.literal("review"),
-    rating: z.number().int().min(1).max(5),
-  }),
-  baseFeedbackPayloadSchema.extend({
-    kind: z.literal("inquiry"),
-    rating: z.undefined().optional(),
-  }),
-]);
+const feedbackPayloadSchema = baseFeedbackPayloadSchema.extend({
+  rating: z.number().int().min(1).max(5),
+});
 
 export async function POST(request: Request) {
   const rateLimit = await consumeRateLimit({
@@ -106,10 +98,8 @@ export async function POST(request: Request) {
       authorName: parsed.data.authorName,
       body: parsed.data.body,
       contact: parsed.data.contact,
-      isPrivate: parsed.data.isPrivate,
-      kind: parsed.data.kind,
       productId: parsed.data.productId,
-      rating: parsed.data.kind === "review" ? parsed.data.rating : null,
+      rating: parsed.data.rating,
     });
 
     return NextResponse.json(

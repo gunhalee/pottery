@@ -1,8 +1,7 @@
 import {
-  CtaCardLink,
   PageIntro,
+  PageShell,
   QuoteBand,
-  Section,
   SplitFeature,
 } from "@/components/site/primitives";
 import { introFeatures, paletteLabels } from "@/lib/content/site-content";
@@ -10,10 +9,12 @@ import { introFeatures, paletteLabels } from "@/lib/content/site-content";
 export default function IntroPage() {
   return (
     <>
-      <PageIntro
-        subtitle="흙과 손, 쓰임을 중심에 둔 공방입니다."
-        title="소개"
-      />
+      <PageShell className="intro-page-header">
+        <PageIntro
+          subtitle="흙과 손, 쓰임을 중심에 둔 공방입니다."
+          title="소개"
+        />
+      </PageShell>
 
       <SplitFeature {...introFeatures[0]} />
 
@@ -32,16 +33,6 @@ export default function IntroPage() {
       </div>
 
       <SplitFeature {...introFeatures[2]} />
-      <Section className="intro-gallery-cta">
-        <div className="gallery-cta-list">
-          <CtaCardLink href="/gallery" label="작업물 보기">
-            <p className="body-copy">작업물이 궁금하다면</p>
-          </CtaCardLink>
-          <CtaCardLink href="/news" label="소식 보기">
-            <p className="body-copy">공방 소식이 궁금하다면</p>
-          </CtaCardLink>
-        </div>
-      </Section>
     </>
   );
 }

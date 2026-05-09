@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { SiteLink } from "@/components/navigation/site-link";
-import { siteConfig } from "@/lib/config/site";
 import type { AppHref } from "@/lib/routing/types";
 import type { FeatureSection, WorkItem } from "@/lib/content/site-content";
 
@@ -261,32 +260,6 @@ export function WorkGrid({
           </article>
         );
       })}
-    </div>
-  );
-}
-
-export function FollowCTA({ title }: { title: string }) {
-  return (
-    <div className="follow-cta">
-      <h2 className="follow-cta-title">{title}</h2>
-      <div className="follow-links">
-        <a
-          className="follow-link"
-          href={siteConfig.instagramUrl}
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          Instagram
-        </a>
-        <a
-          className="follow-link"
-          href={siteConfig.kakaoChannelUrl}
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          카카오채널
-        </a>
-      </div>
     </div>
   );
 }
