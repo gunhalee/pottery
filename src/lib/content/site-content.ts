@@ -67,7 +67,7 @@ export const homeEntryCards = [
     title: "초록과 도자기",
   },
   {
-    description: "클래스 신청 · 기록",
+    description: "클래스 이야기 · 신청",
     href: "/class",
     label: "함께하기",
     title: "콩새와 도자기숲",

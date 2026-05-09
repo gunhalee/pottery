@@ -48,6 +48,9 @@ export function ProductPurchasePanel({
     useState<ShippingMethod>("parcel");
   const [isShippingMenuOpen, setIsShippingMenuOpen] = useState(false);
   const favoriteInteractionRef = useRef(false);
+  const payRowRef = useRef<HTMLDivElement | null>(null);
+  const [isMobilePurchaseBarVisible, setIsMobilePurchaseBarVisible] =
+    useState(false);
   const shippingMenuId = useId();
   const clampedQuantity = clampQuantity(quantity, effectiveMaxQuantity);
   const productTotal = price === null ? null : price * clampedQuantity;
@@ -105,6 +108,28 @@ export function ProductPurchasePanel({
       controller.abort();
     };
   }, [productSlug]);
+
+  useEffect(() => {
+    const payRow = payRowRef.current;
+
+    if (!payRow || typeof IntersectionObserver === "undefined") {
+      setIsMobilePurchaseBarVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsMobilePurchaseBarVisible(!entry.isIntersecting);
+      },
+      { threshold: 0.01 },
+    );
+
+    observer.observe(payRow);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   function updateQuantity(nextQuantity: number) {
     setQuantity(clampQuantity(nextQuantity, effectiveMaxQuantity));
@@ -381,7 +406,7 @@ export function ProductPurchasePanel({
         </button>
       </div>
 
-      <div className="product-pay-row">
+      <div className="product-pay-row" ref={payRowRef}>
         <button
           aria-label="N pay 구매하기"
           className="product-npay-button"
@@ -414,10 +439,16 @@ export function ProductPurchasePanel({
         {message?.text ?? "\u00a0"}
       </p>
 
-      <div className="product-mobile-purchase-bar" aria-label="모바일 구매 바">
+      <div
+        aria-hidden={!isMobilePurchaseBarVisible}
+        aria-label="모바일 구매 바"
+        className="product-mobile-purchase-bar"
+        data-visible={isMobilePurchaseBarVisible ? "true" : "false"}
+      >
         <button
           aria-label="선물하기"
           className="product-mobile-gift"
+          disabled={!isMobilePurchaseBarVisible}
           onClick={() => showPlaceholder("선물하기")}
           type="button"
         >
@@ -426,6 +457,7 @@ export function ProductPurchasePanel({
         <button
           aria-label="N pay 구매하기"
           className="product-mobile-npay"
+          disabled={!isMobilePurchaseBarVisible}
           onClick={() => showPlaceholder("N pay 구매하기")}
           type="button"
         >
@@ -440,6 +472,7 @@ export function ProductPurchasePanel({
         </button>
         <button
           className="product-mobile-buy"
+          disabled={!isMobilePurchaseBarVisible}
           onClick={() => showPlaceholder("구매하기")}
           type="button"
         >
@@ -449,7 +482,7 @@ export function ProductPurchasePanel({
           aria-label={isFavorite ? "찜 해제" : "찜하기"}
           aria-pressed={isFavorite}
           className="product-mobile-wish"
-          disabled={isFavoriteSaving}
+          disabled={!isMobilePurchaseBarVisible || isFavoriteSaving}
           onClick={toggleFavorite}
           type="button"
         >

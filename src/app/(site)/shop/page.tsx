@@ -1,12 +1,15 @@
 import {
+  ExternalCtaCardLink,
   PageIntro,
   PageShell,
+  Section,
 } from "@/components/site/primitives";
 import { ProductGrid } from "@/components/shop/product-grid";
 import {
   CartReturnNotice,
   RecentProductsPanel,
 } from "@/components/shop/recent-products";
+import { siteConfig } from "@/lib/config/site";
 import { getPublishedProductListItems } from "@/lib/shop";
 import { toProductListSummary } from "@/lib/shop/product-list-view";
 
@@ -29,6 +32,14 @@ export default async function ShopPage() {
         <RecentProductsPanel products={recentProductSummaries} />
         <ProductGrid products={products} />
       </PageShell>
+      <Section className="intro-gallery-cta shop-inquiry-cta" id="shop-inquiries">
+        <ExternalCtaCardLink
+          href={siteConfig.kakaoChannelUrl}
+          label="카카오채널 문의하기"
+        >
+          <p className="body-copy">상품 문의를 하고 싶다면</p>
+        </ExternalCtaCardLink>
+      </Section>
     </>
   );
 }

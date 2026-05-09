@@ -1,8 +1,10 @@
 import {
   ExternalButtonLink,
+  ExternalCtaCardLink,
   FollowCTA,
   PageIntro,
   PageShell,
+  Section,
 } from "@/components/site/primitives";
 import { classItems, classReviews } from "@/lib/content/site-content";
 import { siteConfig } from "@/lib/config/site";
@@ -51,6 +53,14 @@ export default function ClassPage() {
           </div>
         </div>
       </PageShell>
+      <Section className="intro-gallery-cta class-inquiry-cta" id="class-inquiries">
+        <ExternalCtaCardLink
+          href={siteConfig.kakaoChannelUrl}
+          label="카카오채널 문의하기"
+        >
+          <p className="body-copy">클래스 문의를 하고 싶다면</p>
+        </ExternalCtaCardLink>
+      </Section>
     </>
   );
 }

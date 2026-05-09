@@ -74,6 +74,28 @@ export function CtaCardLink({
   );
 }
 
+export function ExternalCtaCardLink({
+  children,
+  href,
+  label,
+}: {
+  children: ReactNode;
+  href: string;
+  label: ReactNode;
+}) {
+  return (
+    <a
+      className="intro-cta-card"
+      href={href}
+      rel="noopener noreferrer"
+      target="_blank"
+    >
+      {children}
+      <span className="link-arrow">{label}</span>
+    </a>
+  );
+}
+
 export function MetaLabel({ children }: { children: ReactNode }) {
   return <div className="meta-label">{children}</div>;
 }
@@ -91,11 +113,17 @@ export function PageShell({
 export function Section({
   children,
   className,
+  id,
 }: {
   children: ReactNode;
   className?: string;
+  id?: string;
 }) {
-  return <section className={cx("section", className)}>{children}</section>;
+  return (
+    <section className={cx("section", className)} id={id}>
+      {children}
+    </section>
+  );
 }
 
 export function PageIntro({
