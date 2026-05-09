@@ -4648,16 +4648,30 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   margin-top: 28px;
 }
 
-.product-total-row span {
+.product-total-row > span {
   color: #3f4650;
   font-size: 16px;
 }
 
-.product-total-row strong {
+.product-total-amount {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+  text-align: right;
+}
+
+.product-total-amount strong {
   color: #111827;
   font-size: 30px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.1;
+}
+
+.product-total-amount span {
+  color: #8b929d;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
 }
 
 .product-action-grid {
@@ -4716,7 +4730,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   border-color: #08d45d;
   background: #04d65d;
   color: #050505;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .product-npay-button span {
@@ -4734,7 +4748,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 .product-wish-button {
   background: var(--white);
   color: #04bf54;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .product-commerce-message {

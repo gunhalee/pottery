@@ -63,7 +63,7 @@ export const homeEntryCards = [
   {
     description: "작업 과정과 완성작",
     href: "/gallery",
-    label: "작품",
+    label: "작업물",
     title: "초록과 도자기",
   },
   {

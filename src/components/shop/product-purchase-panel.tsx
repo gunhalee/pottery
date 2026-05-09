@@ -20,7 +20,6 @@ type ActionMessage = {
 type ShippingMethod = "parcel" | "pickup";
 
 const shippingFee = 4000;
-const freeShippingThreshold = 70000;
 const shippingOptions: Array<{
   label: string;
   value: ShippingMethod;
@@ -47,22 +46,23 @@ export function ProductPurchasePanel({
   const shippingMenuId = useId();
   const clampedQuantity = clampQuantity(quantity, effectiveMaxQuantity);
   const productTotal = price === null ? null : price * clampedQuantity;
-  const hasFreeShipping =
-    productTotal !== null && productTotal >= freeShippingThreshold;
+  const includedShippingFee = shippingMethod === "parcel" ? shippingFee : 0;
+  const orderTotal =
+    productTotal === null ? null : productTotal + includedShippingFee;
   const selectedShippingOption =
     shippingOptions.find((option) => option.value === shippingMethod) ??
     shippingOptions[0];
 
   const formatted = useMemo(
     () => ({
-      freeShippingThreshold: formatCurrency(freeShippingThreshold, currency),
-      shipping: hasFreeShipping ? "무료배송" : formatCurrency(shippingFee, currency),
+      shipping: formatCurrency(shippingFee, currency),
       total:
-        productTotal === null
+        orderTotal === null
           ? "가격 입력 예정"
-          : formatCurrency(productTotal, currency),
+          : formatCurrency(orderTotal, currency),
+      totalNote: shippingMethod === "parcel" ? "배송비 포함" : "배송비 없음",
     }),
-    [currency, hasFreeShipping, productTotal],
+    [currency, orderTotal, shippingMethod],
   );
 
   function updateQuantity(nextQuantity: number) {
@@ -215,8 +215,8 @@ export function ProductPurchasePanel({
               </>
             ) : (
               <>
-                <span>택배 · 기본 {formatted.shipping} · 도서산간 배송비 별도</span>
-                <strong>{formatted.freeShippingThreshold} 이상 구매 시 무료배송</strong>
+                <span>택배 · 배송비 {formatted.shipping} · 도서산간 배송비 별도</span>
+                <strong>배송비는 총 상품금액에 포함됩니다.</strong>
               </>
             )}
           </dd>
@@ -262,7 +262,10 @@ export function ProductPurchasePanel({
 
       <div className="product-total-row">
         <span>총 상품금액({clampedQuantity}개)</span>
-        <strong>{formatted.total}</strong>
+        <div className="product-total-amount">
+          <strong>{formatted.total}</strong>
+          <span>{formatted.totalNote}</span>
+        </div>
       </div>
 
       <div className="product-action-grid">

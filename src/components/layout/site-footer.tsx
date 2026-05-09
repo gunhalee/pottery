@@ -26,7 +26,7 @@ export function SiteFooter() {
                 소식
               </SiteLink>
               <SiteLink href="/gallery">
-                작품
+                작업물
               </SiteLink>
             </div>
             <div className="footer-col">

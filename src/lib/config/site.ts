@@ -8,7 +8,7 @@ export const siteConfig = {
   navigation: [
     { href: "/intro", label: "소개" },
     { href: "/news", label: "소식" },
-    { href: "/gallery", label: "작품" },
+    { href: "/gallery", label: "작업물" },
     { href: "/class", label: "함께하기" },
     { href: "/shop", label: "소장하기" },
   ],
