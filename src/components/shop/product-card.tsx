@@ -1,6 +1,5 @@
 import { ArtworkImage } from "@/components/media/artwork-image";
 import { SiteLink } from "@/components/navigation/site-link";
-import { PlaceholderFrame } from "@/components/site/primitives";
 import { mediaImageSizes } from "@/lib/media/media-image-sizes";
 import {
   formatProductPrice,
@@ -30,10 +29,13 @@ export function ProductCard({ product }: { product: ProductListItem }) {
             src={primaryImage.src}
           />
         ) : (
-          <PlaceholderFrame
-            className="product-card-image"
-            label={primaryImage?.placeholderLabel ?? product.titleKo}
-            tone={product.kind === "one_of_a_kind" ? "dark" : "light"}
+          <ArtworkImage
+            alt={`${product.titleKo} 이미지 준비 중`}
+            className="product-card-image product-card-fallback-image"
+            fill
+            loading="lazy"
+            sizes={mediaImageSizes.productCard}
+            src="/asset/hero-image.jpg"
           />
         )}
       </SiteLink>

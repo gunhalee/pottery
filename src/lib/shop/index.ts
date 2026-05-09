@@ -358,11 +358,9 @@ export function formatProductPrice(product: ProductPriceSource) {
     return "가격 입력 예정";
   }
 
-  return new Intl.NumberFormat("ko-KR", {
-    currency: product.commerce.currency,
+  return `${new Intl.NumberFormat("ko-KR", {
     maximumFractionDigits: 0,
-    style: "currency",
-  }).format(product.commerce.price);
+  }).format(product.commerce.price)}원`;
 }
 
 export function getMappedCafe24ProductNos(products: ConsepotProduct[]) {

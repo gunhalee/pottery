@@ -1,23 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArtworkImage } from "@/components/media/artwork-image";
 import {
   BottomNav,
   PageShell,
-  PlaceholderFrame,
 } from "@/components/site/primitives";
 import { RichTextRenderer } from "@/components/content/rich-text-renderer";
-import { ProductActionLink } from "@/components/shop/product-action-link";
 import { ProductBadge } from "@/components/shop/product-badge";
+import { ProductCard } from "@/components/shop/product-card";
 import {
-  CartReturnNotice,
-  ProductVisitTracker,
-  RecentProductsPanel,
-} from "@/components/shop/recent-products";
+  ProductImageGallery,
+  type ProductGalleryImage,
+} from "@/components/shop/product-image-gallery";
+import { ProductPurchasePanel } from "@/components/shop/product-purchase-panel";
+import { ProductVisitTracker } from "@/components/shop/recent-products";
 import { ProductSpecList } from "@/components/shop/product-spec-list";
 import { getPublishedContentListEntries } from "@/lib/content-manager/content-store";
-import { mediaImageSizes } from "@/lib/media/media-image-sizes";
 import {
   formatProductPrice,
   getProductBadges,
@@ -25,7 +23,7 @@ import {
   getProductCta,
   getProductDisplayImages,
   getProductPrimaryImage,
-  getProductPurchaseKind,
+  getProductThumbnailImage,
   getProductSlugs,
   getPublishedProductListItems,
 } from "@/lib/shop";
@@ -62,13 +60,13 @@ export default async function ShopDetailPage({
   params,
 }: ShopDetailPageProps) {
   const { slug } = await params;
-  const [product, relatedGalleryEntries, recentProductSummaries] = await Promise.all([
+  const [product, relatedGalleryEntries, productListItems] = await Promise.all([
     getProductBySlug(slug),
     getPublishedContentListEntries("gallery", {
       limit: 3,
       relatedProductSlug: slug,
     }),
-    getRecentProductSummaries(),
+    getPublishedProductListItems(),
   ]);
 
   if (!product) {
@@ -78,8 +76,15 @@ export default async function ShopDetailPage({
   const primaryImage = getProductPrimaryImage(product);
   const displayImages = getProductDisplayImages(product);
   const cta = getProductCta(product);
-  const purchaseKind = getProductPurchaseKind(product);
   const currentProductSummary = toProductListSummary(product);
+  const galleryImages = getGalleryImages({
+    displayImages,
+    primaryImage,
+    title: product.titleKo,
+  });
+  const relatedProducts = productListItems
+    .filter((item) => item.slug !== product.slug)
+    .slice(0, 3);
 
   return (
     <>
@@ -87,65 +92,62 @@ export default async function ShopDetailPage({
       <PageShell className="product-detail-shell">
         <div className="product-detail-layout">
           <div className="product-detail-media">
-            {primaryImage?.src ? (
-              <ArtworkImage
-                alt={primaryImage.alt}
-                className="product-detail-image product-detail-photo"
-                fetchPriority="high"
-                height={primaryImage.height}
-                loading="eager"
-                preload
-                sizes={mediaImageSizes.productDetailHero}
-                src={primaryImage.src}
-                width={primaryImage.width}
-              />
-            ) : (
-              <PlaceholderFrame
-                className="product-detail-image"
-                label={primaryImage?.placeholderLabel ?? product.titleKo}
-                tone={product.kind === "one_of_a_kind" ? "dark" : "light"}
-              />
-            )}
-            {displayImages.length > 1 ? (
-              <div className="product-detail-gallery">
-                {displayImages.map((image) =>
-                  image.src ? (
-                    <ArtworkImage
-                      alt={image.alt}
-                      height={image.height}
-                      key={image.id ?? image.src ?? image.alt}
-                      sizes={mediaImageSizes.productDetailThumbnail}
-                      src={image.src}
-                      width={image.width}
-                    />
-                  ) : null,
-                )}
-              </div>
-            ) : null}
+            <ProductImageGallery
+              images={galleryImages}
+              productTitle={product.titleKo}
+            />
           </div>
 
           <article className="product-detail-info">
-            <div className="small-caps">상품 상세</div>
+            <div className="product-detail-heading">
+              <h1 className="product-detail-title">{product.titleKo}</h1>
+            </div>
             <div className="product-badge-row">
               {getProductBadges(product).map((badge) => (
                 <ProductBadge key={badge} kind={badge} />
               ))}
             </div>
-            <h1 className="product-detail-title">{product.titleKo}</h1>
+            <p className="product-detail-price">{formatProductPrice(product)}</p>
             <p className="product-detail-lead">{product.shortDescription}</p>
+            <ProductPurchasePanel
+              availabilityLabel={cta.label}
+              currency={product.commerce.currency}
+              isPurchasable={cta.kind === "buy"}
+              maxQuantity={product.commerce.stockQuantity}
+              price={product.commerce.price}
+              productTitle={product.titleKo}
+            />
           </article>
         </div>
 
-        <section className="product-detail-section">
-          <h2 className="section-title">작품 이야기</h2>
-          <p className="product-detail-lead product-detail-story-lead">
-            {product.shortDescription}
-          </p>
-          {product.storyBody ? (
-            <RichTextRenderer body={product.storyBody} />
-          ) : (
-            <p className="body-copy">{product.story ?? product.shortDescription}</p>
-          )}
+        <nav className="product-detail-tabs" aria-label="상품 정보">
+          <a href="#product-detail-description">상세정보</a>
+          <span aria-hidden="true">/</span>
+          <a href="#product-reviews">구매평 <em>(0)</em></a>
+          <span aria-hidden="true">/</span>
+          <a href="#product-qna">Q&amp;A <em>(0)</em></a>
+        </nav>
+
+        <section
+          className="product-detail-section product-detail-story-section"
+          id="product-detail-description"
+        >
+          <details className="product-detail-disclosure">
+            <summary>상세정보 펼쳐보기</summary>
+            <div className="product-detail-disclosure-body">
+              <h2 className="section-title">작품 이야기</h2>
+              <p className="product-detail-lead product-detail-story-lead">
+                {product.shortDescription}
+              </p>
+              {product.storyBody ? (
+                <RichTextRenderer body={product.storyBody} />
+              ) : (
+                <p className="body-copy">
+                  {product.story ?? product.shortDescription}
+                </p>
+              )}
+            </div>
+          </details>
         </section>
 
         {relatedGalleryEntries.length > 0 ? (
@@ -171,33 +173,6 @@ export default async function ShopDetailPage({
           </section>
         ) : null}
 
-        <section className="product-purchase-strip" aria-label="구매 안내">
-          <div>
-            <span>{product.titleKo}</span>
-            <strong>{formatProductPrice(product)}</strong>
-          </div>
-          <div className="product-detail-action">
-            <ProductActionLink className="button-quiet" product={product} />
-            {cta.kind === "buy" && purchaseKind === "cafe24_checkout" ? (
-              <p>Cafe24 바로구매 주문서로 이동합니다.</p>
-            ) : cta.kind === "buy" && purchaseKind === "cafe24_product" ? (
-              <p>Cafe24 상품 화면에서 주문을 이어갑니다.</p>
-            ) : cta.kind === "buy" && purchaseKind === "cafe24_cart" ? (
-              <p>Cafe24 장바구니에 담은 뒤 주문 화면으로 이동합니다.</p>
-            ) : cta.kind === "buy" ? (
-              <p>Cafe24 상품 동기화 후 구매가 활성화됩니다.</p>
-            ) : (
-              <p>카카오채널에서 입고와 비슷한 작품 소식을 안내합니다.</p>
-            )}
-          </div>
-        </section>
-
-        <CartReturnNotice />
-        <RecentProductsPanel
-          currentSlug={product.slug}
-          products={recentProductSummaries}
-        />
-
         <ProductSpecList
           items={[
             { label: "크기", value: product.size },
@@ -207,6 +182,39 @@ export default async function ShopDetailPage({
             { label: "배송", value: product.shippingNote },
           ]}
         />
+
+        <section className="product-feedback-section" id="product-reviews">
+          <div className="product-feedback-head">
+            <h2>구매평<span>(0)</span></h2>
+            <button type="button">구매평 작성</button>
+          </div>
+          <label className="product-photo-review-filter">
+            <input type="checkbox" disabled />
+            포토 구매평만 보기
+          </label>
+          <p className="product-empty-state">등록된 구매평이 없습니다.</p>
+        </section>
+
+        <section className="product-feedback-section" id="product-qna">
+          <div className="product-feedback-head">
+            <h2>Q&amp;A<span>(0)</span></h2>
+          </div>
+          <p className="product-qna-copy">
+            구매하시려는 상품에 대해 궁금한 점이 있으면 문의주세요.
+          </p>
+          <p className="product-empty-state">등록된 문의가 없습니다.</p>
+        </section>
+
+        {relatedProducts.length > 0 ? (
+          <section className="product-related-section" aria-label="연관 상품">
+            <h2>+ 연관 상품</h2>
+            <div className="product-related-grid">
+              {relatedProducts.map((relatedProduct) => (
+                <ProductCard key={relatedProduct.id} product={relatedProduct} />
+              ))}
+            </div>
+          </section>
+        ) : null}
       </PageShell>
 
       <BottomNav
@@ -220,15 +228,50 @@ export default async function ShopDetailPage({
   );
 }
 
-async function getRecentProductSummaries() {
-  try {
-    const products = await getPublishedProductListItems();
-    return products.map(toProductListSummary);
-  } catch (error) {
-    console.warn(
-      "[shop/detail] Failed to load recent product summaries.",
-      error,
-    );
-    return [];
+function getGalleryImages({
+  displayImages,
+  primaryImage,
+  title,
+}: {
+  displayImages: ReturnType<typeof getProductDisplayImages>;
+  primaryImage: ReturnType<typeof getProductPrimaryImage>;
+  title: string;
+}): ProductGalleryImage[] {
+  const images = displayImages.length > 0 ? displayImages : primaryImage ? [primaryImage] : [];
+  const seen = new Set<string>();
+  const galleryImages: ProductGalleryImage[] = [];
+
+  for (const image of images) {
+    if (!image.src || seen.has(image.src)) {
+      continue;
+    }
+
+    seen.add(image.src);
+    const thumbnail = getProductThumbnailImage(image);
+
+    galleryImages.push({
+      alt: image.alt,
+      height: image.height,
+      id: image.id ?? image.src,
+      src: image.src,
+      thumbnailHeight: thumbnail.height,
+      thumbnailSrc: thumbnail.src,
+      thumbnailWidth: thumbnail.width,
+      width: image.width,
+    });
   }
+
+  if (galleryImages.length === 0) {
+    return [
+      {
+        alt: `${title} 이미지 준비 중`,
+        height: 1783,
+        id: "fallback-product-image",
+        src: "/asset/hero-image.jpg",
+        width: 3156,
+      },
+    ];
+  }
+
+  return galleryImages;
 }
