@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   ArrowLink,
-  BottomNav,
   PageIntro,
   PageShell,
   Section,
@@ -89,12 +88,6 @@ export default async function NewsPage() {
           <ArrowLink href="/gallery">작업물 보기</ArrowLink>
         </div>
       </Section>
-      <BottomNav
-        links={[
-          { href: "/shop", label: "소장하기" },
-          { href: "/class", label: "클래스" },
-        ]}
-      />
     </>
   );
 }

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArtworkImage } from "@/components/media/artwork-image";
 import {
   ArrowLink,
-  BottomNav,
   PageIntro,
   PageShell,
   Section,
@@ -67,12 +66,6 @@ export default async function GalleryPage() {
           </div>
         </div>
       </Section>
-      <BottomNav
-        links={[
-          { href: "/shop", label: "소장하기" },
-          { href: "/class", label: "클래스 예약" },
-        ]}
-      />
     </>
   );
 }

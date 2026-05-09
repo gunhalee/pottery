@@ -1,5 +1,4 @@
 import {
-  BottomNav,
   ExternalButtonLink,
   FollowCTA,
   PageIntro,
@@ -52,12 +51,6 @@ export default function ClassPage() {
           </div>
         </div>
       </PageShell>
-      <BottomNav
-        links={[
-          { href: "/gallery", label: "작업물 갤러리" },
-          { href: "/shop", label: "소장하기" },
-        ]}
-      />
     </>
   );
 }

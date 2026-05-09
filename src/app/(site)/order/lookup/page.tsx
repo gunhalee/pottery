@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import {
-  BottomNav,
   PageIntro,
   PageShell,
 } from "@/components/site/primitives";
@@ -23,12 +22,6 @@ export default function OrderLookupPage() {
         <CartReturnNotice />
         <OrderLookupForm />
       </PageShell>
-      <BottomNav
-        links={[
-          { href: "/shop", label: "상품 목록" },
-          { href: "/news", label: "소식" },
-        ]}
-      />
     </>
   );
 }

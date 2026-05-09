@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import type { FocusEvent, KeyboardEvent } from "react";
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 type ProductPurchasePanelProps = {
   availabilityLabel: string;
@@ -10,6 +10,7 @@ type ProductPurchasePanelProps = {
   isPurchasable: boolean;
   maxQuantity: number | null;
   price: number | null;
+  productSlug: string;
   productTitle: string;
 };
 
@@ -35,15 +36,18 @@ export function ProductPurchasePanel({
   isPurchasable,
   maxQuantity,
   price,
+  productSlug,
   productTitle,
 }: ProductPurchasePanelProps) {
   const effectiveMaxQuantity = Math.max(1, maxQuantity ?? 99);
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isFavoriteSaving, setIsFavoriteSaving] = useState(false);
   const [message, setMessage] = useState<ActionMessage | null>(null);
   const [shippingMethod, setShippingMethod] =
     useState<ShippingMethod>("parcel");
   const [isShippingMenuOpen, setIsShippingMenuOpen] = useState(false);
+  const favoriteInteractionRef = useRef(false);
   const shippingMenuId = useId();
   const clampedQuantity = clampQuantity(quantity, effectiveMaxQuantity);
   const productTotal = price === null ? null : price * clampedQuantity;
@@ -65,6 +69,42 @@ export function ProductPurchasePanel({
     }),
     [currency, orderTotal, shippingMethod],
   );
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function readFavoriteState() {
+      try {
+        const response = await fetch(
+          `/api/wishlist?productSlug=${encodeURIComponent(productSlug)}`,
+          {
+            cache: "no-store",
+            signal: controller.signal,
+          },
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const result = (await response.json()) as { wished?: boolean };
+
+        if (!favoriteInteractionRef.current) {
+          setIsFavorite(Boolean(result.wished));
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+      }
+    }
+
+    readFavoriteState();
+
+    return () => {
+      controller.abort();
+    };
+  }, [productSlug]);
 
   function updateQuantity(nextQuantity: number) {
     setQuantity(clampQuantity(nextQuantity, effectiveMaxQuantity));
@@ -127,6 +167,53 @@ export function ProductPurchasePanel({
     }
   }
 
+  async function toggleFavorite() {
+    const nextFavorite = !isFavorite;
+
+    favoriteInteractionRef.current = true;
+    setIsFavorite(nextFavorite);
+    setIsFavoriteSaving(true);
+
+    try {
+      const response = await fetch("/api/wishlist", {
+        body: JSON.stringify({
+          productSlug,
+          wished: nextFavorite,
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        wished?: boolean;
+      };
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "찜 저장 중 오류가 발생했습니다.");
+      }
+
+      const wished = Boolean(result.wished);
+      setIsFavorite(wished);
+      setMessage({
+        id: Date.now(),
+        text: wished ? "찜에 저장했습니다." : "찜에서 해제했습니다.",
+      });
+    } catch (error) {
+      setIsFavorite(!nextFavorite);
+      setMessage({
+        id: Date.now(),
+        text:
+          error instanceof Error
+            ? error.message
+            : "찜 저장 중 오류가 발생했습니다.",
+      });
+    } finally {
+      setIsFavoriteSaving(false);
+    }
+  }
+
   return (
     <div className="product-commerce-panel">
       <div className="product-detail-tools" aria-label="상품 도구">
@@ -142,7 +229,8 @@ export function ProductPurchasePanel({
           aria-label={isFavorite ? "찜 해제" : "찜하기"}
           aria-pressed={isFavorite}
           className="product-icon-button"
-          onClick={() => setIsFavorite((current) => !current)}
+          disabled={isFavoriteSaving}
+          onClick={toggleFavorite}
           type="button"
         >
           <HeartIcon filled={isFavorite} />
@@ -311,9 +399,11 @@ export function ProductPurchasePanel({
           구매하기
         </button>
         <button
+          aria-label={isFavorite ? "찜 해제" : "찜하기"}
           aria-pressed={isFavorite}
           className="product-wish-button"
-          onClick={() => setIsFavorite((current) => !current)}
+          disabled={isFavoriteSaving}
+          onClick={toggleFavorite}
           type="button"
         >
           찜
@@ -359,7 +449,8 @@ export function ProductPurchasePanel({
           aria-label={isFavorite ? "찜 해제" : "찜하기"}
           aria-pressed={isFavorite}
           className="product-mobile-wish"
-          onClick={() => setIsFavorite((current) => !current)}
+          disabled={isFavoriteSaving}
+          onClick={toggleFavorite}
           type="button"
         >
           <HeartIcon filled={isFavorite} />

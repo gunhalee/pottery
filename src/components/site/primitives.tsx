@@ -274,29 +274,6 @@ export function PageLinkCards({
   );
 }
 
-export function BottomNav({
-  links,
-}: {
-  links: ReadonlyArray<{
-    href: LinkHref;
-    label: string;
-  }>;
-}) {
-  return (
-    <nav className="bottom-nav" aria-label="Related pages">
-      {links.map((link) => (
-        <SiteLink
-          className="bottom-nav-link link-arrow"
-          href={link.href}
-          key={link.label}
-        >
-          {link.label}
-        </SiteLink>
-      ))}
-    </nav>
-  );
-}
-
 export function QuoteBand({ children }: { children: ReactNode }) {
   return (
     <div className="quote-band">

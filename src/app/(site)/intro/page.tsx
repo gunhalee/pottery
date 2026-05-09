@@ -1,6 +1,5 @@
 import {
   ArrowLink,
-  BottomNav,
   PageIntro,
   QuoteBand,
   Section,
@@ -45,12 +44,6 @@ export default function IntroPage() {
           </div>
         </div>
       </Section>
-      <BottomNav
-        links={[
-          { href: "/gallery", label: "작업물 보기" },
-          { href: "/news", label: "소식" },
-        ]}
-      />
     </>
   );
 }

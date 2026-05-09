@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  BottomNav,
-  PageShell,
-} from "@/components/site/primitives";
+import { PageShell } from "@/components/site/primitives";
 import { RichTextRenderer } from "@/components/content/rich-text-renderer";
 import { ProductBadge } from "@/components/shop/product-badge";
 import { ProductCard } from "@/components/shop/product-card";
+import { ProductFeedbackPanel } from "@/components/shop/product-feedback-panel";
 import {
   ProductImageGallery,
   type ProductGalleryImage,
@@ -27,6 +25,7 @@ import {
   getProductSlugs,
   getPublishedProductListItems,
 } from "@/lib/shop";
+import { getProductFeedbackSummary } from "@/lib/shop/product-feedback";
 import { toProductListSummary } from "@/lib/shop/product-list-view";
 
 type ShopDetailPageProps = {
@@ -77,6 +76,7 @@ export default async function ShopDetailPage({
   const displayImages = getProductDisplayImages(product);
   const cta = getProductCta(product);
   const currentProductSummary = toProductListSummary(product);
+  const feedbackSummary = await getProductFeedbackSummary(product.id);
   const galleryImages = getGalleryImages({
     displayImages,
     primaryImage,
@@ -122,6 +122,7 @@ export default async function ShopDetailPage({
               isPurchasable={cta.kind === "buy"}
               maxQuantity={product.commerce.stockQuantity}
               price={product.commerce.price}
+              productSlug={product.slug}
               productTitle={product.titleKo}
             />
           </article>
@@ -132,18 +133,18 @@ export default async function ShopDetailPage({
           <span aria-hidden="true">|</span>
           <a href="#product-reviews">구매평</a>
           <span aria-hidden="true">|</span>
-          <a href="#product-qna">Q&amp;A</a>
+          <a href="#product-inquiries">문의사항</a>
         </nav>
 
         <section
           className="product-detail-section product-detail-story-section"
           id="product-detail-description"
         >
-          <div className="product-feedback-head product-detail-story-head">
+          <div className="product-section-header product-detail-story-head">
             <h2>상세정보</h2>
           </div>
           <div className="product-detail-story-body">
-            <h3 className="section-title">작업물 이야기</h3>
+            <h3 className="product-detail-story-title">작업물 이야기</h3>
             <p className="product-detail-lead product-detail-story-lead">
               {product.shortDescription}
             </p>
@@ -190,27 +191,14 @@ export default async function ShopDetailPage({
           ]}
         />
 
-        <section className="product-feedback-section" id="product-reviews">
-          <div className="product-feedback-head">
-            <h2>구매평<span>(0)</span></h2>
-            <button type="button">구매평 작성</button>
-          </div>
-          <label className="product-photo-review-filter">
-            <input type="checkbox" disabled />
-            포토 구매평만 보기
-          </label>
-          <p className="product-empty-state">등록된 구매평이 없습니다.</p>
-        </section>
-
-        <section className="product-feedback-section" id="product-qna">
-          <div className="product-feedback-head">
-            <h2>Q&amp;A<span>(0)</span></h2>
-          </div>
-          <p className="product-qna-copy">
-            상품 구매에 대해 자유롭게 문의주세요.
-          </p>
-          <p className="product-empty-state">등록된 문의가 없습니다.</p>
-        </section>
+        <ProductFeedbackPanel
+          inquiries={feedbackSummary.inquiries}
+          inquiryCount={feedbackSummary.inquiryCount}
+          productId={product.id}
+          productSlug={product.slug}
+          reviewCount={feedbackSummary.reviewCount}
+          reviews={feedbackSummary.reviews}
+        />
 
         {relatedProducts.length > 0 ? (
           <section className="product-related-section" aria-label="연관 상품">
@@ -223,14 +211,6 @@ export default async function ShopDetailPage({
           </section>
         ) : null}
       </PageShell>
-
-      <BottomNav
-        links={[
-          { href: "/shop", label: "상품 목록" },
-          { href: "/gallery", label: "작업물 기록" },
-          { href: "/news", label: "소식" },
-        ]}
-      />
     </>
   );
 }

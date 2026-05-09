@@ -1,5 +1,4 @@
 import {
-  BottomNav,
   PageIntro,
   PageShell,
 } from "@/components/site/primitives";
@@ -30,12 +29,6 @@ export default async function ShopPage() {
         <RecentProductsPanel products={recentProductSummaries} />
         <ProductGrid products={products} />
       </PageShell>
-      <BottomNav
-        links={[
-          { href: "/gallery", label: "작업 과정 보기" },
-          { href: "/news", label: "공방 이야기" },
-        ]}
-      />
     </>
   );
 }
