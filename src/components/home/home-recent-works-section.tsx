@@ -1,27 +1,65 @@
-import { ArrowLink, Section, WorkGrid } from "@/components/site/primitives";
-import { ProductGrid } from "@/components/shop/product-grid";
-import type { WorkItem } from "@/lib/content/site-content";
-import type { ProductListItem } from "@/lib/shop";
+import { ArrowLink, Section } from "@/components/site/primitives";
+import { ArtworkImage } from "@/components/media/artwork-image";
+import { SiteLink } from "@/components/navigation/site-link";
+import { getContentListImage } from "@/lib/content-manager/content-images";
+import type { ContentEntryListItem } from "@/lib/content-manager/content-model";
+import { mediaImageSizes } from "@/lib/media/media-image-sizes";
 
 export function HomeRecentWorksSection({
-  fallbackItems,
-  products,
+  entries,
 }: {
-  fallbackItems: WorkItem[];
-  products: ProductListItem[];
+  entries: ContentEntryListItem[];
 }) {
-  const recentProducts = products.slice(0, 3);
+  const recentEntries = entries.slice(0, 3);
 
   return (
-    <Section>
+    <Section className="home-recent-works-section">
       <div className="works-head">
-        <h2 className="section-title">최근 작품</h2>
-        <ArrowLink href="/shop">전체 보기</ArrowLink>
+        <h2 className="section-title">최근 작업물</h2>
+        <ArrowLink href="/gallery">전체 보기</ArrowLink>
       </div>
-      {recentProducts.length > 0 ? (
-        <ProductGrid products={recentProducts} />
+      {recentEntries.length > 0 ? (
+        <div className="grid-3 home-recent-work-grid">
+          {recentEntries.map((entry) => {
+            const image = getContentListImage(entry);
+
+            return (
+              <SiteLink
+                className="work-card home-recent-work-card"
+                href={`/gallery/${entry.slug}`}
+                key={entry.id}
+              >
+                <span className="home-recent-work-image">
+                  {image ? (
+                    <ArtworkImage
+                      alt={image.alt}
+                      className="home-recent-work-img"
+                      fill
+                      loading="lazy"
+                      sizes={mediaImageSizes.galleryCard}
+                      src={image.src}
+                    />
+                  ) : (
+                    <span className="home-recent-work-placeholder">
+                      작업물
+                    </span>
+                  )}
+                </span>
+                <div className="work-name">{entry.title}</div>
+                <div className="work-sub">
+                  {entry.summary ||
+                    entry.displayDate ||
+                    entry.publishedAt ||
+                    "작업 기록"}
+                </div>
+              </SiteLink>
+            );
+          })}
+        </div>
       ) : (
-        <WorkGrid items={fallbackItems} />
+        <p className="home-recent-work-empty">
+          공개된 작업물 포스트가 아직 없습니다.
+        </p>
       )}
     </Section>
   );

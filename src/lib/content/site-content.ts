@@ -61,19 +61,19 @@ export const homeEntryCards = [
     title: "공방 이야기",
   },
   {
-    description: "작업 과정과 완성작",
+    description: "작업 과정과 결과물",
     href: "/gallery",
     label: "작업물",
     title: "초록과 도자기",
   },
   {
-    description: "원데이 · 정기 클래스",
+    description: "클래스 신청 · 수강생 작품",
     href: "/class",
     label: "함께하기",
     title: "콩새와 도자기숲",
   },
   {
-    description: "현재 소장 가능한 작품",
+    description: "구매 가능한 작업물",
     href: "/shop",
     label: "소장하기",
     title: "소장하기",
@@ -94,20 +94,20 @@ export const homeWorks: WorkItem[] = [
   {
     description: "White porcelain",
     href: "/shop",
-    placeholder: "작품 01",
+    placeholder: "작업물 01",
     title: "백자 달항아리",
   },
   {
     description: "Hand-thrown stoneware",
     href: "/shop",
-    placeholder: "작품 02",
+    placeholder: "작업물 02",
     title: "찻사발",
     tone: "dark",
   },
   {
     description: "Matte ash glaze",
     href: "/shop",
-    placeholder: "작품 03",
+    placeholder: "작업물 03",
     title: "작은 화병",
   },
 ];
@@ -121,7 +121,7 @@ export const homeQuickLinks = [
     title: "Section Title",
   },
   {
-    description: "새 작품, 전시 일정, 공방 운영 소식을 간결하게 전합니다.",
+    description: "새 작업물, 전시 일정, 공방 운영 소식을 간결하게 전합니다.",
     eyebrow: "소식",
     href: "/news",
     title: "Section Title",
@@ -146,7 +146,7 @@ export const introFeatures: FeatureSection[] = [
   },
   {
     eyebrow: "작업",
-    imageLabel: "작품",
+    imageLabel: "작업물",
     imageTone: "dark",
     paragraphs: [
       "물레 성형부터 건조, 초벌, 시유, 재벌까지 모든 과정을 천천히 살핍니다. 같은 형태라도 손의 흔적이 남아 각기 다른 분위기를 가집니다.",
@@ -160,7 +160,7 @@ export const introFeatures: FeatureSection[] = [
     imageLabel: "공방",
     imageVariant: "wide",
     paragraphs: [
-      "공방 방문과 수업 상담은 예약제로 운영합니다. 조용히 작품을 보고 직접 손으로 만져볼 수 있는 시간을 준비합니다.",
+      "공방 방문과 수업 상담은 예약제로 운영합니다. 조용히 작업물을 보고 직접 손으로 만져볼 수 있는 시간을 준비합니다.",
     ],
     title: "예약제로 운영하는 공방",
     titleEmphasis: "",
@@ -178,7 +178,7 @@ export const paletteLabels = [
 export const newsItems = [
   {
     date: "2026.04",
-    description: "봄 시즌 작품과 공방 오픈 일정을 안내합니다.",
+    description: "봄 시즌 작업물과 공방 오픈 일정을 안내합니다.",
     tag: "Label",
     title: "새 전시 준비 소식",
   },
@@ -199,18 +199,18 @@ export const newsItems = [
 export const scheduleItems = [
   { date: "05.12", place: "서울 공방", title: "오픈 스튜디오" },
   { date: "05.19", place: "도자 체험", title: "원데이 클래스" },
-  { date: "06.02", place: "온라인 스토어", title: "작품 입고" },
+  { date: "06.02", place: "온라인 스토어", title: "작업물 입고" },
 ] as const;
 
 export const galleryItems = [
-  { title: "작품명 / 연도" },
-  { title: "작품명 / 연도" },
-  { title: "작품명 / 연도" },
+  { title: "작업물명 / 연도" },
+  { title: "작업물명 / 연도" },
+  { title: "작업물명 / 연도" },
   { featured: true, title: "작업 과정 / 스튜디오" },
-  { title: "작품명 / 연도" },
-  { title: "작품명 / 연도" },
-  { title: "작품명 / 스타일링" },
-  { title: "작품명 / 연도" },
+  { title: "작업물명 / 연도" },
+  { title: "작업물명 / 연도" },
+  { title: "작업물명 / 스타일링" },
+  { title: "작업물명 / 연도" },
 ] as const;
 
 export const classItems = [
@@ -248,7 +248,7 @@ export const classReviews = [
   },
   {
     cite: "이름 / 정규 클래스",
-    quote: "공방 분위기가 조용하고 작품을 기다리는 시간까지 좋았습니다.",
+    quote: "공방 분위기가 조용하고 작업물을 기다리는 시간까지 좋았습니다.",
   },
   {
     cite: "이름 / 커스텀 클래스",
@@ -258,22 +258,22 @@ export const classReviews = [
 
 export const shopProducts: WorkItem[] = [
   {
-    description: "작품 설명 텍스트",
+    description: "작업물 설명 텍스트",
     placeholder: "01",
     price: "80,000원",
-    title: "작품 이름",
+    title: "작업물 이름",
   },
   {
-    description: "작품 설명 텍스트",
+    description: "작업물 설명 텍스트",
     placeholder: "02",
     price: "120,000원",
-    title: "작품 이름",
+    title: "작업물 이름",
     tone: "dark",
   },
   {
-    description: "작품 설명 텍스트",
+    description: "작업물 설명 텍스트",
     placeholder: "03",
     price: "95,000원",
-    title: "작품 이름",
+    title: "작업물 이름",
   },
 ];

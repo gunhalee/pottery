@@ -10,7 +10,7 @@
                 "format": 0,
                 "mode": "normal",
                 "style": "",
-                "text": "봄 시즌 작품과 공방 오픈 일정을 안내합니다.",
+                "text": "봄 시즌 작업물과 공방 오픈 일정을 안내합니다.",
                 "type": "text",
                 "version": 1
               }
@@ -31,7 +31,7 @@
         "version": 1
       }
     },
-    "bodyText": "봄 시즌 작품과 공방 오픈 일정을 안내합니다.",
+    "bodyText": "봄 시즌 작업물과 공방 오픈 일정을 안내합니다.",
     "createdAt": "2026-05-06T00:00:00.000Z",
     "displayDate": "2026.04",
     "id": "10000000-0000-0000-0000-000000000001",
@@ -41,7 +41,7 @@
     "relatedProductSlug": null,
     "slug": "spring-studio-note",
     "status": "draft",
-    "summary": "봄 시즌 작품과 공방 오픈 일정을 안내합니다.",
+    "summary": "봄 시즌 작업물과 공방 오픈 일정을 안내합니다.",
     "title": "새 전시 준비 소식",
     "updatedAt": "2026-05-06T00:00:00.000Z"
   },
@@ -102,7 +102,7 @@
                 "format": 0,
                 "mode": "normal",
                 "style": "",
-                "text": "작품과 작업 과정의 분위기를 기록하는 샘플 아카이브입니다.",
+                "text": "작업물과 작업 과정의 분위기를 기록하는 샘플 아카이브입니다.",
                 "type": "text",
                 "version": 1
               }
@@ -123,7 +123,7 @@
         "version": 1
       }
     },
-    "bodyText": "작품과 작업 과정의 분위기를 기록하는 샘플 아카이브입니다.",
+    "bodyText": "작업물과 작업 과정의 분위기를 기록하는 샘플 아카이브입니다.",
     "createdAt": "2026-05-06T00:00:00.000Z",
     "displayDate": "2026",
     "id": "10000000-0000-0000-0000-000000000101",
@@ -133,7 +133,7 @@
     "relatedProductSlug": null,
     "slug": "studio-process-archive",
     "status": "draft",
-    "summary": "작품과 작업 과정의 분위기를 기록하는 샘플 아카이브입니다.",
+    "summary": "작업물과 작업 과정의 분위기를 기록하는 샘플 아카이브입니다.",
     "title": "작업 과정 / 스튜디오",
     "updatedAt": "2026-05-06T00:00:00.000Z"
   }

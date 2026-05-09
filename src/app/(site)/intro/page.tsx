@@ -34,14 +34,20 @@ export default function IntroPage() {
 
       <SplitFeature {...introFeatures[2]} />
       <Section className="intro-gallery-cta">
-        <div className="intro-cta-card">
-          <p className="body-copy">작품을 직접 보고 싶다면</p>
-          <ArrowLink href="/gallery">작품 보기</ArrowLink>
+        <div className="gallery-cta-list">
+          <div className="intro-cta-card">
+            <p className="body-copy">작업물이 궁금하다면</p>
+            <ArrowLink href="/gallery">작업물 보기</ArrowLink>
+          </div>
+          <div className="intro-cta-card">
+            <p className="body-copy">공방 소식이 궁금하다면</p>
+            <ArrowLink href="/news">소식 보기</ArrowLink>
+          </div>
         </div>
       </Section>
       <BottomNav
         links={[
-          { href: "/gallery", label: "작품 보기" },
+          { href: "/gallery", label: "작업물 보기" },
           { href: "/news", label: "소식" },
         ]}
       />

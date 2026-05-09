@@ -12,7 +12,7 @@ export function AdminNav() {
           소식
         </Link>
         <Link href="/admin/gallery" prefetch={false}>
-          작품
+          작업물
         </Link>
         <Link href="/admin/media" prefetch={false}>
           미디어

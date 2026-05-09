@@ -426,7 +426,7 @@ export function ContentEditorForm({
       <aside className="admin-panel admin-content-preview-panel">
         <div className="admin-panel-head">
           <h2>즉시 미리보기</h2>
-          <span>{entry.kind === "news" ? "소식" : "작품"}</span>
+          <span>{entry.kind === "news" ? "소식" : "작업물"}</span>
         </div>
         <article className="admin-live-preview">
           {coverImage ? (

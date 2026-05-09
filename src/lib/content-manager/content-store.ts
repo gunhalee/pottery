@@ -280,7 +280,7 @@ export async function deleteContentImage(entryId: string, imageId: string) {
 }
 
 export function getContentKindLabel(kind: ContentKind) {
-  return kind === "news" ? "소식" : "작품";
+  return kind === "news" ? "소식" : "작업물";
 }
 
 export function getContentAdminPath(kind: ContentKind) {

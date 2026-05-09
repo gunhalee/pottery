@@ -203,7 +203,7 @@ export default async function AdminProductEditPage({
             </label>
 
             <label>
-              <span>작품 이야기</span>
+              <span>작업물 이야기</span>
               <textarea name="story" rows={6} defaultValue={product.story} />
             </label>
 
@@ -222,8 +222,8 @@ export default async function AdminProductEditPage({
               <label>
                 <span>상품 유형</span>
                 <select name="kind" defaultValue={product.kind}>
-                  <option value="regular">상시 작품</option>
-                  <option value="one_of_a_kind">하나뿐인 작품</option>
+                  <option value="regular">상시 작업물</option>
+                  <option value="one_of_a_kind">하나뿐인 작업물</option>
                 </select>
               </label>
             </div>
@@ -249,7 +249,7 @@ export default async function AdminProductEditPage({
                 >
                   <option value="">없음</option>
                   <option value="restock_alert">재입고 알림</option>
-                  <option value="similar_work_alert">비슷한 작품 알림</option>
+                  <option value="similar_work_alert">비슷한 작업물 알림</option>
                   <option value="next_limited_alert">다음 한정 소식</option>
                 </select>
               </label>

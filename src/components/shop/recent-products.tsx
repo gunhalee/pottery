@@ -53,7 +53,7 @@ export function ProductVisitTracker({
 export function RecentProductsPanel({
   currentSlug,
   products,
-  title = "최근 본 작품",
+  title = "최근 본 작업물",
 }: {
   currentSlug?: string;
   products: RecentProductSummary[];

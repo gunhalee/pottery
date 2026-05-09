@@ -153,7 +153,7 @@ export function getProductCta(product: ConsepotProduct): ProductCta {
   if (product.commerce.availabilityStatus === "archive") {
     return {
       kind: "archive",
-      label: "아카이브 작품 보기",
+      label: "아카이브 작업물 보기",
     };
   }
 
@@ -163,7 +163,7 @@ export function getProductCta(product: ConsepotProduct): ProductCta {
   > = {
     next_limited_alert: "다음 한정 소식 받기",
     restock_alert: "재입고 알림 받기",
-    similar_work_alert: "비슷한 작품 알림 받기",
+    similar_work_alert: "비슷한 작업물 알림 받기",
   };
 
   const ctaKind = product.restockCtaType ?? "similar_work_alert";

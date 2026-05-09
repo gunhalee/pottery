@@ -10,9 +10,14 @@ export function HomeEntryGrid({
     <section className="home-entry-grid fade-in" aria-label="주요 페이지">
       {items.map((item) => (
         <SiteLink href={item.href} className="home-entry-card" key={item.label}>
-          <div className="small-caps">{item.label}</div>
           <h2 className="card-title">{item.title}</h2>
-          <p>{item.description}</p>
+          <p className="home-entry-meta">
+            <span className="home-entry-label">{item.label}</span>
+            <span className="home-entry-divider" aria-hidden="true">
+              |
+            </span>
+            <span>{item.description}</span>
+          </p>
         </SiteLink>
       ))}
     </section>

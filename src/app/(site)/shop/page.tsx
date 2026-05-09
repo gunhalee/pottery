@@ -19,7 +19,7 @@ export default async function ShopPage() {
     <>
       <PageShell>
         <PageIntro
-          subtitle="소장 가능한 작품을 모았습니다."
+          subtitle="주문 가능한 작업물들입니다."
           title="소장하기"
         />
 

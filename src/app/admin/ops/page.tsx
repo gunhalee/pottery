@@ -33,7 +33,7 @@ export default async function AdminOpsPage() {
 
       <section className="admin-ops-stats" aria-label="운영 요약">
         <StatCard label="상품 이미지" value={dashboard.stats.productImages} />
-        <StatCard label="본문/작품 이미지" value={dashboard.stats.contentImages} />
+        <StatCard label="본문/작업물 이미지" value={dashboard.stats.contentImages} />
         <StatCard
           label="cleanup 후보"
           value={dashboard.stats.cleanupPreviewCandidates}
@@ -335,7 +335,7 @@ export default async function AdminOpsPage() {
 
       <section className="admin-panel">
         <div className="admin-panel-head">
-          <h2>상품-작품 연결</h2>
+          <h2>상품-작업물 연결</h2>
           <span>{dashboard.productContentLinks.length} links</span>
         </div>
         {dashboard.productContentLinks.length > 0 ? (
@@ -348,7 +348,7 @@ export default async function AdminOpsPage() {
                 <div>
                   <strong>{item.contentTitle}</strong>
                   <Link href={item.contentHref} prefetch={false}>
-                    {item.contentKind === "gallery" ? "작품" : "소식"}
+                    {item.contentKind === "gallery" ? "작업물" : "소식"}
                   </Link>
                 </div>
                 <span>{item.productTitle}</span>
@@ -359,7 +359,7 @@ export default async function AdminOpsPage() {
           </div>
         ) : (
           <p className="admin-empty-text">
-            아직 상품과 연결된 작품/소식이 없습니다.
+            아직 상품과 연결된 작업물/소식이 없습니다.
           </p>
         )}
       </section>
@@ -386,7 +386,7 @@ function StatCard({
 
 function ownerTypeLabel(type: "gallery" | "news" | "product") {
   return {
-    gallery: "작품",
+    gallery: "작업물",
     news: "소식",
     product: "상품",
   }[type];

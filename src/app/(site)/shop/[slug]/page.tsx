@@ -90,6 +90,13 @@ export default async function ShopDetailPage({
     <>
       <ProductVisitTracker product={currentProductSummary} />
       <PageShell className="product-detail-shell">
+        <nav className="product-detail-backbar" aria-label="상품 상세 탐색">
+          <Link className="product-detail-backlink" href="/shop" prefetch={false}>
+            <ArrowLeftIcon />
+            목록으로
+          </Link>
+        </nav>
+
         <div className="product-detail-layout">
           <div className="product-detail-media">
             <ProductImageGallery
@@ -122,39 +129,39 @@ export default async function ShopDetailPage({
 
         <nav className="product-detail-tabs" aria-label="상품 정보">
           <a href="#product-detail-description">상세정보</a>
-          <span aria-hidden="true">/</span>
-          <a href="#product-reviews">구매평 <em>(0)</em></a>
-          <span aria-hidden="true">/</span>
-          <a href="#product-qna">Q&amp;A <em>(0)</em></a>
+          <span aria-hidden="true">|</span>
+          <a href="#product-reviews">구매평</a>
+          <span aria-hidden="true">|</span>
+          <a href="#product-qna">Q&amp;A</a>
         </nav>
 
         <section
           className="product-detail-section product-detail-story-section"
           id="product-detail-description"
         >
-          <details className="product-detail-disclosure">
-            <summary>상세정보 펼쳐보기</summary>
-            <div className="product-detail-disclosure-body">
-              <h2 className="section-title">작품 이야기</h2>
-              <p className="product-detail-lead product-detail-story-lead">
-                {product.shortDescription}
+          <div className="product-feedback-head product-detail-story-head">
+            <h2>상세정보</h2>
+          </div>
+          <div className="product-detail-story-body">
+            <h3 className="section-title">작업물 이야기</h3>
+            <p className="product-detail-lead product-detail-story-lead">
+              {product.shortDescription}
+            </p>
+            {product.storyBody ? (
+              <RichTextRenderer body={product.storyBody} />
+            ) : (
+              <p className="body-copy">
+                {product.story ?? product.shortDescription}
               </p>
-              {product.storyBody ? (
-                <RichTextRenderer body={product.storyBody} />
-              ) : (
-                <p className="body-copy">
-                  {product.story ?? product.shortDescription}
-                </p>
-              )}
-            </div>
-          </details>
+            )}
+          </div>
         </section>
 
         {relatedGalleryEntries.length > 0 ? (
           <section className="product-linked-content">
             <div>
-              <p className="small-caps">작품 기록</p>
-              <h2>이 상품과 연결된 작품 이야기</h2>
+              <p className="small-caps">작업물 기록</p>
+              <h2>이 상품과 연결된 작업물 이야기</h2>
             </div>
             <div className="product-linked-content-list">
               {relatedGalleryEntries.map((entry) => (
@@ -164,7 +171,7 @@ export default async function ShopDetailPage({
                   key={entry.id}
                   prefetch={false}
                 >
-                  <span>{entry.displayDate ?? entry.publishedAt ?? "작품"}</span>
+                  <span>{entry.displayDate ?? entry.publishedAt ?? "작업물"}</span>
                   <strong>{entry.title}</strong>
                   {entry.summary ? <p>{entry.summary}</p> : null}
                 </Link>
@@ -178,7 +185,7 @@ export default async function ShopDetailPage({
             { label: "크기", value: product.size },
             { label: "소재", value: product.material },
             { label: "유약", value: product.glaze },
-            { label: "주문안내", value: product.usageNote },
+            { label: "안내", value: product.usageNote },
             { label: "배송", value: product.shippingNote },
           ]}
         />
@@ -200,7 +207,7 @@ export default async function ShopDetailPage({
             <h2>Q&amp;A<span>(0)</span></h2>
           </div>
           <p className="product-qna-copy">
-            구매하시려는 상품에 대해 궁금한 점이 있으면 문의주세요.
+            상품 구매에 대해 자유롭게 문의주세요.
           </p>
           <p className="product-empty-state">등록된 문의가 없습니다.</p>
         </section>
@@ -220,7 +227,7 @@ export default async function ShopDetailPage({
       <BottomNav
         links={[
           { href: "/shop", label: "상품 목록" },
-          { href: "/gallery", label: "작품 기록" },
+          { href: "/gallery", label: "작업물 기록" },
           { href: "/news", label: "소식" },
         ]}
       />
@@ -274,4 +281,12 @@ function getGalleryImages({
   }
 
   return galleryImages;
+}
+
+function ArrowLeftIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+      <path d="M15 18l-6-6 6-6" />
+    </svg>
+  );
 }

@@ -2,8 +2,9 @@ import Link from "next/link";
 import {
   ArrowLink,
   BottomNav,
-  MetaLabel,
+  PageIntro,
   PageShell,
+  Section,
 } from "@/components/site/primitives";
 import { siteConfig } from "@/lib/config/site";
 import { scheduleItems } from "@/lib/content/site-content";
@@ -15,10 +16,12 @@ export default async function NewsPage() {
   return (
     <>
       <PageShell>
-        <MetaLabel>소식</MetaLabel>
+        <PageIntro
+          subtitle="새 작업물, 전시 일정, 공방 운영 소식을 전합니다."
+          title="소식"
+        />
         <div className="news-layout">
           <div>
-            <h1 className="section-title">소식</h1>
             {newsItems.length > 0 ? (
               newsItems.map((item) => (
                 <article className="news-item" key={item.id}>
@@ -46,9 +49,6 @@ export default async function NewsPage() {
                 </div>
               </article>
             )}
-            <div className="news-inline-cta">
-              <ArrowLink href="/shop">최근 작품 보러 가기</ArrowLink>
-            </div>
           </div>
           <aside>
             <div className="aside-title">일정</div>
@@ -83,6 +83,12 @@ export default async function NewsPage() {
           </aside>
         </div>
       </PageShell>
+      <Section className="intro-gallery-cta">
+        <div className="intro-cta-card">
+          <p className="body-copy">작업물이 궁금하다면</p>
+          <ArrowLink href="/gallery">작업물 보기</ArrowLink>
+        </div>
+      </Section>
       <BottomNav
         links={[
           { href: "/shop", label: "소장하기" },

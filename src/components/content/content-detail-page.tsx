@@ -34,7 +34,7 @@ export function ContentDetailPage({
       {preview ? (
         <div className="admin-preview-banner">관리자 미리보기</div>
       ) : null}
-      <MetaLabel>{entry.kind === "news" ? "소식" : "작품"}</MetaLabel>
+      <MetaLabel>{entry.kind === "news" ? "소식" : "작업물"}</MetaLabel>
       <article className="content-detail">
         {coverImage ? (
           <figure className="content-detail-cover">
@@ -90,7 +90,7 @@ export function ContentDetailPage({
               <p>{relatedProduct.shortDescription}</p>
             </div>
             <Link className="link-arrow" href={`/shop/${relatedProduct.slug}`}>
-              작품 보기
+              작업물 보기
             </Link>
           </aside>
         ) : null}

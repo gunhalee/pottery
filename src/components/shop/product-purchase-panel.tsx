@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { FocusEvent, KeyboardEvent } from "react";
 import { useId, useMemo, useState } from "react";
 
@@ -216,7 +217,6 @@ export function ProductPurchasePanel({
             ) : (
               <>
                 <span>택배 · 배송비 {formatted.shipping} · 도서산간 배송비 별도</span>
-                <strong>배송비는 총 상품금액에 포함됩니다.</strong>
               </>
             )}
           </dd>
@@ -295,12 +295,20 @@ export function ProductPurchasePanel({
 
       <div className="product-pay-row">
         <button
+          aria-label="N pay 구매하기"
           className="product-npay-button"
           onClick={() => showPlaceholder("N pay 구매하기")}
           type="button"
         >
-          <span>N</span>
-          pay 구매하기
+          <Image
+            alt=""
+            aria-hidden="true"
+            className="product-npay-logo"
+            height={52}
+            src="/asset/logo_npaybk_small.svg"
+            width={168}
+          />
+          구매하기
         </button>
         <button
           aria-pressed={isFavorite}
@@ -318,12 +326,12 @@ export function ProductPurchasePanel({
 
       <div className="product-mobile-purchase-bar" aria-label="모바일 구매 바">
         <button
+          aria-label="선물하기"
           className="product-mobile-gift"
           onClick={() => showPlaceholder("선물하기")}
           type="button"
         >
           <GiftIcon />
-          <span>선물하기</span>
         </button>
         <button
           aria-label="N pay 구매하기"
@@ -331,7 +339,14 @@ export function ProductPurchasePanel({
           onClick={() => showPlaceholder("N pay 구매하기")}
           type="button"
         >
-          N
+          <Image
+            alt=""
+            aria-hidden="true"
+            className="product-npay-logo"
+            height={52}
+            src="/asset/logo_npaybk_small.svg"
+            width={168}
+          />
         </button>
         <button
           className="product-mobile-buy"
@@ -339,6 +354,15 @@ export function ProductPurchasePanel({
           type="button"
         >
           구매하기
+        </button>
+        <button
+          aria-label={isFavorite ? "찜 해제" : "찜하기"}
+          aria-pressed={isFavorite}
+          className="product-mobile-wish"
+          onClick={() => setIsFavorite((current) => !current)}
+          type="button"
+        >
+          <HeartIcon filled={isFavorite} />
         </button>
       </div>
     </div>

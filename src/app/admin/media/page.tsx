@@ -44,7 +44,7 @@ export default async function AdminMediaPage({
           <p className="admin-eyebrow">Consepot Admin</p>
           <h1>미디어</h1>
           <p>
-            상품, 작품, 소식에서 함께 쓰는 공용 이미지 asset을 진단하고,
+            상품, 작업물, 소식에서 함께 쓰는 공용 이미지 asset을 진단하고,
             역할별 variant와 사용 상태를 확인합니다.
           </p>
         </div>

@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { ArtworkImage } from "@/components/media/artwork-image";
 import {
+  ArrowLink,
   BottomNav,
-  MetaLabel,
-  PageLinkCards,
   PageIntro,
   PageShell,
+  Section,
 } from "@/components/site/primitives";
 import { getContentListImage } from "@/lib/content-manager/content-images";
 import { getPublishedContentListEntries } from "@/lib/content-manager/content-store";
@@ -17,10 +17,9 @@ export default async function GalleryPage() {
   return (
     <>
       <PageShell>
-        <MetaLabel>작품</MetaLabel>
         <PageIntro
           subtitle="완성작과 작업 과정의 기록입니다."
-          title="작품"
+          title="작업물"
         />
         <div className="gallery-grid gallery-content-grid">
           {galleryItems.length > 0 ? (
@@ -55,23 +54,19 @@ export default async function GalleryPage() {
             </div>
           )}
         </div>
-        <PageLinkCards
-          cards={[
-            {
-              description: "공방에서 준비한 현재 작품을 천천히 살펴보세요.",
-              href: "/shop",
-              label: "소장",
-              title: "이 작품을 곁에 두고 싶다면",
-            },
-            {
-              description: "흙의 감각을 직접 경험하는 시간을 예약해보세요.",
-              href: "/class",
-              label: "참여",
-              title: "직접 만들어 보고 싶다면",
-            },
-          ]}
-        />
       </PageShell>
+      <Section className="intro-gallery-cta gallery-cta-section">
+        <div className="gallery-cta-list">
+          <div className="intro-cta-card">
+            <p className="body-copy">작업물을 소장하고 싶다면</p>
+            <ArrowLink href="/shop">소장하기</ArrowLink>
+          </div>
+          <div className="intro-cta-card">
+            <p className="body-copy">직접 만들어보고 싶다면</p>
+            <ArrowLink href="/class">클래스 신청하기</ArrowLink>
+          </div>
+        </div>
+      </Section>
       <BottomNav
         links={[
           { href: "/shop", label: "소장하기" },

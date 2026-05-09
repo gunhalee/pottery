@@ -74,7 +74,7 @@ export const productCatalog = [
     size: "지름 약 8cm, 높이 약 7cm",
     usageNote: "차와 작은 음료를 담기 좋습니다.",
     careNote: "사용 후 충분히 건조해 보관해 주세요.",
-    shippingNote: "예전 판매 완료 아카이브 작품입니다.",
+    shippingNote: "예전 판매 완료 아카이브 작업물입니다.",
     published: true,
     publishedAt: "2026-05-05",
     createdAt: "2026-05-05T00:00:00.000Z",

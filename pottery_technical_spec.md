@@ -30,7 +30,7 @@
   - 참여 `/class`
   - 클래스 상세 `/class/[slug]`
   - 소장 `/shop`
-  - 작품 상세 `/shop/[slug]`
+  - 작업물 상세 `/shop/[slug]`
 - 공통 기능
   - 반응형 글로벌 네비게이션
   - SEO 메타데이터
@@ -39,12 +39,12 @@
   - 카카오맵 위치 표시
 - CMS
   - Notion 기반 콘텐츠 관리
-  - 소식, 작품, 클래스 소개 콘텐츠 노출
+  - 소식, 작업물, 클래스 소개 콘텐츠 노출
 - 전환 기능
   - 자체 예약 폼
   - 토스페이먼츠 결제위젯 기반 결제
   - 스마트스토어 우선 외부 구매 링크
-  - 프리미엄 작품 문의
+  - 프리미엄 작업물 문의
   - 주문제작 문의
   - 이메일 구독
 - 운영 기능
@@ -124,7 +124,7 @@
 
 - Notion
   - 사람이 직접 수정하는 공개 콘텐츠
-  - 소식, 작품, 클래스 소개, 후기 승인 결과, 사이트 설정
+  - 소식, 작업물, 클래스 소개, 후기 승인 결과, 사이트 설정
 - Postgres
   - 실시간성과 정합성이 중요한 데이터
   - 예약, 결제, 문의, 구독, 알림 로그, 웹훅 로그
@@ -150,7 +150,7 @@
 | 참여 | `/class` | SSR | 실시간 잔여석 반영 |
 | 클래스 상세 | `/class/[slug]` | SSR | 일정/가격/좌석 최신성 필요 |
 | 소장 목록 | `/shop` | SSG + ISR 600초 | 상품 콘텐츠 위주 |
-| 작품 상세 | `/shop/[slug]` | SSG + ISR 600초 | 외부 구매/문의 유도 |
+| 작업물 상세 | `/shop/[slug]` | SSG + ISR 600초 | 외부 구매/문의 유도 |
 
 ### 6.1 캐싱 규칙
 
@@ -281,7 +281,7 @@ src/
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
-| `title` | title | 작품명 |
+| `title` | title | 작업물명 |
 | `slug` | rich_text | URL slug |
 | `category` | select | basic, mid, premium, set, custom |
 | `price_label` | rich_text | 가격표시 |
@@ -337,7 +337,7 @@ src/
 | `class_sessions` | 실제 예약 가능한 회차 |
 | `reservations` | 예약 신청 및 상태 |
 | `payments` | 결제 상태 및 PG 응답 저장 |
-| `premium_inquiries` | 프리미엄 작품 문의 |
+| `premium_inquiries` | 프리미엄 작업물 문의 |
 | `custom_order_inquiries` | 주문제작 문의 |
 | `newsletter_subscriptions` | 뉴스레터 구독 |
 | `notification_logs` | 메일/카카오 발송 이력 |
@@ -431,7 +431,7 @@ src/
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | `id` | uuid pk | 내부 식별자 |
-| `product_slug` | text | 문의 대상 작품 |
+| `product_slug` | text | 문의 대상 작업물 |
 | `customer_name` | text | 문의자명 |
 | `customer_phone` | text | 연락처 |
 | `customer_email` | text | 이메일 |
@@ -543,7 +543,7 @@ src/
 | 액션 | 목적 |
 |---|---|
 | `createReservationDraft` | 예약 초안 생성 및 좌석 홀드 |
-| `submitPremiumInquiry` | 프리미엄 작품 문의 접수 |
+| `submitPremiumInquiry` | 프리미엄 작업물 문의 접수 |
 | `submitCustomOrderInquiry` | 주문제작 문의 접수 |
 | `subscribeNewsletter` | 이메일 구독 처리 |
 
@@ -621,7 +621,7 @@ interface NotificationAdapter {
 
 - 예약 확인 메일
 - 주문제작 문의 접수 메일
-- 프리미엄 작품 문의 접수 메일
+- 프리미엄 작업물 문의 접수 메일
 - 뉴스레터 구독 확인 메일
 
 메일 발송 실패 시:
