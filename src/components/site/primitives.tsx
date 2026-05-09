@@ -57,6 +57,23 @@ export function ArrowLink({
   );
 }
 
+export function CtaCardLink({
+  children,
+  href,
+  label,
+}: {
+  children: ReactNode;
+  href: LinkHref;
+  label: ReactNode;
+}) {
+  return (
+    <SiteLink href={href} className="intro-cta-card">
+      {children}
+      <span className="link-arrow">{label}</span>
+    </SiteLink>
+  );
+}
+
 export function MetaLabel({ children }: { children: ReactNode }) {
   return <div className="meta-label">{children}</div>;
 }

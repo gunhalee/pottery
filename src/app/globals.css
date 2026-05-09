@@ -3693,16 +3693,32 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 }
 
 .intro-cta-card {
+  display: block;
   width: min(100%, 520px);
   margin: 0 auto;
   padding: 48px;
   background: var(--bg2);
+  color: inherit;
+  cursor: pointer;
+  text-decoration: none;
   text-align: center;
   transition: background 0.2s ease;
 }
 
-.intro-cta-card:hover {
+.intro-cta-card:hover,
+.intro-cta-card:focus-visible {
   background: var(--bg3);
+}
+
+.intro-cta-card:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: 4px;
+}
+
+.intro-cta-card:hover .link-arrow,
+.intro-cta-card:focus-visible .link-arrow {
+  gap: 14px;
+  color: var(--tx);
 }
 
 .intro-cta-card .body-copy {
@@ -3852,20 +3868,11 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   width: 100%;
   min-width: 0;
   justify-items: end;
-  gap: 7px;
 }
 
 .footer-info-group + .footer-info-group {
-  padding-top: 14px;
+  padding-top: 12px;
   border-top: 0.5px solid rgba(255, 255, 255, 0.06);
-}
-
-.footer-info-group-title {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.48);
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1.4;
 }
 
 .footer-info-list {
@@ -3899,7 +3906,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 .footer-bottom {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 18px;
   overflow-x: auto;
   padding-top: 18px;
@@ -4104,7 +4111,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
     align-items: center;
     flex-direction: row;
     gap: 10px;
-    justify-content: flex-start;
+    justify-content: center;
   }
 
   .footer-legal {

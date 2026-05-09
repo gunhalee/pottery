@@ -25,21 +25,15 @@ const footerSocialLinks = [
 ];
 
 const footerInfoGroups = [
-  {
-    title: "사업자 정보",
-    items: [
-      ["상호명", "크룬프로젝트"],
-      ["대표자 · 개인정보보호책임자", "하지영"],
-      ["사업장 주소", "12772 1층 경기도 광주시 수레실길 25-10 (능평동)"],
-      ["사업자 등록번호", "129-37-99678"],
-      ["통신판매업 신고번호", ""],
-    ],
-  },
-  {
-    title: "문의",
-    items: [["연락처", "designhada2001@gmail.com · 0507-0177-5929"]],
-  },
-];
+  [
+    ["상호명", "크룬프로젝트"],
+    ["대표자 · 개인정보보호책임자", "하지영"],
+    ["사업장 주소", "12772 1층 경기도 광주시 수레실길 25-10 (능평동)"],
+    ["사업자 등록번호", "129-37-99678"],
+    ["통신판매업 신고번호", ""],
+  ],
+  [["연락처", "consepot@gmail.com · 0507-0177-5929"]],
+] as const;
 
 export function SiteFooter() {
   return (
@@ -75,11 +69,10 @@ export function SiteFooter() {
             </div>
           </div>
           <div className="footer-info" aria-label="공방 정보">
-            {footerInfoGroups.map((group) => (
-              <div className="footer-info-group" key={group.title}>
-                <p className="footer-info-group-title">{group.title}</p>
+            {footerInfoGroups.map((items, index) => (
+              <div className="footer-info-group" key={`footer-info-${index}`}>
                 <dl className="footer-info-list">
-                  {group.items.map(([label, value]) => (
+                  {items.map(([label, value]) => (
                     <div className="footer-info-item" key={label}>
                       <dt>{label}</dt>
                       <dd>{value || "\u00a0"}</dd>

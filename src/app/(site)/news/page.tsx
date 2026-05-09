@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  ArrowLink,
+  CtaCardLink,
   PageIntro,
   PageShell,
   Section,
@@ -83,10 +83,9 @@ export default async function NewsPage() {
         </div>
       </PageShell>
       <Section className="intro-gallery-cta">
-        <div className="intro-cta-card">
+        <CtaCardLink href="/gallery" label="작업물 보기">
           <p className="body-copy">작업물이 궁금하다면</p>
-          <ArrowLink href="/gallery">작업물 보기</ArrowLink>
-        </div>
+        </CtaCardLink>
       </Section>
     </>
   );

@@ -1,5 +1,5 @@
 import {
-  ArrowLink,
+  CtaCardLink,
   PageIntro,
   QuoteBand,
   Section,
@@ -34,14 +34,12 @@ export default function IntroPage() {
       <SplitFeature {...introFeatures[2]} />
       <Section className="intro-gallery-cta">
         <div className="gallery-cta-list">
-          <div className="intro-cta-card">
+          <CtaCardLink href="/gallery" label="작업물 보기">
             <p className="body-copy">작업물이 궁금하다면</p>
-            <ArrowLink href="/gallery">작업물 보기</ArrowLink>
-          </div>
-          <div className="intro-cta-card">
+          </CtaCardLink>
+          <CtaCardLink href="/news" label="소식 보기">
             <p className="body-copy">공방 소식이 궁금하다면</p>
-            <ArrowLink href="/news">소식 보기</ArrowLink>
-          </div>
+          </CtaCardLink>
         </div>
       </Section>
     </>

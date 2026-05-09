@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArtworkImage } from "@/components/media/artwork-image";
 import {
-  ArrowLink,
+  CtaCardLink,
   PageIntro,
   PageShell,
   Section,
@@ -56,14 +56,12 @@ export default async function GalleryPage() {
       </PageShell>
       <Section className="intro-gallery-cta gallery-cta-section">
         <div className="gallery-cta-list">
-          <div className="intro-cta-card">
+          <CtaCardLink href="/shop" label="소장하기">
             <p className="body-copy">작업물을 소장하고 싶다면</p>
-            <ArrowLink href="/shop">소장하기</ArrowLink>
-          </div>
-          <div className="intro-cta-card">
+          </CtaCardLink>
+          <CtaCardLink href="/class" label="클래스 신청하기">
             <p className="body-copy">직접 만들어보고 싶다면</p>
-            <ArrowLink href="/class">클래스 신청하기</ArrowLink>
-          </div>
+          </CtaCardLink>
         </div>
       </Section>
     </>
