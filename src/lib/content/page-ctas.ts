@@ -45,18 +45,3 @@ export const pageBottomCtas = {
     },
   ],
 } as const satisfies Record<string, readonly PageCta[]>;
-
-export const shopTopCtas = [
-  {
-    body: "내 도자기 어디쯤일까",
-    href: "/order/lookup",
-    kind: "internal",
-    label: "주문 조회",
-  },
-  {
-    body: "상품 문의를 하고 싶다면",
-    href: siteConfig.kakaoChannelUrl,
-    kind: "external",
-    label: "카카오채널 문의하기",
-  },
-] as const satisfies readonly PageCta[];

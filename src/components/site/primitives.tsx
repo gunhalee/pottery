@@ -130,7 +130,7 @@ export function PageIntro({
   title,
   titleEmphasis,
 }: {
-  subtitle: string;
+  subtitle: ReactNode;
   title: string;
   titleEmphasis?: string;
 }) {
