@@ -21,7 +21,8 @@ type ActionMessage = {
 
 type ShippingMethod = "parcel" | "pickup";
 
-const shippingFee = 4000;
+const shippingFee = 3000;
+const freeShippingThreshold = 50000;
 const shippingOptions: Array<{
   label: string;
   value: ShippingMethod;
@@ -54,7 +55,12 @@ export function ProductPurchasePanel({
   const shippingMenuId = useId();
   const clampedQuantity = clampQuantity(quantity, effectiveMaxQuantity);
   const productTotal = price === null ? null : price * clampedQuantity;
-  const includedShippingFee = shippingMethod === "parcel" ? shippingFee : 0;
+  const includedShippingFee =
+    shippingMethod === "parcel" &&
+    productTotal !== null &&
+    productTotal < freeShippingThreshold
+      ? shippingFee
+      : 0;
   const orderTotal =
     productTotal === null ? null : productTotal + includedShippingFee;
   const selectedShippingOption =
@@ -68,9 +74,14 @@ export function ProductPurchasePanel({
         orderTotal === null
           ? "가격 입력 예정"
           : formatCurrency(orderTotal, currency),
-      totalNote: shippingMethod === "parcel" ? "배송비 포함" : "배송비 없음",
+      totalNote:
+        shippingMethod === "pickup"
+          ? "배송비 없음"
+          : includedShippingFee > 0
+            ? "배송비 포함"
+            : "무료배송",
     }),
-    [currency, orderTotal, shippingMethod],
+    [currency, includedShippingFee, orderTotal, shippingMethod],
   );
 
   useEffect(() => {
@@ -329,7 +340,10 @@ export function ProductPurchasePanel({
               </>
             ) : (
               <>
-                <span>택배 · 배송비 {formatted.shipping} · 도서산간 배송비 별도</span>
+                <span>
+                  택배 · 배송비 {formatted.shipping} · 50,000원 이상 무료배송
+                </span>
+                <strong>도서산간 배송비는 주문 전 별도 안내드립니다.</strong>
               </>
             )}
           </dd>

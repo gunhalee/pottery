@@ -5,13 +5,13 @@ import { footerSocialLinks } from "@/lib/config/social-links";
 
 const footerInfoGroups = [
   [
-    ["상호명", "크룬프로젝트"],
-    ["대표자 · 개인정보보호책임자", "하지영"],
+    ["상호명", siteConfig.businessName],
+    ["대표자 · 개인정보보호책임자", siteConfig.privacyOfficer],
     ["사업장 주소", "12772 1층 경기도 광주시 수레실길 25-10 (능평동)"],
     ["사업자 등록번호", "129-37-99678"],
     ["통신판매업 신고번호", ""],
   ],
-  [["연락처", "consepot@gmail.com · 0507-0177-5929"]],
+  [["연락처", `${siteConfig.email} · ${siteConfig.phone}`]],
 ] as const;
 
 export function SiteFooter() {
@@ -53,6 +53,7 @@ export function SiteFooter() {
           <div className="footer-legal">
             <SiteLink href="/terms">이용약관</SiteLink>
             <SiteLink href="/privacy">개인정보처리방침</SiteLink>
+            <SiteLink href="/shipping-returns">배송·교환·환불정책</SiteLink>
           </div>
         </div>
       </div>
