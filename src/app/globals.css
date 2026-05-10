@@ -4423,12 +4423,19 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
     bottom: 0;
     width: calc(100% - 48px);
     max-height: none;
-    padding: 0 0 40px 24px;
+    padding: 0 0 clamp(32px, 5.8svh, 48px) 24px;
     overflow: visible;
   }
 
   .home-hero {
-    min-height: 58svh;
+    --home-hero-next-peek: clamp(52px, 7svh, 76px);
+    min-height: calc(100svh - var(--home-hero-next-peek));
+  }
+
+  @supports (height: 100dvh) {
+    .home-hero {
+      min-height: calc(100dvh - var(--home-hero-next-peek));
+    }
   }
 
   .hero-title {
