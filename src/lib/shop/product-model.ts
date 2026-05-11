@@ -40,6 +40,7 @@ export type ProductBadgeKind =
 
 export type ProductCtaKind =
   | "buy"
+  | "made_to_order"
   | "restock_alert"
   | "similar_work_alert"
   | "next_limited_alert"
@@ -71,6 +72,22 @@ export type ProductCommerceSnapshot = {
   syncedAt?: string;
 };
 
+export type ProductPlantOption = {
+  careNotice?: string;
+  enabled: boolean;
+  priceDelta: number;
+  returnNotice?: string;
+  shippingRestrictionNotice?: string;
+  species?: string;
+};
+
+export type ProductMadeToOrder = {
+  available: boolean;
+  daysMax: number;
+  daysMin: number;
+  notice?: string;
+};
+
 export type ProductContent = {
   careNote?: string;
   category: ProductCategory;
@@ -84,6 +101,8 @@ export type ProductContent = {
   kind: ProductKind;
   limitedType: LimitedType;
   material?: string;
+  madeToOrder: ProductMadeToOrder;
+  plantOption: ProductPlantOption;
   published: boolean;
   publishedAt?: string;
   restockCtaType: RestockCtaType;
@@ -111,6 +130,8 @@ export type ProductListItem = Pick<
   | "isLimited"
   | "kind"
   | "limitedType"
+  | "madeToOrder"
+  | "plantOption"
   | "published"
   | "publishedAt"
   | "restockCtaType"

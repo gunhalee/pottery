@@ -11,12 +11,21 @@ import {
 } from "@/lib/security/rate-limit";
 
 const orderDraftSchema = z.object({
+  cashReceiptIdentifier: z.string().trim().max(80).optional(),
+  cashReceiptIdentifierType: z
+    .enum(["phone", "cash_receipt_card", "business_registration"])
+    .optional(),
+  cashReceiptType: z.enum(["none", "personal", "business"]).optional(),
   checkoutMode: z.enum(["standard", "gift", "naver_pay"]),
   giftMessage: z.string().max(200).optional(),
   lookupPassword: z.string().regex(/^[0-9]{4}$/),
+  madeToOrder: z.boolean().optional(),
+  madeToOrderAcknowledged: z.boolean().optional(),
   ordererEmail: z.email().max(120),
   ordererName: z.string().trim().min(1).max(40),
   ordererPhone: z.string().trim().min(8).max(30),
+  paymentMethod: z.enum(["portone", "naver_pay", "bank_transfer"]).optional(),
+  productOption: z.enum(["plant_excluded", "plant_included"]).optional(),
   productSlug: z.string().trim().min(1).max(120),
   quantity: z.number().int().min(1).max(99),
   recipientName: z.string().trim().max(40).optional(),

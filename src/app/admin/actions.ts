@@ -78,7 +78,17 @@ const productUpdateSchema = z.object({
   limitedType: z
     .enum(["quantity", "period", "kiln_batch", "project"])
     .nullable(),
+  madeToOrderAvailable: z.boolean(),
+  madeToOrderDaysMax: z.number().int().positive(),
+  madeToOrderDaysMin: z.number().int().positive(),
+  madeToOrderNotice: z.string().optional(),
   material: z.string().optional(),
+  plantCareNotice: z.string().optional(),
+  plantOptionEnabled: z.boolean(),
+  plantOptionPriceDelta: z.number().int().nonnegative(),
+  plantReturnNotice: z.string().optional(),
+  plantShippingRestrictionNotice: z.string().optional(),
+  plantSpecies: z.string().optional(),
   price: z.number().int().nonnegative().nullable(),
   published: z.boolean(),
   restockCtaType: z
@@ -494,7 +504,22 @@ function parseProductUpdateFormData(formData: FormData) {
     isLimited: formData.get("isLimited") === "on",
     kind: formData.get("kind"),
     limitedType: nullableSelectValue(formData.get("limitedType")),
+    madeToOrderAvailable: formData.get("madeToOrderAvailable") === "on",
+    madeToOrderDaysMax:
+      nullableIntegerValue(formData.get("madeToOrderDaysMax")) ?? 45,
+    madeToOrderDaysMin:
+      nullableIntegerValue(formData.get("madeToOrderDaysMin")) ?? 30,
+    madeToOrderNotice: stringValue(formData.get("madeToOrderNotice")),
     material: stringValue(formData.get("material")),
+    plantCareNotice: stringValue(formData.get("plantCareNotice")),
+    plantOptionEnabled: formData.get("plantOptionEnabled") === "on",
+    plantOptionPriceDelta:
+      nullableIntegerValue(formData.get("plantOptionPriceDelta")) ?? 0,
+    plantReturnNotice: stringValue(formData.get("plantReturnNotice")),
+    plantShippingRestrictionNotice: stringValue(
+      formData.get("plantShippingRestrictionNotice"),
+    ),
+    plantSpecies: stringValue(formData.get("plantSpecies")),
     price: nullableIntegerValue(formData.get("price")),
     published: formData.get("published") === "on",
     restockCtaType: nullableSelectValue(formData.get("restockCtaType")),

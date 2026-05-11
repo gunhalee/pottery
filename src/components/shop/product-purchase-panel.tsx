@@ -6,6 +6,7 @@ import type { FocusEvent, KeyboardEvent } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type {
   CheckoutMode,
+  ProductOption,
   ShippingMethod,
 } from "@/lib/orders/order-model";
 import {
@@ -18,7 +19,21 @@ type ProductPurchasePanelProps = {
   availabilityLabel: string;
   currency: "KRW";
   isPurchasable: boolean;
+  madeToOrder?: {
+    daysMax: number;
+    daysMin: number;
+    enabled: boolean;
+    notice?: string;
+  };
   maxQuantity: number | null;
+  plantOption?: {
+    careNotice?: string;
+    enabled: boolean;
+    priceDelta: number;
+    returnNotice?: string;
+    shippingRestrictionNotice?: string;
+    species?: string;
+  };
   price: number | null;
   productSlug: string;
   productTitle: string;
@@ -41,7 +56,9 @@ export function ProductPurchasePanel({
   availabilityLabel,
   currency,
   isPurchasable,
+  madeToOrder,
   maxQuantity,
+  plantOption,
   price,
   productSlug,
   productTitle,
@@ -49,6 +66,8 @@ export function ProductPurchasePanel({
   const router = useRouter();
   const effectiveMaxQuantity = Math.max(1, maxQuantity ?? 99);
   const [quantity, setQuantity] = useState(1);
+  const [productOption, setProductOption] =
+    useState<ProductOption>("plant_excluded");
   const [isFavorite, setIsFavorite] = useState(false);
   const [isFavoriteSaving, setIsFavoriteSaving] = useState(false);
   const [message, setMessage] = useState<ActionMessage | null>(null);
@@ -61,10 +80,16 @@ export function ProductPurchasePanel({
     useState(false);
   const shippingMenuId = useId();
   const clampedQuantity = clampQuantity(quantity, effectiveMaxQuantity);
+  const containsLivePlant =
+    productOption === "plant_included" && Boolean(plantOption?.enabled);
+  const effectiveUnitPrice =
+    price === null
+      ? null
+      : price + (containsLivePlant ? (plantOption?.priceDelta ?? 0) : 0);
   const orderAmounts = calculateOrderAmounts({
     quantity: clampedQuantity,
     shippingMethod,
-    unitPrice: price,
+    unitPrice: effectiveUnitPrice,
   });
   const includedShippingFee = orderAmounts.shippingFeeKrw;
   const orderTotal = orderAmounts.totalKrw;
@@ -171,10 +196,15 @@ export function ProductPurchasePanel({
 
     const params = new URLSearchParams({
       mode: checkoutMode,
+      option: productOption,
       product: productSlug,
       quantity: String(clampedQuantity),
       shipping: shippingMethod,
     });
+
+    if (madeToOrder?.enabled) {
+      params.set("order", "made_to_order");
+    }
 
     router.push(`/checkout?${params.toString()}`);
   }
@@ -299,6 +329,39 @@ export function ProductPurchasePanel({
       </div>
 
       <dl className="product-commerce-info">
+        {plantOption?.enabled ? (
+          <div className="product-commerce-row product-option-row">
+            <dt>상품 옵션</dt>
+            <dd>
+              <div className="product-option-toggle" role="group" aria-label="상품 옵션">
+                <button
+                  aria-pressed={productOption === "plant_excluded"}
+                  onClick={() => setProductOption("plant_excluded")}
+                  type="button"
+                >
+                  식물 제외
+                </button>
+                <button
+                  aria-pressed={productOption === "plant_included"}
+                  onClick={() => setProductOption("plant_included")}
+                  type="button"
+                >
+                  식물 포함
+                  {plantOption.priceDelta > 0 ? (
+                    <span>+{formatNumber(plantOption.priceDelta)}원</span>
+                  ) : null}
+                </button>
+              </div>
+              {containsLivePlant ? (
+                <p className="product-option-note">
+                  {plantOption.species
+                    ? `${plantOption.species} 구성이 포함됩니다.`
+                    : "생화·식물 구성이 포함됩니다."}
+                </p>
+              ) : null}
+            </dd>
+          </div>
+        ) : null}
         <div className="product-commerce-row product-shipping-method-row">
           <dt>배송 방법</dt>
           <dd>
@@ -369,12 +432,37 @@ export function ProductPurchasePanel({
                   택배 · 배송비 {formatted.shipping} ·{" "}
                   {formatted.freeShippingThreshold} 이상 무료배송
                 </span>
-                <strong>도서산간 배송비는 주문 전 별도 안내드립니다.</strong>
+                <strong>
+                  {containsLivePlant
+                    ? "식물 포함 상품은 제주·도서산간 배송이 제한됩니다."
+                    : "도서산간 배송비는 주문 전 별도 안내드립니다."}
+                </strong>
               </>
             )}
           </dd>
         </div>
       </dl>
+
+      {madeToOrder?.enabled ? (
+        <div className="product-commerce-notice">
+          <strong>추가 제작 주문</strong>
+          <p>
+            결제 또는 입금 확인일 기준 약 {madeToOrder.daysMin}~
+            {madeToOrder.daysMax}일이 소요될 수 있습니다.
+          </p>
+          {madeToOrder.notice ? <p>{madeToOrder.notice}</p> : null}
+        </div>
+      ) : null}
+
+      {containsLivePlant ? (
+        <div className="product-commerce-notice">
+          <strong>식물 포함 상품 안내</strong>
+          {plantOption?.careNotice ? <p>{plantOption.careNotice}</p> : null}
+          {plantOption?.shippingRestrictionNotice ? (
+            <p>{plantOption.shippingRestrictionNotice}</p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="product-quantity-box">
         <div className="product-quantity-head">
@@ -427,7 +515,7 @@ export function ProductPurchasePanel({
           onClick={() => startCheckout("standard")}
           type="button"
         >
-          구매하기
+          {madeToOrder?.enabled ? "추가 제작 주문" : "구매하기"}
         </button>
         <button
           className="product-secondary-button"
@@ -516,7 +604,7 @@ export function ProductPurchasePanel({
           onClick={() => startCheckout("standard")}
           type="button"
         >
-          구매하기
+          {madeToOrder?.enabled ? "추가 제작 주문" : "구매하기"}
         </button>
         <button
           aria-label={isFavorite ? "찜 해제" : "찜하기"}

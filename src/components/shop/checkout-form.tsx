@@ -4,8 +4,13 @@ import Link from "next/link";
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 import type {
+  BankTransferAccount,
+  CashReceiptIdentifierType,
+  CashReceiptType,
   CheckoutMode,
   OrderDraftResult,
+  PaymentMethod,
+  ProductOption,
   ShippingMethod,
 } from "@/lib/orders/order-model";
 import type {
@@ -14,7 +19,14 @@ import type {
 } from "@/lib/payments/portone-model";
 
 type CheckoutFormProps = {
+  bankTransferAccount: BankTransferAccount;
   checkoutMode: CheckoutMode;
+  containsLivePlant: boolean;
+  isMadeToOrder: boolean;
+  madeToOrderDaysMax: number | null;
+  madeToOrderDaysMin: number | null;
+  madeToOrderNotice?: string;
+  productOption: ProductOption;
   productSlug: string;
   productTitle: string;
   quantity: number;
@@ -34,7 +46,7 @@ type SubmitState =
   | {
       error: string | null;
       order: OrderDraftResult;
-      status: "created" | "payment";
+      status: "created" | "payment" | "bank_transfer";
     }
   | {
       error: null;
@@ -43,7 +55,14 @@ type SubmitState =
     };
 
 export function CheckoutForm({
+  bankTransferAccount,
   checkoutMode,
+  containsLivePlant,
+  isMadeToOrder,
+  madeToOrderDaysMax,
+  madeToOrderDaysMin,
+  madeToOrderNotice,
+  productOption,
   productSlug,
   productTitle,
   quantity,
@@ -53,6 +72,12 @@ export function CheckoutForm({
   total,
   unitPrice,
 }: CheckoutFormProps) {
+  const [paymentMethod, setPaymentMethod] =
+    useState<PaymentMethod>("portone");
+  const [cashReceiptType, setCashReceiptType] =
+    useState<CashReceiptType>("none");
+  const [cashReceiptIdentifierType, setCashReceiptIdentifierType] =
+    useState<CashReceiptIdentifierType>("phone");
   const [state, setState] = useState<SubmitState>({
     error: null,
     order: null,
@@ -62,7 +87,15 @@ export function CheckoutForm({
   const isGift = checkoutMode === "gift";
   const isNaverPay = checkoutMode === "naver_pay";
   const isParcel = shippingMethod === "parcel";
-  const submitLabel = isNaverPay ? "N pay 결제하기" : "결제하기";
+  const selectedPaymentMethod: PaymentMethod = isNaverPay
+    ? "naver_pay"
+    : paymentMethod;
+  const isBankTransfer = selectedPaymentMethod === "bank_transfer";
+  const submitLabel = isBankTransfer
+    ? "입금대기 주문 접수"
+    : isNaverPay
+      ? "N pay 결제하기"
+      : "결제하기";
   const modeLabel = useMemo(() => {
     if (isGift) {
       return "선물하기";
@@ -92,12 +125,23 @@ export function CheckoutForm({
 
     const response = await fetch("/api/orders/draft", {
       body: JSON.stringify({
+        cashReceiptIdentifier: String(
+          formData.get("cashReceiptIdentifier") ?? "",
+        ),
+        cashReceiptIdentifierType,
+        cashReceiptType,
         checkoutMode,
         giftMessage: String(formData.get("giftMessage") ?? ""),
         lookupPassword: String(formData.get("lookupPassword") ?? ""),
+        madeToOrder: isMadeToOrder,
+        madeToOrderAcknowledged: Boolean(
+          formData.get("madeToOrderAcknowledged"),
+        ),
         ordererEmail: String(formData.get("ordererEmail") ?? ""),
         ordererName: String(formData.get("ordererName") ?? ""),
         ordererPhone: String(formData.get("ordererPhone") ?? ""),
+        paymentMethod: selectedPaymentMethod,
+        productOption,
         productSlug,
         quantity,
         recipientName: String(formData.get("recipientName") ?? ""),
@@ -124,6 +168,15 @@ export function CheckoutForm({
         error: result.error ?? "주문 접수 중 오류가 발생했습니다.",
         order: null,
         status: "idle",
+      });
+      return;
+    }
+
+    if (result.order.paymentMethod === "bank_transfer") {
+      setState({
+        error: null,
+        order: result.order,
+        status: "bank_transfer",
       });
       return;
     }
@@ -226,6 +279,41 @@ export function CheckoutForm({
     );
   }
 
+  if (state.status === "bank_transfer") {
+    const account = state.order.bankTransferAccount ?? bankTransferAccount;
+
+    return (
+      <div className="checkout-result checkout-bank-result">
+        <span>입금대기 주문</span>
+        <strong>{state.order.orderNumber}</strong>
+        <p>
+          입금 확인 후 주문이 확정됩니다. 입금자명은 주문자명과 동일하게
+          보내 주세요.
+        </p>
+        <dl>
+          <div>
+            <dt>입금 계좌</dt>
+            <dd>
+              {account.bankName} {account.accountNumber} /{" "}
+              {account.accountHolder}
+            </dd>
+          </div>
+          <div>
+            <dt>입금 금액</dt>
+            <dd>{formatCurrency(state.order.total)}</dd>
+          </div>
+          <div>
+            <dt>입금 기한</dt>
+            <dd>{formatDate(state.order.depositDueAt)}</dd>
+          </div>
+        </dl>
+        <Link className="button-primary" href="/order/lookup" prefetch={false}>
+          주문 조회하기
+        </Link>
+      </div>
+    );
+  }
+
   if (state.status === "created" || state.status === "payment") {
     return (
       <div className="checkout-result">
@@ -234,7 +322,7 @@ export function CheckoutForm({
         <p>
           {state.status === "payment"
             ? "PortOne 결제창을 준비하고 있습니다."
-            : "주문 기록은 생성되었습니다. 결제 설정을 확인한 뒤 이어서 결제할 수 있습니다."}
+            : "주문 기록은 생성되었습니다. 결제 설정을 확인한 뒤 다시 결제할 수 있습니다."}
         </p>
         {state.error ? <p className="checkout-error">{state.error}</p> : null}
         <button
@@ -263,8 +351,12 @@ export function CheckoutForm({
           <div>
             <dt>상품 금액</dt>
             <dd>
-              {formatCurrency(unitPrice)} × {quantity}
+              {formatCurrency(unitPrice)} x {quantity}
             </dd>
+          </div>
+          <div>
+            <dt>상품 옵션</dt>
+            <dd>{productOptionLabel(productOption)}</dd>
           </div>
           <div>
             <dt>배송 방법</dt>
@@ -282,6 +374,13 @@ export function CheckoutForm({
         <p>
           상품 {formatCurrency(subtotal)} · 배송비 {formatCurrency(shippingFee)}
         </p>
+        {containsLivePlant ? (
+          <p>
+            식물 포함 상품은 제주 및 도서산간 택배 발송이 제한되며,
+            혹한기·혹서기에는 운영 안내에 따라 출고 일정이 조정될 수
+            있습니다.
+          </p>
+        ) : null}
       </section>
 
       <form className="checkout-form" onSubmit={submitOrder}>
@@ -318,6 +417,139 @@ export function CheckoutForm({
           </label>
         </fieldset>
 
+        {!isNaverPay ? (
+          <fieldset>
+            <legend>결제수단</legend>
+            <div className="checkout-choice-row">
+              <label>
+                <input
+                  checked={paymentMethod === "portone"}
+                  name="paymentMethod"
+                  onChange={() => setPaymentMethod("portone")}
+                  type="radio"
+                  value="portone"
+                />
+                <span>카드·간편결제</span>
+              </label>
+              <label>
+                <input
+                  checked={paymentMethod === "bank_transfer"}
+                  name="paymentMethod"
+                  onChange={() => setPaymentMethod("bank_transfer")}
+                  type="radio"
+                  value="bank_transfer"
+                />
+                <span>무통장입금</span>
+              </label>
+            </div>
+            {isBankTransfer ? (
+              <p className="checkout-note">
+                무통장입금은 주문 완료 후 24시간 내 입금이 확인되어야 주문이
+                확정됩니다.
+              </p>
+            ) : null}
+          </fieldset>
+        ) : null}
+
+        {isBankTransfer ? (
+          <fieldset>
+            <legend>현금영수증</legend>
+            <div className="checkout-choice-row">
+              <label>
+                <input
+                  checked={cashReceiptType === "none"}
+                  name="cashReceiptType"
+                  onChange={() => setCashReceiptType("none")}
+                  type="radio"
+                  value="none"
+                />
+                <span>신청 안 함</span>
+              </label>
+              <label>
+                <input
+                  checked={cashReceiptType === "personal"}
+                  name="cashReceiptType"
+                  onChange={() => {
+                    setCashReceiptType("personal");
+                    setCashReceiptIdentifierType("phone");
+                  }}
+                  type="radio"
+                  value="personal"
+                />
+                <span>개인 소득공제용</span>
+              </label>
+              <label>
+                <input
+                  checked={cashReceiptType === "business"}
+                  name="cashReceiptType"
+                  onChange={() => {
+                    setCashReceiptType("business");
+                    setCashReceiptIdentifierType("business_registration");
+                  }}
+                  type="radio"
+                  value="business"
+                />
+                <span>사업자 지출증빙용</span>
+              </label>
+            </div>
+            {cashReceiptType !== "none" ? (
+              <>
+                {cashReceiptType === "personal" ? (
+                  <label>
+                    <span>발급수단</span>
+                    <select
+                      onChange={(event) =>
+                        setCashReceiptIdentifierType(
+                          event.target.value as CashReceiptIdentifierType,
+                        )
+                      }
+                      value={cashReceiptIdentifierType}
+                    >
+                      <option value="phone">휴대전화번호</option>
+                      <option value="cash_receipt_card">
+                        현금영수증 카드번호
+                      </option>
+                    </select>
+                  </label>
+                ) : null}
+                <label>
+                  <span>
+                    {cashReceiptType === "business"
+                      ? "사업자등록번호"
+                      : cashReceiptIdentifierType === "cash_receipt_card"
+                        ? "카드번호"
+                        : "휴대전화번호"}
+                  </span>
+                  <input
+                    inputMode="numeric"
+                    name="cashReceiptIdentifier"
+                    required
+                  />
+                </label>
+              </>
+            ) : null}
+          </fieldset>
+        ) : null}
+
+        {isMadeToOrder ? (
+          <fieldset>
+            <legend>추가 제작 주문</legend>
+            <p className="checkout-note">
+              추가 제작은 결제 또는 입금 확인일 기준 약{" "}
+              {madeToOrderDaysMin ?? 30}~{madeToOrderDaysMax ?? 45}일이
+              소요될 수 있으며, 제작 착수 후 취소 시 실제 발생 비용이 차감될
+              수 있습니다.
+            </p>
+            {madeToOrderNotice ? (
+              <p className="checkout-note">{madeToOrderNotice}</p>
+            ) : null}
+            <label className="checkout-checkbox">
+              <input name="madeToOrderAcknowledged" required type="checkbox" />
+              <span>추가 제작 기간과 취소 기준을 확인했습니다.</span>
+            </label>
+          </fieldset>
+        ) : null}
+
         {isGift ? (
           <fieldset>
             <legend>선물하기</legend>
@@ -326,9 +558,8 @@ export function CheckoutForm({
               <textarea maxLength={200} name="giftMessage" />
             </label>
             <p className="checkout-note">
-              수령인 배송지 입력 링크와 알림톡 발송은 정식 결제 연결 단계에서
-              이어 붙입니다. 지금은 선물 주문 여부와 메모를 주문 기록에
-              저장합니다.
+              식물 포함 상품은 수령인 배송정보 입력 기한이 24시간으로 적용될
+              수 있습니다.
             </p>
           </fieldset>
         ) : null}
@@ -371,8 +602,8 @@ export function CheckoutForm({
 
         {isNaverPay ? (
           <p className="checkout-note">
-            N pay 버튼으로 들어온 주문은 PortOne 결제 요청 시 간편결제 방식으로
-            전달됩니다. 실제 노출 결제수단은 PortOne 채널 설정을 따릅니다.
+            N pay 버튼으로 들어온 주문은 PortOne 결제 요청 후 간편결제
+            방식으로 진행됩니다.
           </p>
         ) : null}
 
@@ -395,4 +626,25 @@ function formatCurrency(value: number) {
   return `${new Intl.NumberFormat("ko-KR", {
     maximumFractionDigits: 0,
   }).format(value)}원`;
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) {
+    return "확인 중";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function productOptionLabel(option: ProductOption) {
+  return option === "plant_included" ? "식물 포함" : "식물 제외";
 }

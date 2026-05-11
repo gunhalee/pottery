@@ -9,11 +9,18 @@ import {
   templateForFulfillmentStatus,
 } from "@/lib/notifications/order-notifications";
 import type {
+  CashReceiptIdentifierType,
+  CashReceiptStatus,
+  CashReceiptType,
   FulfillmentStatus,
   OrderStatus,
   PaymentStatus,
+  PaymentMethod,
+  ProductOption,
+  RefundAccountStatus,
   ShippingMethod,
 } from "@/lib/orders/order-model";
+import { issueCashReceiptAfterBankTransferConfirmation } from "@/lib/orders/order-store";
 
 export type AdminOrderView =
   | "all"
@@ -30,6 +37,8 @@ export type AdminOrderListItem = {
   actionLabel: string;
   ageLabel: string;
   createdAt: string;
+  depositDueAt: string | null;
+  depositReviewStatus: string;
   fulfillmentStatus: FulfillmentStatus;
   id: string;
   isGift: boolean;
@@ -42,6 +51,7 @@ export type AdminOrderListItem = {
   ordererName: string;
   ordererPhoneLast4: string;
   paidAt: string | null;
+  paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
   quantityTotal: number;
   recipientName: string | null;
@@ -70,15 +80,29 @@ export type AdminOrderStats = {
 
 export type AdminOrderDetail = {
   canceledAt: string | null;
+  cashReceiptIdentifierMasked: string | null;
+  cashReceiptIdentifierType: CashReceiptIdentifierType | null;
+  cashReceipts: AdminCashReceipt[];
+  cashReceiptStatus: CashReceiptStatus;
+  cashReceiptType: Exclude<CashReceiptType, "none"> | null;
+  containsLivePlant: boolean;
   createdAt: string;
   currency: string;
+  depositConfirmedAt: string | null;
+  depositDueAt: string | null;
+  depositReceivedAmountKrw: number | null;
+  depositReviewNote: string | null;
+  depositReviewStatus: string;
   events: AdminOrderEvent[];
   fulfillmentStatus: FulfillmentStatus;
   giftMessage: string | null;
   id: string;
   isGift: boolean;
+  isMadeToOrder: boolean;
   items: AdminOrderItem[];
   latestShipment: AdminOrderShipment | null;
+  madeToOrderDueMaxDays: number | null;
+  madeToOrderDueMinDays: number | null;
   notifications: AdminOrderNotification[];
   orderNumber: string;
   orderStatus: OrderStatus;
@@ -87,12 +111,15 @@ export type AdminOrderDetail = {
   ordererPhone: string;
   ordererPhoneLast4: string;
   paidAt: string | null;
+  paymentMethod: PaymentMethod;
   payments: AdminOrderPayment[];
   paymentStatus: PaymentStatus;
   portonePaymentId: string | null;
   portoneTransactionId: string | null;
+  productOption: ProductOption;
   recipientName: string | null;
   recipientPhone: string | null;
+  refundAccounts: AdminRefundAccount[];
   shipments: AdminOrderShipment[];
   shippingAddress1: string | null;
   shippingAddress2: string | null;
@@ -119,6 +146,34 @@ export type AdminOrderItem = {
   productTitle: string;
   quantity: number;
   unitPriceKrw: number;
+};
+
+export type AdminCashReceipt = {
+  amountKrw: number;
+  approvalNumber: string | null;
+  createdAt: string;
+  errorMessage: string | null;
+  id: string;
+  identifierMasked: string;
+  identifierType: CashReceiptIdentifierType;
+  receiptType: Exclude<CashReceiptType, "none">;
+  status: "pending" | "issued" | "failed" | "canceled";
+};
+
+export type AdminRefundAccount = {
+  accountHolder: string;
+  accountNumberMasked: string;
+  adminNote: string | null;
+  bankName: string;
+  confirmedAt: string | null;
+  createdAt: string;
+  depositorName: string | null;
+  id: string;
+  refundAmountKrw: number | null;
+  refundedAt: string | null;
+  refundReason: string | null;
+  status: Exclude<RefundAccountStatus, "none">;
+  submittedAt: string;
 };
 
 export type AdminOrderPayment = {
@@ -166,14 +221,48 @@ export type UpdateAdminOrderFulfillmentInput = {
   trackingUrl: string | null;
 };
 
+export type UpdateAdminBankTransferDepositInput = {
+  depositAmountKrw: number;
+  depositConfirmedAt: string | null;
+  depositReviewStatus:
+    | "matched"
+    | "underpaid"
+    | "overpaid"
+    | "name_mismatch"
+    | "needs_review";
+  depositorName: string;
+  note: string | null;
+  orderId: string;
+};
+
+export type UpdateAdminRefundAccountInput = {
+  adminNote: string | null;
+  orderId: string;
+  refundAccountId: string;
+  status: Exclude<RefundAccountStatus, "none" | "needs_review"> | "needs_review";
+};
+
 type OrderRow = {
   canceled_at: string | null;
+  cash_receipt_identifier_masked: string | null;
+  cash_receipt_identifier_type: CashReceiptIdentifierType | null;
+  cash_receipt_status: CashReceiptStatus;
+  cash_receipt_type: Exclude<CashReceiptType, "none"> | null;
+  contains_live_plant: boolean;
   created_at: string;
   currency: string;
+  deposit_confirmed_at: string | null;
+  deposit_due_at: string | null;
+  deposit_received_amount_krw: number | null;
+  deposit_review_note: string | null;
+  deposit_review_status: string;
   fulfillment_status: FulfillmentStatus;
   gift_message: string | null;
   id: string;
   is_gift: boolean;
+  is_made_to_order: boolean;
+  made_to_order_due_max_days: number | null;
+  made_to_order_due_min_days: number | null;
   order_number: string;
   order_status: OrderStatus;
   orderer_email: string;
@@ -181,9 +270,11 @@ type OrderRow = {
   orderer_phone: string;
   orderer_phone_last4: string;
   paid_at: string | null;
+  payment_method: PaymentMethod;
   payment_status: PaymentStatus;
   portone_payment_id: string | null;
   portone_transaction_id: string | null;
+  product_option: ProductOption;
   recipient_name: string | null;
   recipient_phone: string | null;
   shipping_address1: string | null;
@@ -216,6 +307,34 @@ type PaymentRow = {
   provider_transaction_id: string | null;
   status: PaymentStatus;
   updated_at: string;
+};
+
+type CashReceiptRow = {
+  amount_krw: number;
+  approval_number: string | null;
+  created_at: string;
+  error_message: string | null;
+  id: string;
+  identifier_masked: string;
+  identifier_type: CashReceiptIdentifierType;
+  receipt_type: Exclude<CashReceiptType, "none">;
+  status: AdminCashReceipt["status"];
+};
+
+type RefundAccountRow = {
+  account_holder: string;
+  account_number_masked: string;
+  admin_note: string | null;
+  bank_name: string;
+  confirmed_at: string | null;
+  created_at: string;
+  depositor_name: string | null;
+  id: string;
+  refund_amount_krw: number | null;
+  refunded_at: string | null;
+  refund_reason: string | null;
+  status: Exclude<RefundAccountStatus, "none">;
+  submitted_at: string;
 };
 
 type NotificationRow = {
@@ -251,7 +370,7 @@ type EventRow = {
 };
 
 const orderSelect =
-  "id, order_number, order_status, payment_status, fulfillment_status, orderer_name, orderer_phone, orderer_phone_last4, orderer_email, is_gift, gift_message, recipient_name, recipient_phone, shipping_postcode, shipping_address1, shipping_address2, shipping_memo, shipping_method, currency, subtotal_krw, shipping_fee_krw, total_krw, portone_payment_id, portone_transaction_id, paid_at, canceled_at, created_at, updated_at";
+  "id, order_number, order_status, payment_status, payment_method, fulfillment_status, orderer_name, orderer_phone, orderer_phone_last4, orderer_email, is_gift, gift_message, recipient_name, recipient_phone, shipping_postcode, shipping_address1, shipping_address2, shipping_memo, shipping_method, currency, subtotal_krw, shipping_fee_krw, total_krw, portone_payment_id, portone_transaction_id, paid_at, canceled_at, created_at, updated_at, product_option, contains_live_plant, is_made_to_order, made_to_order_due_min_days, made_to_order_due_max_days, deposit_due_at, deposit_confirmed_at, deposit_received_amount_krw, deposit_review_status, deposit_review_note, cash_receipt_type, cash_receipt_identifier_type, cash_receipt_identifier_masked, cash_receipt_status";
 
 const emptyStats: AdminOrderStats = {
   all: 0,
@@ -363,25 +482,49 @@ export async function getAdminOrderDetail(
   }
 
   const order = data as OrderRow;
-  const [items, shipments, payments, notifications, events] = await Promise.all([
+  const [
+    items,
+    shipments,
+    payments,
+    notifications,
+    events,
+    cashReceipts,
+    refundAccounts,
+  ] = await Promise.all([
     readOrderItems(order.id),
     readOrderShipments(order.id),
     readOrderPayments(order.id),
     readOrderNotifications(order.id),
     readOrderEvents(order.id),
+    readCashReceipts(order.id),
+    readRefundAccounts(order.id),
   ]);
 
   return {
     canceledAt: order.canceled_at,
+    cashReceiptIdentifierMasked: order.cash_receipt_identifier_masked,
+    cashReceiptIdentifierType: order.cash_receipt_identifier_type,
+    cashReceipts,
+    cashReceiptStatus: order.cash_receipt_status,
+    cashReceiptType: order.cash_receipt_type,
+    containsLivePlant: order.contains_live_plant,
     createdAt: order.created_at,
     currency: order.currency,
+    depositConfirmedAt: order.deposit_confirmed_at,
+    depositDueAt: order.deposit_due_at,
+    depositReceivedAmountKrw: order.deposit_received_amount_krw,
+    depositReviewNote: order.deposit_review_note,
+    depositReviewStatus: order.deposit_review_status,
     events,
     fulfillmentStatus: order.fulfillment_status,
     giftMessage: order.gift_message,
     id: order.id,
     isGift: order.is_gift,
+    isMadeToOrder: order.is_made_to_order,
     items,
     latestShipment: shipments[0] ?? null,
+    madeToOrderDueMaxDays: order.made_to_order_due_max_days,
+    madeToOrderDueMinDays: order.made_to_order_due_min_days,
     notifications,
     orderNumber: order.order_number,
     orderStatus: order.order_status,
@@ -390,12 +533,15 @@ export async function getAdminOrderDetail(
     ordererPhone: order.orderer_phone,
     ordererPhoneLast4: order.orderer_phone_last4,
     paidAt: order.paid_at,
+    paymentMethod: order.payment_method,
     payments,
     paymentStatus: order.payment_status,
     portonePaymentId: order.portone_payment_id,
     portoneTransactionId: order.portone_transaction_id,
+    productOption: order.product_option,
     recipientName: order.recipient_name,
     recipientPhone: order.recipient_phone,
+    refundAccounts,
     shipments,
     shippingAddress1: order.shipping_address1,
     shippingAddress2: order.shipping_address2,
@@ -519,6 +665,85 @@ export async function updateAdminOrderFulfillment(
   };
 }
 
+export async function updateAdminBankTransferDeposit(
+  input: UpdateAdminBankTransferDepositInput,
+) {
+  if (!isSupabaseConfigured()) {
+    throw new Error("주문 저장소가 아직 연결되지 않았습니다.");
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase.rpc(
+    "mark_shop_order_bank_transfer_paid",
+    {
+      p_deposit_amount_krw: input.depositAmountKrw,
+      p_deposit_confirmed_at:
+        input.depositConfirmedAt ?? new Date().toISOString(),
+      p_deposit_review_status: input.depositReviewStatus,
+      p_depositor_name: input.depositorName,
+      p_note: input.note,
+      p_order_id: input.orderId,
+    },
+  );
+
+  if (error) {
+    throw new Error(`입금 확인 저장에 실패했습니다: ${error.message}`);
+  }
+
+  await issueCashReceiptAfterBankTransferConfirmation(input.orderId);
+
+  const result = Array.isArray(data) ? data[0] : data;
+
+  return {
+    orderNumber:
+      typeof result?.order_number === "string" ? result.order_number : null,
+  };
+}
+
+export async function updateAdminRefundAccount(
+  input: UpdateAdminRefundAccountInput,
+) {
+  if (!isSupabaseConfigured()) {
+    throw new Error("주문 저장소가 아직 연결되지 않았습니다.");
+  }
+
+  const now = new Date().toISOString();
+  const supabase = getSupabaseAdminClient();
+  const payload: Record<string, string | null> = {
+    admin_note: input.adminNote,
+    status: input.status,
+  };
+
+  if (input.status === "confirmed") {
+    payload.confirmed_at = now;
+  }
+
+  if (input.status === "refunded") {
+    payload.refunded_at = now;
+  }
+
+  const { error } = await supabase
+    .from("shop_refund_accounts")
+    .update(payload)
+    .eq("id", input.refundAccountId)
+    .eq("order_id", input.orderId);
+
+  if (error) {
+    throw new Error(`환불계좌 상태 저장에 실패했습니다: ${error.message}`);
+  }
+
+  await supabase.from("shop_order_events").insert({
+    actor: "admin",
+    event_type: "refund_account_status_updated",
+    note: input.adminNote,
+    order_id: input.orderId,
+    payload: {
+      refundAccountId: input.refundAccountId,
+      status: input.status,
+    },
+  });
+}
+
 async function readItemsByOrderId(orderIds: string[]) {
   const itemsByOrderId = new Map<string, AdminOrderItem[]>();
 
@@ -635,6 +860,72 @@ async function readOrderPayments(orderId: string) {
     providerTransactionId: row.provider_transaction_id,
     status: row.status,
     updatedAt: row.updated_at,
+  }));
+}
+
+async function readCashReceipts(orderId: string) {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("shop_cash_receipts")
+    .select(
+      "id, receipt_type, identifier_type, identifier_masked, amount_krw, status, approval_number, error_message, created_at",
+    )
+    .eq("order_id", orderId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    if (isOptionalCommerceTableMissingError(error, "shop_cash_receipts")) {
+      return [];
+    }
+
+    throw new Error(`현금영수증 기록을 불러오지 못했습니다: ${error.message}`);
+  }
+
+  return ((data ?? []) as CashReceiptRow[]).map((row) => ({
+    amountKrw: row.amount_krw,
+    approvalNumber: row.approval_number,
+    createdAt: row.created_at,
+    errorMessage: row.error_message,
+    id: row.id,
+    identifierMasked: row.identifier_masked,
+    identifierType: row.identifier_type,
+    receiptType: row.receipt_type,
+    status: row.status,
+  }));
+}
+
+async function readRefundAccounts(orderId: string) {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("shop_refund_accounts")
+    .select(
+      "id, bank_name, account_number_masked, account_holder, depositor_name, refund_reason, refund_amount_krw, status, submitted_at, confirmed_at, refunded_at, admin_note, created_at",
+    )
+    .eq("order_id", orderId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    if (isOptionalCommerceTableMissingError(error, "shop_refund_accounts")) {
+      return [];
+    }
+
+    throw new Error(`환불계좌 기록을 불러오지 못했습니다: ${error.message}`);
+  }
+
+  return ((data ?? []) as RefundAccountRow[]).map((row) => ({
+    accountHolder: row.account_holder,
+    accountNumberMasked: row.account_number_masked,
+    adminNote: row.admin_note,
+    bankName: row.bank_name,
+    confirmedAt: row.confirmed_at,
+    createdAt: row.created_at,
+    depositorName: row.depositor_name,
+    id: row.id,
+    refundAmountKrw: row.refund_amount_krw,
+    refundedAt: row.refunded_at,
+    refundReason: row.refund_reason,
+    status: row.status,
+    submittedAt: row.submitted_at,
   }));
 }
 
@@ -775,6 +1066,8 @@ function toAdminOrderListItem(
     actionLabel: nextActionLabel(row),
     ageLabel: formatAgeLabel(row.created_at),
     createdAt: row.created_at,
+    depositDueAt: row.deposit_due_at,
+    depositReviewStatus: row.deposit_review_status,
     fulfillmentStatus: row.fulfillment_status,
     id: row.id,
     isGift: row.is_gift,
@@ -789,6 +1082,7 @@ function toAdminOrderListItem(
     ordererName: row.orderer_name,
     ordererPhoneLast4: row.orderer_phone_last4,
     paidAt: row.paid_at,
+    paymentMethod: row.payment_method,
     paymentStatus: row.payment_status,
     quantityTotal,
     recipientName: row.recipient_name,
@@ -842,7 +1136,11 @@ function matchesOrderView(order: AdminOrderListItem, view: AdminOrderView) {
   }
 
   if (view === "payment") {
-    return order.paymentStatus === "pending" || order.paymentStatus === "unpaid";
+    return (
+      order.paymentStatus === "pending" ||
+      order.paymentStatus === "unpaid" ||
+      order.paymentStatus === "expired"
+    );
   }
 
   if (view === "pickup") {
@@ -867,8 +1165,9 @@ function matchesOrderView(order: AdminOrderListItem, view: AdminOrderView) {
       ["failed", "canceled", "partial_refunded", "refunded"].includes(
         order.paymentStatus,
       ) ||
+      order.paymentStatus === "expired" ||
       ["canceled", "returned"].includes(order.fulfillmentStatus) ||
-      ["canceled", "refunded"].includes(order.orderStatus)
+      ["canceled", "deposit_expired", "refunded"].includes(order.orderStatus)
     );
   }
 
@@ -936,6 +1235,18 @@ function nextActionLabel(row: OrderRow) {
     return "결제 실패 확인";
   }
 
+  if (row.payment_status === "expired") {
+    return "입금기한 만료";
+  }
+
+  if (row.payment_status === "refund_pending") {
+    return "환불 처리";
+  }
+
+  if (row.payment_method === "bank_transfer" && row.payment_status === "pending") {
+    return "입금 확인";
+  }
+
   if (row.payment_status === "pending" || row.payment_status === "unpaid") {
     return "결제 확인 대기";
   }
@@ -967,11 +1278,11 @@ function nextActionLabel(row: OrderRow) {
 
 function orderTone(row: OrderRow): AdminOrderTone {
   if (
-    ["failed", "canceled", "partial_refunded", "refunded"].includes(
+    ["failed", "expired", "canceled", "partial_refunded", "refunded"].includes(
       row.payment_status,
     ) ||
     ["canceled", "returned"].includes(row.fulfillment_status) ||
-    ["canceled", "refunded"].includes(row.order_status)
+    ["canceled", "deposit_expired", "refunded"].includes(row.order_status)
   ) {
     return "danger";
   }
@@ -979,6 +1290,13 @@ function orderTone(row: OrderRow): AdminOrderTone {
   if (
     row.payment_status === "paid" &&
     ["unfulfilled", "preparing", "pickup_ready"].includes(row.fulfillment_status)
+  ) {
+    return "priority";
+  }
+
+  if (
+    row.payment_method === "bank_transfer" &&
+    row.payment_status === "pending"
   ) {
     return "priority";
   }
@@ -1007,7 +1325,12 @@ function deriveOrderStatus({
     return "canceled";
   }
 
-  if (orderStatus === "refunded" || orderStatus === "canceled") {
+  if (
+    orderStatus === "refunded" ||
+    orderStatus === "canceled" ||
+    orderStatus === "deposit_expired" ||
+    orderStatus === "refund_pending"
+  ) {
     return orderStatus;
   }
 
@@ -1151,6 +1474,19 @@ function isNotificationStorageMissingError(error: {
     error.code === "42P01" ||
     message.includes("shop_notification_jobs") ||
     message.includes("schema cache")
+  );
+}
+
+function isOptionalCommerceTableMissingError(
+  error: { code?: string; message?: string },
+  tableName: string,
+) {
+  const message = error.message ?? "";
+
+  return (
+    error.code === "42P01" ||
+    (message.includes(tableName) &&
+      (message.includes("schema cache") || message.includes("does not exist")))
   );
 }
 

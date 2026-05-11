@@ -12,11 +12,13 @@ import type {
 
 type OrderPaymentRow = {
   id: string;
+  is_made_to_order: boolean;
   order_number: string;
   order_status: string;
   orderer_email: string;
   orderer_name: string;
   orderer_phone: string;
+  payment_method: string;
   payment_status: PaymentStatus;
   portone_payment_id: string | null;
   total_krw: number;
@@ -72,6 +74,10 @@ export async function preparePortOnePayment({
 
   if (order.order_status === "canceled" || order.payment_status === "canceled") {
     throw new PortOnePaymentError("취소된 주문은 결제할 수 없습니다.");
+  }
+
+  if (order.payment_method === "bank_transfer") {
+    throw new PortOnePaymentError("무통장입금 주문은 결제창을 호출할 수 없습니다.");
   }
 
   const paymentId = order.portone_payment_id ?? generatePortOnePaymentId();
@@ -197,6 +203,22 @@ export async function completePortOnePayment({
       template: "payment_paid",
     });
 
+    if (order.is_made_to_order) {
+      await enqueueOrderNotificationJobs({
+        orderId: order.id,
+        orderNumber: result.orderNumber,
+        payload: {
+          paymentId,
+          total: order.total_krw,
+        },
+        recipient: {
+          email: order.orderer_email,
+          phone: order.orderer_phone,
+        },
+        template: "made_to_order_confirmed",
+      });
+    }
+
     return {
       orderNumber: result.orderNumber,
       paymentStatus: "paid",
@@ -237,7 +259,7 @@ async function readPaymentOrder(orderId: string): Promise<OrderPaymentRow> {
   const { data, error } = await supabase
     .from("shop_orders")
     .select(
-      "id, order_number, order_status, payment_status, orderer_name, orderer_phone, orderer_email, total_krw, portone_payment_id",
+      "id, order_number, order_status, payment_status, payment_method, orderer_name, orderer_phone, orderer_email, total_krw, portone_payment_id, is_made_to_order",
     )
     .eq("id", orderId)
     .maybeSingle();

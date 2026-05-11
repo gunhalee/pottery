@@ -8,9 +8,14 @@ import {
 export type OrderNotificationChannel = "email" | "kakao";
 
 export type OrderNotificationTemplate =
+  | "deposit_expired"
+  | "deposit_guide"
+  | "deposit_reminder"
   | "fulfillment_delivered"
   | "fulfillment_preparing"
   | "fulfillment_shipped"
+  | "made_to_order_confirmed"
+  | "made_to_order_delay"
   | "order_canceled"
   | "order_received"
   | "payment_attention"

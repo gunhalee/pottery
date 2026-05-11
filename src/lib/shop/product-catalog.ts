@@ -29,6 +29,15 @@ export const productCatalog = [
       source: "internal",
       stockQuantity: 4,
     },
+    madeToOrder: {
+      available: false,
+      daysMax: 45,
+      daysMin: 30,
+    },
+    plantOption: {
+      enabled: false,
+      priceDelta: 0,
+    },
     material: "백자토",
     glaze: "투명유",
     size: "지름 약 11cm, 높이 약 5cm",
@@ -69,6 +78,15 @@ export const productCatalog = [
       source: "internal",
       stockQuantity: 0,
     },
+    madeToOrder: {
+      available: false,
+      daysMax: 45,
+      daysMin: 30,
+    },
+    plantOption: {
+      enabled: false,
+      priceDelta: 0,
+    },
     material: "분청토",
     glaze: "재유",
     size: "지름 약 8cm, 높이 약 7cm",
@@ -107,6 +125,15 @@ export const productCatalog = [
       price: 68000,
       source: "internal",
       stockQuantity: 1,
+    },
+    madeToOrder: {
+      available: false,
+      daysMax: 45,
+      daysMin: 30,
+    },
+    plantOption: {
+      enabled: false,
+      priceDelta: 0,
     },
     material: "혼합토",
     glaze: "계절 테스트 유약",

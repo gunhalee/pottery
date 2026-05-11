@@ -371,8 +371,11 @@ function healthStatusLabel(status: "danger" | "neutral" | "warning") {
   }[status];
 }
 
-function cronJobLabel(jobName: "order_notifications" | "upload_cleanup") {
+function cronJobLabel(
+  jobName: "bank_transfer_expiry" | "order_notifications" | "upload_cleanup",
+) {
   return {
+    bank_transfer_expiry: "입금기한 자동취소",
     order_notifications: "주문 알림",
     upload_cleanup: "업로드 cleanup",
   }[jobName];

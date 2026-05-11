@@ -1,13 +1,23 @@
 import "server-only";
 
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
-import { getProductBySlug } from "@/lib/shop";
+import { commerceConfig } from "@/lib/config/commerce";
+import { enqueueOrderNotificationJobs } from "@/lib/notifications/order-notifications";
+import { requestCashReceiptIssueForOrder } from "@/lib/payments/cash-receipt";
 import {
   getSupabaseAdminClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
-import { enqueueOrderNotificationJobs } from "@/lib/notifications/order-notifications";
+import { getProductBySlug } from "@/lib/shop";
+import {
+  encryptSensitiveText,
+  maskAccountNumber,
+  maskCashReceiptIdentifier,
+} from "@/lib/security/sensitive-data";
+import { getBankTransferAccount, getDepositDueAt } from "./bank-transfer";
 import type {
+  CashReceiptStatus,
+  CashReceiptType,
   FulfillmentStatus,
   OrderDraftInput,
   OrderDraftResult,
@@ -16,22 +26,34 @@ import type {
   OrderLookupResult,
   OrderLookupShipment,
   OrderStatus,
+  PaymentMethod,
   PaymentStatus,
+  ProductOption,
+  RefundAccountStatus,
   ShippingMethod,
 } from "./order-model";
 import { OrderLookupVerificationError } from "./order-model";
 import { calculateOrderAmounts } from "./pricing";
+import { isRestrictedPlantShippingAddress } from "./shipping-restrictions";
 
 const passwordHashPrefix = "scrypt";
 const passwordKeyLength = 32;
 
 type OrderRow = {
+  cash_receipt_status: CashReceiptStatus;
+  contains_live_plant: boolean;
   created_at: string;
+  deposit_confirmed_at: string | null;
+  deposit_due_at: string | null;
   fulfillment_status: FulfillmentStatus;
   id: string;
+  is_made_to_order: boolean;
   lookup_password_hash: string;
+  made_to_order_due_max_days: number | null;
+  made_to_order_due_min_days: number | null;
   order_number: string;
   order_status: OrderStatus;
+  payment_method: PaymentMethod;
   payment_status: PaymentStatus;
   recipient_name: string | null;
   shipping_fee_krw: number;
@@ -44,6 +66,7 @@ type OrderItemRow = {
   line_total_krw: number;
   product_title: string;
   quantity: number;
+  snapshot: Record<string, unknown> | null;
   unit_price_krw: number;
 };
 
@@ -55,8 +78,10 @@ type ShipmentRow = {
 };
 
 type CreatedOrderRow = {
+  deposit_due_at: string | null;
   id: string;
   order_number: string;
+  payment_method: PaymentMethod;
   payment_status: PaymentStatus;
   total_krw: number;
 };
@@ -70,6 +95,15 @@ export class OrderDraftError extends Error {
     this.name = "OrderDraftError";
   }
 }
+
+export type RefundAccountInput = OrderLookupInput & {
+  accountHolder: string;
+  accountNumber: string;
+  bankName: string;
+  depositorName?: string;
+  refundAmount?: number;
+  refundReason?: string;
+};
 
 export function generateOrderNumber(date = new Date()) {
   const yyyy = String(date.getFullYear());
@@ -121,24 +155,82 @@ export async function createOrderDraft(
     throw new OrderDraftError("주문 가능한 상품을 찾지 못했습니다.");
   }
 
-  if (
-    product.commerce.availabilityStatus !== "available" ||
-    product.commerce.price === null
-  ) {
-    throw new OrderDraftError("현재 주문 가능한 상품이 아닙니다.");
+  if (product.commerce.price === null) {
+    throw new OrderDraftError("상품 금액이 아직 준비되지 않았습니다.");
+  }
+
+  const paymentMethod = normalizePaymentMethod(
+    input.checkoutMode,
+    input.paymentMethod,
+  );
+  const productOption = normalizeProductOption(input.productOption);
+  const containsLivePlant =
+    productOption === "plant_included" && product.plantOption.enabled;
+  const isMadeToOrder = Boolean(input.madeToOrder);
+  const isAvailable = product.commerce.availabilityStatus === "available";
+  const canMakeToOrder = Boolean(
+    product.madeToOrder.available && product.commerce.price !== null,
+  );
+
+  if (productOption === "plant_included" && !product.plantOption.enabled) {
+    throw new OrderDraftError("이 상품은 식물 포함 옵션을 선택할 수 없습니다.");
+  }
+
+  if (isMadeToOrder) {
+    if (!canMakeToOrder) {
+      throw new OrderDraftError("이 상품은 추가 제작 주문을 받을 수 없습니다.");
+    }
+
+    if (!input.madeToOrderAcknowledged) {
+      throw new OrderDraftError("추가 제작 기간 안내에 동의해 주세요.");
+    }
+  } else if (!isAvailable) {
+    throw new OrderDraftError("현재 주문 가능한 상품 상태가 아닙니다.");
   }
 
   const quantity = Math.max(1, Math.floor(input.quantity));
   const stockQuantity = product.commerce.stockQuantity;
 
-  if (stockQuantity !== null && quantity > stockQuantity) {
+  if (!isMadeToOrder && stockQuantity !== null && quantity > stockQuantity) {
     throw new OrderDraftError("주문 가능한 수량을 초과했습니다.");
+  }
+
+  const unitPrice =
+    product.commerce.price +
+    (containsLivePlant ? product.plantOption.priceDelta : 0);
+
+  if (unitPrice < 0) {
+    throw new OrderDraftError("상품 옵션 금액을 확인해 주세요.");
+  }
+
+  if (
+    containsLivePlant &&
+    input.shippingMethod === "parcel" &&
+    input.checkoutMode !== "gift"
+  ) {
+    if (commerceConfig.plantShipping.seasonalRestrictionEnabled) {
+      throw new OrderDraftError(
+        "혹한기 또는 혹서기 운영 제한으로 식물 포함 상품의 택배 주문을 받을 수 없습니다.",
+      );
+    }
+
+    if (
+      isRestrictedPlantShippingAddress({
+        address1: input.shippingAddress1,
+        address2: input.shippingAddress2,
+        postcode: input.shippingPostcode,
+      })
+    ) {
+      throw new OrderDraftError(
+        "식물 포함 상품은 제주 및 도서산간 주소로 택배 발송할 수 없습니다.",
+      );
+    }
   }
 
   const amounts = calculateOrderAmounts({
     quantity,
     shippingMethod: input.shippingMethod,
-    unitPrice: product.commerce.price,
+    unitPrice,
   });
 
   if (amounts.subtotalKrw === null || amounts.totalKrw === null) {
@@ -152,20 +244,47 @@ export async function createOrderDraft(
     throw new OrderDraftError("주문자 연락처를 확인해 주세요.");
   }
 
+  const cashReceipt = prepareCashReceipt(input, paymentMethod);
   const lookupPasswordHash = hashOrderLookupPassword(input.lookupPassword);
+  const depositDueAt =
+    paymentMethod === "bank_transfer" ? getDepositDueAt().toISOString() : null;
   const supabase = getSupabaseAdminClient();
   const order = await insertOrderWithRetry({
+    cash_receipt_identifier_encrypted: cashReceipt.identifierEncrypted,
+    cash_receipt_identifier_masked: cashReceipt.identifierMasked,
+    cash_receipt_identifier_type: cashReceipt.identifierType,
+    cash_receipt_requested: cashReceipt.requested,
+    cash_receipt_status: cashReceipt.requested ? "requested" : "not_requested",
+    cash_receipt_type: cashReceipt.receiptType,
+    contains_live_plant: containsLivePlant,
     currency: product.commerce.currency,
+    deposit_due_at: depositDueAt,
+    deposit_review_status:
+      paymentMethod === "bank_transfer" ? "waiting" : "not_applicable",
+    depositor_name:
+      paymentMethod === "bank_transfer" ? input.ordererName.trim() : null,
     fulfillment_status: "unfulfilled",
     gift_message: emptyToNull(input.giftMessage),
     is_gift: input.checkoutMode === "gift",
+    is_made_to_order: isMadeToOrder,
     lookup_password_hash: lookupPasswordHash,
+    made_to_order_acknowledged_at: isMadeToOrder
+      ? new Date().toISOString()
+      : null,
+    made_to_order_due_max_days: isMadeToOrder
+      ? product.madeToOrder.daysMax
+      : null,
+    made_to_order_due_min_days: isMadeToOrder
+      ? product.madeToOrder.daysMin
+      : null,
     order_status: "pending_payment",
     orderer_email: input.ordererEmail.trim(),
     orderer_name: input.ordererName.trim(),
     orderer_phone: ordererPhone,
     orderer_phone_last4: ordererPhoneLast4,
+    payment_method: paymentMethod,
     payment_status: "pending",
+    product_option: productOption,
     recipient_name: emptyToNull(input.recipientName),
     recipient_phone: emptyToNull(normalizePhone(input.recipientPhone ?? "")),
     shipping_address1: emptyToNull(input.shippingAddress1),
@@ -187,15 +306,29 @@ export async function createOrderDraft(
     quantity,
     snapshot: {
       checkoutMode: input.checkoutMode,
+      containsLivePlant,
+      madeToOrder: isMadeToOrder
+        ? {
+            daysMax: product.madeToOrder.daysMax,
+            daysMin: product.madeToOrder.daysMin,
+          }
+        : null,
+      plantOption: containsLivePlant
+        ? {
+            priceDelta: product.plantOption.priceDelta,
+            species: product.plantOption.species ?? null,
+          }
+        : null,
       product: {
         category: product.category,
         kind: product.kind,
         slug: product.slug,
         titleKo: product.titleKo,
       },
+      productOption,
       shippingMethod: input.shippingMethod,
     },
-    unit_price_krw: product.commerce.price,
+    unit_price_krw: unitPrice,
   });
 
   if (itemError) {
@@ -203,12 +336,37 @@ export async function createOrderDraft(
     throw new OrderDraftError(`주문 상품 저장 실패: ${itemError.message}`, 500);
   }
 
+  if (paymentMethod === "bank_transfer" && !isMadeToOrder) {
+    const { error: reserveError } = await supabase.rpc(
+      "reserve_stock_for_bank_transfer_order",
+      {
+        p_order_id: order.id,
+      },
+    );
+
+    if (reserveError) {
+      await supabase.from("shop_orders").delete().eq("id", order.id);
+      throw new OrderDraftError(
+        `입금대기 재고 확보 실패: ${reserveError.message}`,
+        409,
+      );
+    }
+  }
+
   await supabase.from("shop_order_events").insert({
     actor: "customer",
-    event_type: "order_draft_created",
+    event_type:
+      paymentMethod === "bank_transfer"
+        ? "bank_transfer_order_created"
+        : "order_draft_created",
     order_id: order.id,
     payload: {
       checkoutMode: input.checkoutMode,
+      containsLivePlant,
+      depositDueAt,
+      isMadeToOrder,
+      paymentMethod,
+      productOption,
       quantity,
       shippingMethod: input.shippingMethod,
     },
@@ -218,6 +376,7 @@ export async function createOrderDraft(
     orderNumber: order.order_number,
     payload: {
       checkoutMode: input.checkoutMode,
+      paymentMethod,
       total: amounts.totalKrw,
     },
     recipient: {
@@ -227,9 +386,31 @@ export async function createOrderDraft(
     template: "order_received",
   });
 
+  if (paymentMethod === "bank_transfer") {
+    await enqueueOrderNotificationJobs({
+      orderId: order.id,
+      orderNumber: order.order_number,
+      payload: {
+        account: getBankTransferAccount(),
+        depositDueAt,
+        depositorName: input.ordererName.trim(),
+        total: amounts.totalKrw,
+      },
+      recipient: {
+        email: input.ordererEmail.trim(),
+        phone: ordererPhone,
+      },
+      template: "deposit_guide",
+    });
+  }
+
   return {
+    bankTransferAccount:
+      paymentMethod === "bank_transfer" ? getBankTransferAccount() : undefined,
+    depositDueAt,
     orderId: order.id,
     orderNumber: order.order_number,
+    paymentMethod: order.payment_method,
     paymentStatus: order.payment_status,
     total: order.total_krw,
   };
@@ -238,6 +419,93 @@ export async function createOrderDraft(
 export async function lookupOrder(
   input: OrderLookupInput,
 ): Promise<OrderLookupResult> {
+  const orderRow = await readVerifiedOrder(input);
+  const [items, shipments, refundAccountStatus] = await Promise.all([
+    readOrderItems(orderRow.id),
+    readOrderShipments(orderRow.id),
+    readRefundAccountStatus(orderRow.id),
+  ]);
+
+  return {
+    bankTransferAccount:
+      orderRow.payment_method === "bank_transfer"
+        ? getBankTransferAccount()
+        : undefined,
+    cashReceiptStatus: orderRow.cash_receipt_status,
+    containsLivePlant: orderRow.contains_live_plant,
+    createdAt: orderRow.created_at,
+    depositConfirmedAt: orderRow.deposit_confirmed_at,
+    depositDueAt: orderRow.deposit_due_at,
+    fulfillmentStatus: orderRow.fulfillment_status,
+    isMadeToOrder: orderRow.is_made_to_order,
+    items,
+    madeToOrderDueMaxDays: orderRow.made_to_order_due_max_days,
+    madeToOrderDueMinDays: orderRow.made_to_order_due_min_days,
+    orderNumber: orderRow.order_number,
+    orderStatus: orderRow.order_status,
+    paymentMethod: orderRow.payment_method,
+    paymentStatus: orderRow.payment_status,
+    recipientName: orderRow.recipient_name,
+    refundAccountStatus,
+    shipments,
+    shippingFee: orderRow.shipping_fee_krw,
+    shippingMethod: orderRow.shipping_method,
+    shippingSummary: summarizeShipping(orderRow.fulfillment_status, shipments),
+    subtotal: orderRow.subtotal_krw,
+    total: orderRow.total_krw,
+  };
+}
+
+export async function saveRefundAccountForOrder(input: RefundAccountInput) {
+  const order = await readVerifiedOrder(input);
+
+  if (order.payment_method !== "bank_transfer") {
+    throw new OrderDraftError(
+      "무통장입금 주문만 환불계좌를 등록할 수 있습니다.",
+      400,
+    );
+  }
+
+  const accountNumber = input.accountNumber.trim();
+
+  if (!accountNumber || !input.bankName.trim() || !input.accountHolder.trim()) {
+    throw new OrderDraftError("환불계좌 정보를 확인해 주세요.", 400);
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { error } = await supabase.from("shop_refund_accounts").insert({
+    account_holder: input.accountHolder.trim(),
+    account_number_encrypted: encryptSensitiveText(accountNumber),
+    account_number_masked: maskAccountNumber(accountNumber),
+    bank_name: input.bankName.trim(),
+    depositor_name: emptyToNull(input.depositorName),
+    order_id: order.id,
+    refund_amount_krw:
+      input.refundAmount !== undefined && Number.isFinite(input.refundAmount)
+        ? Math.max(0, Math.floor(input.refundAmount))
+        : null,
+    refund_reason: emptyToNull(input.refundReason),
+    status: "needs_review",
+  });
+
+  if (error) {
+    throw new OrderDraftError(`환불계좌 저장 실패: ${error.message}`, 500);
+  }
+
+  await supabase.from("shop_order_events").insert({
+    actor: "customer",
+    event_type: "refund_account_submitted",
+    order_id: order.id,
+    payload: {
+      accountHolder: input.accountHolder.trim(),
+      bankName: input.bankName.trim(),
+    },
+  });
+
+  return { status: "needs_review" as RefundAccountStatus };
+}
+
+async function readVerifiedOrder(input: OrderLookupInput): Promise<OrderRow> {
   if (!isSupabaseConfigured()) {
     throw new OrderLookupVerificationError();
   }
@@ -253,7 +521,28 @@ export async function lookupOrder(
   const { data: order, error } = await supabase
     .from("shop_orders")
     .select(
-      "id, order_number, order_status, payment_status, fulfillment_status, recipient_name, shipping_method, subtotal_krw, shipping_fee_krw, total_krw, lookup_password_hash, created_at",
+      [
+        "id",
+        "order_number",
+        "order_status",
+        "payment_status",
+        "payment_method",
+        "fulfillment_status",
+        "recipient_name",
+        "shipping_method",
+        "subtotal_krw",
+        "shipping_fee_krw",
+        "total_krw",
+        "lookup_password_hash",
+        "created_at",
+        "deposit_due_at",
+        "deposit_confirmed_at",
+        "cash_receipt_status",
+        "contains_live_plant",
+        "is_made_to_order",
+        "made_to_order_due_min_days",
+        "made_to_order_due_max_days",
+      ].join(", "),
     )
     .eq("order_number", orderNumber)
     .eq("orderer_phone_last4", phoneLast4)
@@ -263,32 +552,13 @@ export async function lookupOrder(
     throw new OrderLookupVerificationError();
   }
 
-  const orderRow = order as OrderRow;
+  const orderRow = order as unknown as OrderRow;
 
   if (!verifyOrderLookupPassword(input.password, orderRow.lookup_password_hash)) {
     throw new OrderLookupVerificationError();
   }
 
-  const [items, shipments] = await Promise.all([
-    readOrderItems(orderRow.id),
-    readOrderShipments(orderRow.id),
-  ]);
-
-  return {
-    createdAt: orderRow.created_at,
-    fulfillmentStatus: orderRow.fulfillment_status,
-    items,
-    orderNumber: orderRow.order_number,
-    orderStatus: orderRow.order_status,
-    paymentStatus: orderRow.payment_status,
-    recipientName: orderRow.recipient_name,
-    shipments,
-    shippingFee: orderRow.shipping_fee_krw,
-    shippingMethod: orderRow.shipping_method,
-    shippingSummary: summarizeShipping(orderRow.fulfillment_status, shipments),
-    subtotal: orderRow.subtotal_krw,
-    total: orderRow.total_krw,
-  };
+  return orderRow;
 }
 
 async function insertOrderWithRetry(
@@ -304,7 +574,7 @@ async function insertOrderWithRetry(
         ...row,
         order_number: generateOrderNumber(),
       })
-      .select("id, order_number, payment_status, total_krw")
+      .select("id, order_number, payment_method, payment_status, deposit_due_at, total_krw")
       .single();
 
     if (!error && data) {
@@ -325,7 +595,7 @@ async function readOrderItems(orderId: string): Promise<OrderLookupItem[]> {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("shop_order_items")
-    .select("product_title, unit_price_krw, quantity, line_total_krw")
+    .select("product_title, unit_price_krw, quantity, line_total_krw, snapshot")
     .eq("order_id", orderId)
     .order("created_at", { ascending: true });
 
@@ -336,13 +606,16 @@ async function readOrderItems(orderId: string): Promise<OrderLookupItem[]> {
   return ((data ?? []) as OrderItemRow[]).map((item) => ({
     lineTotal: item.line_total_krw,
     name: item.product_title,
+    productOption: readProductOptionFromSnapshot(item.snapshot),
     quantity: item.quantity,
     status: null,
     unitPrice: item.unit_price_krw,
   }));
 }
 
-async function readOrderShipments(orderId: string): Promise<OrderLookupShipment[]> {
+async function readOrderShipments(
+  orderId: string,
+): Promise<OrderLookupShipment[]> {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("shop_shipments")
@@ -360,6 +633,94 @@ async function readOrderShipments(orderId: string): Promise<OrderLookupShipment[
     trackingNumber: shipment.tracking_number,
     trackingUrl: shipment.tracking_url,
   }));
+}
+
+async function readRefundAccountStatus(
+  orderId: string,
+): Promise<RefundAccountStatus> {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("shop_refund_accounts")
+    .select("status")
+    .eq("order_id", orderId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data?.status) {
+    return "none";
+  }
+
+  return data.status as RefundAccountStatus;
+}
+
+function prepareCashReceipt(
+  input: OrderDraftInput,
+  paymentMethod: PaymentMethod,
+) {
+  const requested =
+    paymentMethod === "bank_transfer" &&
+    input.cashReceiptType !== undefined &&
+    input.cashReceiptType !== "none";
+
+  if (!requested) {
+    return {
+      identifierEncrypted: null,
+      identifierMasked: null,
+      identifierType: null,
+      receiptType: null,
+      requested: false,
+    };
+  }
+
+  if (!input.cashReceiptIdentifierType || !input.cashReceiptIdentifier) {
+    throw new OrderDraftError("현금영수증 발급 정보를 확인해 주세요.");
+  }
+
+  return {
+    identifierEncrypted: encryptSensitiveText(input.cashReceiptIdentifier),
+    identifierMasked: maskCashReceiptIdentifier(input.cashReceiptIdentifier),
+    identifierType: input.cashReceiptIdentifierType,
+    receiptType: input.cashReceiptType as Exclude<CashReceiptType, "none">,
+    requested: true,
+  };
+}
+
+export async function issueCashReceiptAfterBankTransferConfirmation(
+  orderId: string,
+) {
+  return requestCashReceiptIssueForOrder(orderId);
+}
+
+function normalizePaymentMethod(
+  checkoutMode: OrderDraftInput["checkoutMode"],
+  paymentMethod: PaymentMethod | undefined,
+): PaymentMethod {
+  if (checkoutMode === "naver_pay") {
+    return "naver_pay";
+  }
+
+  return paymentMethod === "bank_transfer" ? "bank_transfer" : "portone";
+}
+
+function normalizeProductOption(
+  productOption: ProductOption | undefined,
+): ProductOption {
+  return productOption === "plant_included"
+    ? "plant_included"
+    : "plant_excluded";
+}
+
+function readProductOptionFromSnapshot(
+  snapshot: Record<string, unknown> | null,
+) {
+  const value = snapshot?.productOption;
+
+  if (value === "plant_excluded" || value === "plant_included") {
+    return value;
+  }
+
+  return null;
 }
 
 function summarizeShipping(

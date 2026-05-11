@@ -6,7 +6,10 @@ import {
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
 
-export type CronJobName = "order_notifications" | "upload_cleanup";
+export type CronJobName =
+  | "bank_transfer_expiry"
+  | "order_notifications"
+  | "upload_cleanup";
 export type CronRunStatus = "failed" | "running" | "success";
 
 export type CronRunLog = {

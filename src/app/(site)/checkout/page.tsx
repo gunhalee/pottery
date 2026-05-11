@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckoutForm } from "@/components/shop/checkout-form";
 import { PageIntro, PageShell } from "@/components/site/primitives";
+import { commerceConfig } from "@/lib/config/commerce";
 import type {
   CheckoutMode,
+  ProductOption,
   ShippingMethod,
 } from "@/lib/orders/order-model";
 import { calculateOrderAmounts } from "@/lib/orders/pricing";
@@ -12,6 +14,8 @@ import { formatProductPrice, getProductBySlug } from "@/lib/shop";
 type CheckoutPageProps = {
   searchParams: Promise<{
     mode?: string;
+    option?: string;
+    order?: string;
     product?: string;
     quantity?: string;
     shipping?: string;
@@ -40,7 +44,7 @@ export default async function CheckoutPage({
         <div className="checkout-empty">
           <p>상품 정보를 찾지 못했습니다.</p>
           <Link className="button-primary" href="/shop" prefetch={false}>
-            소장하기로 이동
+            상점으로 이동
           </Link>
         </div>
       </PageShell>
@@ -49,18 +53,36 @@ export default async function CheckoutPage({
 
   const checkoutMode = normalizeCheckoutMode(params.mode);
   const shippingMethod = normalizeShippingMethod(params.shipping);
-  const maxQuantity = Math.max(1, product.commerce.stockQuantity ?? 99);
+  const productOption = normalizeProductOption(params.option);
+  const containsLivePlant =
+    productOption === "plant_included" && product.plantOption.enabled;
+  const madeToOrderRequested = params.order === "made_to_order";
+  const canMakeToOrder = Boolean(
+    product.madeToOrder.available && product.commerce.price !== null,
+  );
+  const isMadeToOrder = madeToOrderRequested && canMakeToOrder;
+  const maxQuantity = isMadeToOrder
+    ? 99
+    : Math.max(1, product.commerce.stockQuantity ?? 99);
   const quantity = Math.min(normalizeQuantity(params.quantity), maxQuantity);
+  const unitPrice =
+    product.commerce.price === null
+      ? null
+      : product.commerce.price +
+        (containsLivePlant ? product.plantOption.priceDelta : 0);
   const amounts = calculateOrderAmounts({
     quantity,
     shippingMethod,
-    unitPrice: product.commerce.price,
+    unitPrice,
   });
+  const isAvailablePurchase =
+    product.commerce.availabilityStatus === "available";
   const isPurchasable =
     product.published &&
     !product.isArchived &&
-    product.commerce.availabilityStatus === "available" &&
+    (isAvailablePurchase || isMadeToOrder) &&
     product.commerce.price !== null &&
+    unitPrice !== null &&
     amounts.subtotalKrw !== null &&
     amounts.totalKrw !== null;
 
@@ -73,7 +95,20 @@ export default async function CheckoutPage({
 
       {isPurchasable ? (
         <CheckoutForm
+          bankTransferAccount={commerceConfig.bankTransfer}
           checkoutMode={checkoutMode}
+          containsLivePlant={containsLivePlant}
+          isMadeToOrder={isMadeToOrder}
+          madeToOrderDaysMax={
+            isMadeToOrder ? product.madeToOrder.daysMax : null
+          }
+          madeToOrderDaysMin={
+            isMadeToOrder ? product.madeToOrder.daysMin : null
+          }
+          madeToOrderNotice={
+            isMadeToOrder ? product.madeToOrder.notice : undefined
+          }
+          productOption={containsLivePlant ? "plant_included" : "plant_excluded"}
           productSlug={product.slug}
           productTitle={product.titleKo}
           quantity={quantity}
@@ -81,7 +116,7 @@ export default async function CheckoutPage({
           shippingMethod={shippingMethod}
           subtotal={amounts.subtotalKrw!}
           total={amounts.totalKrw!}
-          unitPrice={product.commerce.price!}
+          unitPrice={unitPrice!}
         />
       ) : (
         <div className="checkout-empty">
@@ -109,6 +144,10 @@ function normalizeCheckoutMode(mode: string | undefined): CheckoutMode {
   }
 
   return "standard";
+}
+
+function normalizeProductOption(option: string | undefined): ProductOption {
+  return option === "plant_included" ? "plant_included" : "plant_excluded";
 }
 
 function normalizeShippingMethod(

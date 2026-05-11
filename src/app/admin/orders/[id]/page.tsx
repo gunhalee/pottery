@@ -4,14 +4,24 @@ import { AdminNav } from "@/components/admin/admin-nav";
 import { isAdminAuthenticated } from "@/lib/admin/auth";
 import {
   getAdminOrderDetail,
+  type AdminCashReceipt,
   type AdminOrderDetail,
   type AdminOrderEvent,
   type AdminOrderNotification,
   type AdminOrderPayment,
   type AdminOrderShipment,
+  type AdminRefundAccount,
 } from "@/lib/admin/orders";
-import type { FulfillmentStatus, PaymentStatus } from "@/lib/orders/order-model";
-import { updateAdminOrderFulfillmentAction } from "../actions";
+import type {
+  FulfillmentStatus,
+  PaymentMethod,
+  PaymentStatus,
+} from "@/lib/orders/order-model";
+import {
+  updateAdminBankTransferDepositAction,
+  updateAdminOrderFulfillmentAction,
+  updateAdminRefundAccountAction,
+} from "../actions";
 
 type AdminOrderDetailPageProps = {
   params: Promise<{
@@ -98,6 +108,54 @@ export default async function AdminOrderDetailPage({
           <small>{paymentStatusLabel(order.paymentStatus)}</small>
         </div>
       </section>
+
+      <section className="admin-panel">
+        <div className="admin-panel-head">
+          <h2>결제·주문 옵션</h2>
+          <span>{paymentMethodLabel(order.paymentMethod)}</span>
+        </div>
+        <dl className="admin-order-info-list">
+          <div>
+            <dt>상품 옵션</dt>
+            <dd>
+              {order.productOption === "plant_included"
+                ? "식물 포함"
+                : "식물 제외"}
+            </dd>
+          </div>
+          <div>
+            <dt>생화·식물</dt>
+            <dd>{order.containsLivePlant ? "포함" : "미포함"}</dd>
+          </div>
+          <div>
+            <dt>추가 제작</dt>
+            <dd>
+              {order.isMadeToOrder
+                ? `약 ${order.madeToOrderDueMinDays ?? 30}~${order.madeToOrderDueMaxDays ?? 45}일`
+                : "아님"}
+            </dd>
+          </div>
+          <div>
+            <dt>현금영수증</dt>
+            <dd>{cashReceiptStatusLabel(order.cashReceiptStatus)}</dd>
+          </div>
+        </dl>
+      </section>
+
+      {order.paymentMethod === "bank_transfer" ? (
+        <BankTransferPanel order={order} />
+      ) : null}
+
+      {order.cashReceiptType || order.cashReceipts.length > 0 ? (
+        <CashReceiptPanel order={order} records={order.cashReceipts} />
+      ) : null}
+
+      {order.paymentMethod === "bank_transfer" ? (
+        <RefundAccountsPanel
+          orderId={order.id}
+          records={order.refundAccounts}
+        />
+      ) : null}
 
       <div className="admin-order-detail-grid">
         <section className="admin-panel admin-order-update-panel">
@@ -366,6 +424,212 @@ function OrderRecordsPanel({
   );
 }
 
+function BankTransferPanel({ order }: { order: AdminOrderDetail }) {
+  return (
+    <section className="admin-panel">
+      <div className="admin-panel-head">
+        <h2>무통장입금 확인</h2>
+        <span>{depositReviewStatusLabel(order.depositReviewStatus)}</span>
+      </div>
+      <dl className="admin-order-info-list">
+        <div>
+          <dt>입금 기한</dt>
+          <dd>{formatOptionalDateTime(order.depositDueAt)}</dd>
+        </div>
+        <div>
+          <dt>입금 확인</dt>
+          <dd>{formatOptionalDateTime(order.depositConfirmedAt)}</dd>
+        </div>
+        <div>
+          <dt>입금액</dt>
+          <dd>
+            {order.depositReceivedAmountKrw === null
+              ? "미확인"
+              : formatMoney(order.depositReceivedAmountKrw)}
+          </dd>
+        </div>
+        <div>
+          <dt>메모</dt>
+          <dd>{order.depositReviewNote ?? "없음"}</dd>
+        </div>
+      </dl>
+      <form
+        action={updateAdminBankTransferDepositAction}
+        className="admin-form admin-form-section"
+      >
+        <input name="orderId" type="hidden" value={order.id} />
+        <div className="admin-form-grid">
+          <label>
+            <span>입금자명</span>
+            <input
+              defaultValue={order.ordererName}
+              name="depositorName"
+              required
+            />
+          </label>
+          <label>
+            <span>입금액</span>
+            <input
+              defaultValue={order.totalKrw}
+              inputMode="numeric"
+              name="depositAmountKrw"
+              required
+            />
+          </label>
+        </div>
+        <div className="admin-form-grid">
+          <label>
+            <span>입금 확인 시각</span>
+            <input
+              defaultValue={formatDateTimeInput(order.depositConfirmedAt)}
+              name="depositConfirmedAt"
+              type="datetime-local"
+            />
+          </label>
+          <label>
+            <span>검토 상태</span>
+            <select defaultValue="matched" name="depositReviewStatus">
+              <option value="matched">일치</option>
+              <option value="underpaid">과소 입금</option>
+              <option value="overpaid">초과 입금</option>
+              <option value="name_mismatch">입금자명 불일치</option>
+              <option value="needs_review">추가 확인 필요</option>
+            </select>
+          </label>
+        </div>
+        <label>
+          <span>처리 메모</span>
+          <textarea
+            defaultValue={order.depositReviewNote ?? ""}
+            name="note"
+            rows={3}
+          />
+        </label>
+        <button className="button-primary" type="submit">
+          입금 확인 및 현금영수증 처리
+        </button>
+      </form>
+    </section>
+  );
+}
+
+function CashReceiptPanel({
+  order,
+  records,
+}: {
+  order: AdminOrderDetail;
+  records: AdminCashReceipt[];
+}) {
+  return (
+    <section className="admin-panel">
+      <div className="admin-panel-head">
+        <h2>현금영수증</h2>
+        <span>{cashReceiptStatusLabel(order.cashReceiptStatus)}</span>
+      </div>
+      <dl className="admin-order-info-list">
+        <div>
+          <dt>발급 유형</dt>
+          <dd>{cashReceiptTypeLabel(order.cashReceiptType)}</dd>
+        </div>
+        <div>
+          <dt>발급수단</dt>
+          <dd>
+            {order.cashReceiptIdentifierType
+              ? `${cashReceiptIdentifierTypeLabel(order.cashReceiptIdentifierType)} ${order.cashReceiptIdentifierMasked ?? ""}`
+              : "신청 안 함"}
+          </dd>
+        </div>
+      </dl>
+      {records.length > 0 ? (
+        <div className="admin-order-record-list">
+          {records.map((record) => (
+            <article key={record.id}>
+              <div>
+                <strong>{cashReceiptRecordStatusLabel(record.status)}</strong>
+                <span>
+                  {cashReceiptTypeLabel(record.receiptType)} ·{" "}
+                  {record.identifierMasked}
+                </span>
+              </div>
+              <span>{formatMoney(record.amountKrw)}</span>
+              <time dateTime={record.createdAt}>
+                {formatDateTime(record.createdAt)}
+              </time>
+              {record.errorMessage ? <p>{record.errorMessage}</p> : null}
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p className="admin-empty-text">
+          입금 확인 버튼을 누르면 발급 대기 기록이 생성됩니다.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function RefundAccountsPanel({
+  orderId,
+  records,
+}: {
+  orderId: string;
+  records: AdminRefundAccount[];
+}) {
+  return (
+    <section className="admin-panel">
+      <div className="admin-panel-head">
+        <h2>환불계좌</h2>
+        <span>{records.length} records</span>
+      </div>
+      {records.length > 0 ? (
+        <div className="admin-order-record-list">
+          {records.map((record) => (
+            <article key={record.id}>
+              <div>
+                <strong>
+                  {record.bankName} {record.accountNumberMasked}
+                </strong>
+                <span>
+                  예금주 {record.accountHolder}
+                  {record.depositorName ? ` · 입금자 ${record.depositorName}` : ""}
+                </span>
+                {record.refundReason ? <p>{record.refundReason}</p> : null}
+              </div>
+              <span>{refundAccountStatusLabel(record.status)}</span>
+              <time dateTime={record.submittedAt}>
+                {formatDateTime(record.submittedAt)}
+              </time>
+              <form
+                action={updateAdminRefundAccountAction}
+                className="admin-inline-form"
+              >
+                <input name="orderId" type="hidden" value={orderId} />
+                <input name="refundAccountId" type="hidden" value={record.id} />
+                <select defaultValue={record.status} name="status">
+                  <option value="needs_review">추가 확인 중</option>
+                  <option value="confirmed">확인 완료</option>
+                  <option value="refunded">환불 완료</option>
+                  <option value="rejected">반려</option>
+                </select>
+                <input
+                  defaultValue={record.adminNote ?? ""}
+                  name="adminNote"
+                  placeholder="관리 메모"
+                />
+                <button className="admin-secondary-button" type="submit">
+                  저장
+                </button>
+              </form>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p className="admin-empty-text">아직 접수된 환불계좌가 없습니다.</p>
+      )}
+    </section>
+  );
+}
+
 function ShipmentRecordsPanel({
   shipments,
 }: {
@@ -536,12 +800,88 @@ function shippingAddress(order: AdminOrderDetail) {
 function paymentStatusLabel(status: PaymentStatus) {
   return {
     canceled: "결제 취소",
+    expired: "입금기한 만료",
     failed: "결제 실패",
     paid: "결제 완료",
     partial_refunded: "부분 환불",
     pending: "결제 대기",
+    refund_pending: "환불 대기",
     refunded: "환불 완료",
     unpaid: "미결제",
+  }[status];
+}
+
+function paymentMethodLabel(status: PaymentMethod) {
+  return {
+    bank_transfer: "무통장입금",
+    naver_pay: "N pay",
+    portone: "카드·간편결제",
+  }[status];
+}
+
+function depositReviewStatusLabel(status: string) {
+  return (
+    {
+      matched: "일치",
+      name_mismatch: "입금자명 불일치",
+      needs_review: "추가 확인 필요",
+      not_applicable: "대상 아님",
+      overpaid: "초과 입금",
+      underpaid: "과소 입금",
+      waiting: "입금 대기",
+    }[status] ?? status
+  );
+}
+
+function cashReceiptStatusLabel(status: AdminOrderDetail["cashReceiptStatus"]) {
+  return {
+    canceled: "취소",
+    failed: "발급 실패",
+    issued: "발급 완료",
+    not_requested: "신청 안 함",
+    pending: "발급 대기",
+    requested: "신청",
+  }[status];
+}
+
+function cashReceiptRecordStatusLabel(status: AdminCashReceipt["status"]) {
+  return {
+    canceled: "취소",
+    failed: "발급 실패",
+    issued: "발급 완료",
+    pending: "발급 대기",
+  }[status];
+}
+
+function cashReceiptTypeLabel(
+  type: AdminOrderDetail["cashReceiptType"] | AdminCashReceipt["receiptType"],
+) {
+  if (!type) {
+    return "신청 안 함";
+  }
+
+  return {
+    business: "사업자 지출증빙",
+    personal: "개인 소득공제",
+  }[type];
+}
+
+function cashReceiptIdentifierTypeLabel(
+  type: NonNullable<AdminOrderDetail["cashReceiptIdentifierType"]>,
+) {
+  return {
+    business_registration: "사업자등록번호",
+    cash_receipt_card: "현금영수증 카드",
+    phone: "휴대전화",
+  }[type];
+}
+
+function refundAccountStatusLabel(status: AdminRefundAccount["status"]) {
+  return {
+    confirmed: "확인 완료",
+    needs_review: "추가 확인 중",
+    refunded: "환불 완료",
+    rejected: "반려",
   }[status];
 }
 
@@ -570,22 +910,35 @@ function shipmentStatusLabel(status: AdminOrderShipment["status"]) {
 
 function eventTypeLabel(eventType: string) {
   return {
+    bank_transfer_deposit_confirmed: "무통장입금 확인",
+    bank_transfer_deposit_expired: "입금기한 만료",
+    bank_transfer_order_created: "입금대기 주문 접수",
+    cash_receipt_issue_pending: "현금영수증 발급 대기",
     fulfillment_status_updated: "처리 상태 변경",
     inventory_stock_decremented: "재고 차감",
+    inventory_stock_released: "재고 확보 해제",
+    inventory_stock_reserved: "입금대기 재고 확보",
     inventory_stock_shortfall: "재고 부족 기록",
     order_draft_created: "주문 접수",
     portone_payment_prepared: "결제 요청",
     portone_payment_paid: "결제 완료",
     portone_payment_reverified: "결제 재확인",
     portone_payment_verification_failed: "결제 검증 실패",
+    refund_account_status_updated: "환불계좌 상태 변경",
+    refund_account_submitted: "환불계좌 접수",
   }[eventType] ?? eventType;
 }
 
 function notificationTemplateLabel(template: string) {
   return {
+    deposit_expired: "입금기한 만료 안내",
+    deposit_guide: "입금 안내",
+    deposit_reminder: "입금 리마인드",
     fulfillment_delivered: "배송 완료 안내",
     fulfillment_preparing: "배송 준비 안내",
     fulfillment_shipped: "배송 시작 안내",
+    made_to_order_confirmed: "추가 제작 확정 안내",
+    made_to_order_delay: "제작 지연 안내",
     order_canceled: "취소/반품 안내",
     order_received: "주문 접수 안내",
     payment_attention: "결제 확인 안내",
@@ -613,6 +966,24 @@ function formatDateTime(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function formatOptionalDateTime(value: string | null) {
+  return value ? formatDateTime(value) : "미확인";
+}
+
+function formatDateTimeInput(value: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toISOString().slice(0, 16);
 }
 
 function formatPhone(value: string) {

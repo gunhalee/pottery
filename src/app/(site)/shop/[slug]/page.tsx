@@ -73,6 +73,7 @@ export default async function ShopDetailPage({
   const primaryImage = getProductPrimaryImage(product);
   const displayImages = getProductDisplayImages(product);
   const cta = getProductCta(product);
+  const isMadeToOrderPurchase = cta.kind === "made_to_order";
   const feedbackSummary = await getProductFeedbackSummary(product.id);
   const galleryImages = getGalleryImages({
     displayImages,
@@ -114,8 +115,15 @@ export default async function ShopDetailPage({
           <ProductPurchasePanel
             availabilityLabel={cta.label}
             currency={product.commerce.currency}
-            isPurchasable={cta.kind === "buy"}
-            maxQuantity={product.commerce.stockQuantity}
+            isPurchasable={cta.kind === "buy" || isMadeToOrderPurchase}
+            madeToOrder={{
+              ...product.madeToOrder,
+              enabled: isMadeToOrderPurchase,
+            }}
+            maxQuantity={
+              isMadeToOrderPurchase ? null : product.commerce.stockQuantity
+            }
+            plantOption={product.plantOption}
             price={product.commerce.price}
             productSlug={product.slug}
             productTitle={product.titleKo}
@@ -181,6 +189,24 @@ export default async function ShopDetailPage({
           { label: "유약", value: product.glaze },
           { label: "안내", value: product.usageNote },
           { label: "배송", value: product.shippingNote },
+          {
+            label: "식물 옵션",
+            value: product.plantOption.enabled
+              ? [
+                  product.plantOption.species,
+                  product.plantOption.careNotice,
+                  product.plantOption.shippingRestrictionNotice,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+              : undefined,
+          },
+          {
+            label: "추가 제작",
+            value: product.madeToOrder.available
+              ? `결제 또는 입금 확인일 기준 약 ${product.madeToOrder.daysMin}~${product.madeToOrder.daysMax}일`
+              : undefined,
+          },
         ]}
       />
 

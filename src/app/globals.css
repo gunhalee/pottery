@@ -1419,6 +1419,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 }
 
 .checkout-form input,
+.checkout-form select,
 .checkout-form textarea {
   width: 100%;
   min-height: 44px;
@@ -1428,6 +1429,27 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   color: var(--tx);
   font: inherit;
   font-size: 14px;
+}
+
+.checkout-choice-row {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.checkout-choice-row label,
+.checkout-checkbox {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkout-choice-row input,
+.checkout-checkbox input {
+  width: 16px;
+  min-height: 16px;
 }
 
 .checkout-form textarea {
@@ -1470,6 +1492,51 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   font-size: 22px;
   font-weight: 300;
   line-height: 1.45;
+}
+
+.checkout-bank-result dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.checkout-bank-result dl div {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.checkout-bank-result dt,
+.checkout-bank-result dd {
+  margin: 0;
+  color: var(--tx2);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.order-lookup-bank,
+.order-refund-form {
+  display: grid;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 0.5px solid var(--line-quiet);
+}
+
+.order-lookup-bank dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.order-refund-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.order-refund-form strong,
+.order-refund-form p,
+.order-refund-form button,
+.order-refund-field-wide {
+  grid-column: 1 / -1;
 }
 
 .admin-page {
@@ -1611,6 +1678,12 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   gap: 18px;
 }
 
+.admin-form-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 0.5px solid var(--brd);
+}
+
 .admin-inline-form {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   align-items: end;
@@ -1638,7 +1711,8 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 .admin-form input,
 .admin-form select,
 .admin-form textarea,
-.admin-inline-form input {
+.admin-inline-form input,
+.admin-inline-form select {
   width: 100%;
   min-width: 0;
   border: 0.5px solid var(--brd);
@@ -1651,7 +1725,8 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 
 .admin-form input,
 .admin-form select,
-.admin-inline-form input {
+.admin-inline-form input,
+.admin-inline-form select {
   min-height: 42px;
   padding: 10px 12px;
 }
@@ -1664,7 +1739,8 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 .admin-form input:focus,
 .admin-form select:focus,
 .admin-form textarea:focus,
-.admin-inline-form input:focus {
+.admin-inline-form input:focus,
+.admin-inline-form select:focus {
   outline: 1px solid var(--tx);
   outline-offset: 2px;
 }
@@ -5301,7 +5377,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 
 .product-detail-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(420px, 560px);
+  grid-template-columns: minmax(0, 3fr) minmax(360px, 2fr);
   gap: 56px;
   align-items: start;
 }
@@ -5589,6 +5665,59 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 .product-commerce-row dd strong {
   color: #111827;
   font-weight: 800;
+}
+
+.product-option-row dd {
+  display: grid;
+  gap: 8px;
+}
+
+.product-option-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.product-option-toggle button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid #d7d8dc;
+  background: var(--bg);
+  color: #111827;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+}
+
+.product-option-toggle button[aria-pressed="true"] {
+  border-color: #111827;
+  background: #ffffff;
+}
+
+.product-option-toggle span,
+.product-option-note,
+.product-commerce-notice p {
+  margin: 0;
+  color: #68707b;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.product-commerce-notice {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 14px 0;
+  border-top: 1px solid #d8d9dc;
+}
+
+.product-commerce-notice strong {
+  color: #111827;
+  font-size: 13px;
 }
 
 .product-shipping-method-row {
@@ -6243,7 +6372,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 
 @media (max-width: 1180px) {
   .product-detail-layout {
-    grid-template-columns: minmax(0, 1fr) minmax(360px, 460px);
+    grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr);
     gap: 32px;
   }
 

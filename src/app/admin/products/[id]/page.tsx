@@ -256,6 +256,108 @@ export default async function AdminProductEditPage({
               </label>
             </div>
 
+            <section className="admin-form-section">
+              <h3>식물 옵션</h3>
+              <div className="admin-check-row">
+                <label>
+                  <input
+                    defaultChecked={product.plantOption.enabled}
+                    name="plantOptionEnabled"
+                    type="checkbox"
+                  />
+                  <span>식물 포함 옵션 사용</span>
+                </label>
+              </div>
+              <div className="admin-form-grid">
+                <label>
+                  <span>식물 포함 추가금</span>
+                  <input
+                    min="0"
+                    name="plantOptionPriceDelta"
+                    type="number"
+                    defaultValue={product.plantOption.priceDelta}
+                  />
+                </label>
+                <label>
+                  <span>식물 구성</span>
+                  <input
+                    name="plantSpecies"
+                    defaultValue={product.plantOption.species ?? ""}
+                    placeholder="예: 소형 관엽, 계절 생화"
+                  />
+                </label>
+              </div>
+              <label>
+                <span>식물 관리 안내</span>
+                <textarea
+                  name="plantCareNotice"
+                  rows={3}
+                  defaultValue={product.plantOption.careNotice ?? ""}
+                />
+              </label>
+              <label>
+                <span>식물 반품 제한 안내</span>
+                <textarea
+                  name="plantReturnNotice"
+                  rows={3}
+                  defaultValue={product.plantOption.returnNotice ?? ""}
+                />
+              </label>
+              <label>
+                <span>식물 배송 제한 안내</span>
+                <textarea
+                  name="plantShippingRestrictionNotice"
+                  rows={3}
+                  defaultValue={
+                    product.plantOption.shippingRestrictionNotice ?? ""
+                  }
+                />
+              </label>
+            </section>
+
+            <section className="admin-form-section">
+              <h3>추가 제작 주문</h3>
+              <div className="admin-check-row">
+                <label>
+                  <input
+                    defaultChecked={product.madeToOrder.available}
+                    name="madeToOrderAvailable"
+                    type="checkbox"
+                  />
+                  <span>재고 소진 후 추가 제작 주문 허용</span>
+                </label>
+              </div>
+              <div className="admin-form-grid">
+                <label>
+                  <span>최소 소요일</span>
+                  <input
+                    min="1"
+                    name="madeToOrderDaysMin"
+                    type="number"
+                    defaultValue={product.madeToOrder.daysMin}
+                  />
+                </label>
+                <label>
+                  <span>최대 소요일</span>
+                  <input
+                    min="1"
+                    name="madeToOrderDaysMax"
+                    type="number"
+                    defaultValue={product.madeToOrder.daysMax}
+                  />
+                </label>
+              </div>
+              <label>
+                <span>추가 제작 안내</span>
+                <textarea
+                  name="madeToOrderNotice"
+                  rows={3}
+                  defaultValue={product.madeToOrder.notice ?? ""}
+                  placeholder="결제 또는 입금 확인일 기준 약 30~45일 소요됩니다."
+                />
+              </label>
+            </section>
+
             <label>
               <span>한정 유형</span>
               <select name="limitedType" defaultValue={product.limitedType ?? ""}>
@@ -335,6 +437,22 @@ export default async function AdminProductEditPage({
               <div>
                 <dt>재고</dt>
                 <dd>{product.commerce.stockQuantity ?? "미입력"}</dd>
+              </div>
+              <div>
+                <dt>식물 옵션</dt>
+                <dd>
+                  {product.plantOption.enabled
+                    ? `사용 · +${product.plantOption.priceDelta.toLocaleString("ko-KR")}원`
+                    : "미사용"}
+                </dd>
+              </div>
+              <div>
+                <dt>추가 제작</dt>
+                <dd>
+                  {product.madeToOrder.available
+                    ? `${product.madeToOrder.daysMin}~${product.madeToOrder.daysMax}일`
+                    : "미사용"}
+                </dd>
               </div>
             </dl>
           </section>

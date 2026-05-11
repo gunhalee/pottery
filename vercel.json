@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/cleanup-uploads",
       "schedule": "30 18 * * *"
+    },
+    {
+      "path": "/api/cron/bank-transfer-expiry",
+      "schedule": "*/30 * * * *"
     }
   ]
 }

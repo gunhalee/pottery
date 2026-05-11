@@ -212,7 +212,10 @@ function OrderRow({ order }: { order: AdminOrderListItem }) {
           label={fulfillmentStatusLabel(order.fulfillmentStatus)}
           tone="fulfillment"
         />
-        <small>{order.shippingMethod === "pickup" ? "방문수령" : "택배"}</small>
+        <small>
+          {order.paymentMethod === "bank_transfer" ? "무통장입금 · " : ""}
+          {order.shippingMethod === "pickup" ? "방문수령" : "택배"}
+        </small>
       </div>
       <div className="admin-order-price-cell">
         <strong>{formatMoney(order.totalKrw)}</strong>
@@ -260,10 +263,12 @@ function orderViewHref(view: AdminOrderView, query: string) {
 function paymentStatusLabel(status: PaymentStatus) {
   return {
     canceled: "결제 취소",
+    expired: "입금기한 만료",
     failed: "결제 실패",
     paid: "결제 완료",
     partial_refunded: "부분 환불",
     pending: "결제 대기",
+    refund_pending: "환불 대기",
     refunded: "환불 완료",
     unpaid: "미결제",
   }[status];

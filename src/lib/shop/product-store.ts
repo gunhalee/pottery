@@ -65,8 +65,18 @@ type ProductRow = {
   price_krw: number | null;
   stock_quantity: number | null;
   currency: "KRW";
+  made_to_order_available?: boolean;
+  made_to_order_days_max?: number;
+  made_to_order_days_min?: number;
+  made_to_order_notice?: string | null;
   material: string | null;
   glaze: string | null;
+  plant_care_notice?: string | null;
+  plant_option_enabled?: boolean;
+  plant_option_price_delta_krw?: number;
+  plant_return_notice?: string | null;
+  plant_shipping_restriction_notice?: string | null;
+  plant_species?: string | null;
   size: string | null;
   usage_note: string | null;
   care_note: string | null;
@@ -88,6 +98,16 @@ type ProductListRow = Pick<
   | "is_limited"
   | "kind"
   | "limited_type"
+  | "made_to_order_available"
+  | "made_to_order_days_max"
+  | "made_to_order_days_min"
+  | "made_to_order_notice"
+  | "plant_care_notice"
+  | "plant_option_enabled"
+  | "plant_option_price_delta_krw"
+  | "plant_return_notice"
+  | "plant_shipping_restriction_notice"
+  | "plant_species"
   | "price_krw"
   | "published"
   | "published_at"
@@ -150,6 +170,36 @@ const commerceSchema = z.object({
   syncedAt: z.string().optional(),
 });
 
+const plantOptionSchema = z
+  .object({
+    careNotice: z.string().optional(),
+    enabled: z.boolean(),
+    priceDelta: z.number().int().nonnegative(),
+    returnNotice: z.string().optional(),
+    shippingRestrictionNotice: z.string().optional(),
+    species: z.string().optional(),
+  })
+  .default({
+    enabled: false,
+    priceDelta: 0,
+  });
+
+const madeToOrderSchema = z
+  .object({
+    available: z.boolean(),
+    daysMax: z.number().int().positive(),
+    daysMin: z.number().int().positive(),
+    notice: z.string().optional(),
+  })
+  .refine((value) => value.daysMax >= value.daysMin, {
+    message: "추가 제작 최대 소요일은 최소 소요일보다 크거나 같아야 합니다.",
+  })
+  .default({
+    available: false,
+    daysMax: 45,
+    daysMin: 30,
+  });
+
 const productSchema = z.object({
   careNote: z.string().optional(),
   category: z.string().min(1),
@@ -164,7 +214,9 @@ const productSchema = z.object({
   limitedType: z
     .enum(["quantity", "period", "kiln_batch", "project"])
     .nullable(),
+  madeToOrder: madeToOrderSchema,
   material: z.string().optional(),
+  plantOption: plantOptionSchema,
   published: z.boolean(),
   publishedAt: z.string().optional(),
   restockCtaType: z
@@ -195,6 +247,8 @@ const productListItemSchema = productSchema.pick({
   isLimited: true,
   kind: true,
   limitedType: true,
+  madeToOrder: true,
+  plantOption: true,
   published: true,
   publishedAt: true,
   restockCtaType: true,
@@ -222,7 +276,17 @@ export type ProductUpdateInput = {
   isLimited: boolean;
   kind: ProductKind;
   limitedType: LimitedType;
+  madeToOrderAvailable: boolean;
+  madeToOrderDaysMax: number;
+  madeToOrderDaysMin: number;
+  madeToOrderNotice?: string;
   material?: string;
+  plantCareNotice?: string;
+  plantOptionEnabled: boolean;
+  plantOptionPriceDelta: number;
+  plantReturnNotice?: string;
+  plantShippingRestrictionNotice?: string;
+  plantSpecies?: string;
   price: number | null;
   published: boolean;
   restockCtaType: RestockCtaType;
@@ -509,30 +573,85 @@ async function readProductListItemsFromSupabaseQuery(
   client?: SupabaseClient,
 ) {
   const supabase = client ?? getSupabaseAdminClient();
-  let query = supabase
+  const fullResult = await buildProductListQuery({
+    client: supabase,
+    options,
+    select: productListSelectWithCommerceExtensions,
+  });
+  const { data, error } =
+    fullResult.error && isMissingOptionalProductCommerceColumn(fullResult.error)
+      ? await buildProductListQuery({
+          client: supabase,
+          options,
+          select: productListSelectBase,
+        })
+      : fullResult;
+
+  if (error) {
+    throw new Error(`Supabase 상품 목록 조회 실패: ${error.message}`);
+  }
+
+  const rows = (data ?? []) as unknown as ProductListRow[];
+  const usageMap = await readMediaUsagesByOwner(
+    "product",
+    rows.map((row) => row.id),
+    { client: supabase, roles: ["cover", "detail", "list"] },
+  );
+
+  return productListItemListSchema.parse(
+    rows.map((row) =>
+      fromSupabaseProductListRow(row, usageMap.get(row.id) ?? []),
+    ),
+  );
+}
+
+const productListSelectBase = `
+  id,
+  slug,
+  title_ko,
+  short_description,
+  category,
+  kind,
+  is_limited,
+  limited_type,
+  is_archived,
+  restock_cta_type,
+  availability_status,
+  price_krw,
+  stock_quantity,
+  currency,
+  published,
+  published_at,
+  created_at,
+  updated_at
+`;
+
+const productListSelectWithCommerceExtensions = `
+  ${productListSelectBase},
+  plant_option_enabled,
+  plant_option_price_delta_krw,
+  plant_species,
+  plant_care_notice,
+  plant_return_notice,
+  plant_shipping_restriction_notice,
+  made_to_order_available,
+  made_to_order_days_min,
+  made_to_order_days_max,
+  made_to_order_notice
+`;
+
+function buildProductListQuery({
+  client,
+  options,
+  select,
+}: {
+  client: SupabaseClient;
+  options: ProductQueryOptions;
+  select: string;
+}) {
+  let query = client
     .from("shop_products")
-    .select(
-      `
-        id,
-        slug,
-        title_ko,
-        short_description,
-        category,
-        kind,
-        is_limited,
-        limited_type,
-        is_archived,
-        restock_cta_type,
-        availability_status,
-        price_krw,
-        stock_quantity,
-        currency,
-        published,
-        published_at,
-        created_at,
-        updated_at
-      `,
-    )
+    .select(select)
     .order("created_at", { ascending: false });
 
   if (options.id) {
@@ -551,24 +670,7 @@ async function readProductListItemsFromSupabaseQuery(
     query = query.limit(options.limit);
   }
 
-  const { data, error } = await query;
-
-  if (error) {
-    throw new Error(`Supabase 상품 목록 조회 실패: ${error.message}`);
-  }
-
-  const rows = (data ?? []) as ProductListRow[];
-  const usageMap = await readMediaUsagesByOwner(
-    "product",
-    rows.map((row) => row.id),
-    { client: supabase, roles: ["cover", "detail", "list"] },
-  );
-
-  return productListItemListSchema.parse(
-    rows.map((row) =>
-      fromSupabaseProductListRow(row, usageMap.get(row.id) ?? []),
-    ),
-  );
+  return query;
 }
 
 async function readPublishedProductSlugsFromSupabase(client?: SupabaseClient) {
@@ -615,6 +717,15 @@ async function createProductDraftInSupabase(input: ProductDraftInput) {
     isLimited: false,
     kind: "regular",
     limitedType: null,
+    madeToOrder: {
+      available: false,
+      daysMax: 45,
+      daysMin: 30,
+    },
+    plantOption: {
+      enabled: false,
+      priceDelta: 0,
+    },
     published: false,
     restockCtaType: "restock_alert",
     shortDescription: "?곹뭹 ?ㅻ챸???낅젰??二쇱꽭??",
@@ -651,7 +762,23 @@ async function updateProductInSupabase(id: string, input: ProductUpdateInput) {
     isLimited: input.isLimited,
     kind: input.kind,
     limitedType: input.isLimited ? input.limitedType : null,
+    madeToOrder: {
+      available: input.madeToOrderAvailable,
+      daysMax: input.madeToOrderDaysMax,
+      daysMin: input.madeToOrderDaysMin,
+      notice: emptyToUndefined(input.madeToOrderNotice),
+    },
     material: emptyToUndefined(input.material),
+    plantOption: {
+      careNotice: emptyToUndefined(input.plantCareNotice),
+      enabled: input.plantOptionEnabled,
+      priceDelta: input.plantOptionPriceDelta,
+      returnNotice: emptyToUndefined(input.plantReturnNotice),
+      shippingRestrictionNotice: emptyToUndefined(
+        input.plantShippingRestrictionNotice,
+      ),
+      species: emptyToUndefined(input.plantSpecies),
+    },
     published: input.published,
     publishedAt:
       input.published && !current.publishedAt
@@ -753,6 +880,15 @@ async function createProductDraftInJson(input: ProductDraftInput) {
     isLimited: false,
     kind: "regular",
     limitedType: null,
+    madeToOrder: {
+      available: false,
+      daysMax: 45,
+      daysMin: 30,
+    },
+    plantOption: {
+      enabled: false,
+      priceDelta: 0,
+    },
     published: false,
     restockCtaType: "restock_alert",
     shortDescription: "?곹뭹 ?ㅻ챸???낅젰??二쇱꽭??",
@@ -799,7 +935,23 @@ async function updateProductInJson(id: string, input: ProductUpdateInput) {
           isLimited: input.isLimited,
           kind: input.kind,
           limitedType: input.isLimited ? input.limitedType : null,
+          madeToOrder: {
+            available: input.madeToOrderAvailable,
+            daysMax: input.madeToOrderDaysMax,
+            daysMin: input.madeToOrderDaysMin,
+            notice: emptyToUndefined(input.madeToOrderNotice),
+          },
           material: emptyToUndefined(input.material),
+          plantOption: {
+            careNotice: emptyToUndefined(input.plantCareNotice),
+            enabled: input.plantOptionEnabled,
+            priceDelta: input.plantOptionPriceDelta,
+            returnNotice: emptyToUndefined(input.plantReturnNotice),
+            shippingRestrictionNotice: emptyToUndefined(
+              input.plantShippingRestrictionNotice,
+            ),
+            species: emptyToUndefined(input.plantSpecies),
+          },
           published: input.published,
           publishedAt:
             input.published && !product.publishedAt
@@ -933,7 +1085,22 @@ function fromSupabaseRow(
     isLimited: row.is_limited,
     kind: row.kind,
     limitedType: row.limited_type,
+    madeToOrder: {
+      available: row.made_to_order_available ?? false,
+      daysMax: row.made_to_order_days_max ?? 45,
+      daysMin: row.made_to_order_days_min ?? 30,
+      notice: row.made_to_order_notice ?? undefined,
+    },
     material: row.material ?? undefined,
+    plantOption: {
+      careNotice: row.plant_care_notice ?? undefined,
+      enabled: row.plant_option_enabled ?? false,
+      priceDelta: row.plant_option_price_delta_krw ?? 0,
+      returnNotice: row.plant_return_notice ?? undefined,
+      shippingRestrictionNotice:
+        row.plant_shipping_restriction_notice ?? undefined,
+      species: row.plant_species ?? undefined,
+    },
     published: row.published,
     publishedAt: row.published_at ?? undefined,
     restockCtaType: row.restock_cta_type,
@@ -970,6 +1137,21 @@ function fromSupabaseProductListRow(
     isLimited: row.is_limited,
     kind: row.kind,
     limitedType: row.limited_type,
+    madeToOrder: {
+      available: row.made_to_order_available ?? false,
+      daysMax: row.made_to_order_days_max ?? 45,
+      daysMin: row.made_to_order_days_min ?? 30,
+      notice: row.made_to_order_notice ?? undefined,
+    },
+    plantOption: {
+      careNotice: row.plant_care_notice ?? undefined,
+      enabled: row.plant_option_enabled ?? false,
+      priceDelta: row.plant_option_price_delta_krw ?? 0,
+      returnNotice: row.plant_return_notice ?? undefined,
+      shippingRestrictionNotice:
+        row.plant_shipping_restriction_notice ?? undefined,
+      species: row.plant_species ?? undefined,
+    },
     published: row.published,
     publishedAt: row.published_at ?? undefined,
     restockCtaType: row.restock_cta_type,
@@ -991,6 +1173,8 @@ function toProductListItem(product: ConsepotProduct): ProductListItem {
     isLimited: product.isLimited,
     kind: product.kind,
     limitedType: product.limitedType,
+    madeToOrder: product.madeToOrder,
+    plantOption: product.plantOption,
     published: product.published,
     publishedAt: product.publishedAt,
     restockCtaType: product.restockCtaType,
@@ -1013,7 +1197,18 @@ function toSupabaseProductRow(product: ConsepotProduct) {
     is_limited: product.isLimited,
     kind: product.kind,
     limited_type: product.limitedType,
+    made_to_order_available: product.madeToOrder.available,
+    made_to_order_days_max: product.madeToOrder.daysMax,
+    made_to_order_days_min: product.madeToOrder.daysMin,
+    made_to_order_notice: product.madeToOrder.notice ?? null,
     material: product.material ?? null,
+    plant_care_notice: product.plantOption.careNotice ?? null,
+    plant_option_enabled: product.plantOption.enabled,
+    plant_option_price_delta_krw: product.plantOption.priceDelta,
+    plant_return_notice: product.plantOption.returnNotice ?? null,
+    plant_shipping_restriction_notice:
+      product.plantOption.shippingRestrictionNotice ?? null,
+    plant_species: product.plantOption.species ?? null,
     price_krw: product.commerce.price,
     published: product.published,
     published_at: product.publishedAt ?? null,
@@ -1181,5 +1376,15 @@ function isMissingFileError(error: unknown) {
     error !== null &&
     "code" in error &&
     error.code === "ENOENT"
+  );
+}
+
+function isMissingOptionalProductCommerceColumn(error: { message?: string }) {
+  const message = error.message ?? "";
+
+  return (
+    message.includes("plant_option_") ||
+    message.includes("made_to_order_") ||
+    message.includes("schema cache")
   );
 }

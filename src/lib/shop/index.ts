@@ -117,6 +117,17 @@ export function getProductCta(product: ConsepotProduct): ProductCta {
     };
   }
 
+  if (
+    product.commerce.availabilityStatus === "sold_out" &&
+    product.madeToOrder.available &&
+    product.commerce.price !== null
+  ) {
+    return {
+      kind: "made_to_order",
+      label: "추가 제작 주문",
+    };
+  }
+
   if (product.commerce.availabilityStatus === "upcoming") {
     return {
       kind: "coming_soon",
@@ -132,7 +143,7 @@ export function getProductCta(product: ConsepotProduct): ProductCta {
   }
 
   const ctaByType: Record<
-    Exclude<ProductCtaKind, "buy" | "coming_soon" | "archive">,
+    Exclude<ProductCtaKind, "buy" | "made_to_order" | "coming_soon" | "archive">,
     string
   > = {
     next_limited_alert: "다음 한정 소식 받기",
@@ -151,7 +162,12 @@ export function getProductCta(product: ConsepotProduct): ProductCta {
 export function getProductActionHref(
   product: ConsepotProduct,
 ): ProductActionHref {
-  if (product.commerce.availabilityStatus === "available") {
+  if (
+    product.commerce.availabilityStatus === "available" ||
+    (product.commerce.availabilityStatus === "sold_out" &&
+      product.madeToOrder.available &&
+      product.commerce.price !== null)
+  ) {
     return {
       external: false,
       href: `/shop/${product.slug}`,
@@ -175,7 +191,10 @@ export function getProductActionHref(
 }
 
 export function getProductPurchaseHref(product: ConsepotProduct) {
-  return product.commerce.availabilityStatus === "available"
+  return product.commerce.availabilityStatus === "available" ||
+    (product.commerce.availabilityStatus === "sold_out" &&
+      product.madeToOrder.available &&
+      product.commerce.price !== null)
     ? `/shop/${product.slug}`
     : null;
 }
