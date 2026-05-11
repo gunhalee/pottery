@@ -1,6 +1,5 @@
 import { SiteLink } from "@/components/navigation/site-link";
 import { PageIntro, PageShell } from "@/components/site/primitives";
-import { CartReturnNotice } from "@/components/shop/cart-return-notice";
 import { ProductGrid } from "@/components/shop/product-grid";
 import { siteConfig } from "@/lib/config/site";
 import { getPublishedProductListItems } from "@/lib/shop";
@@ -29,7 +28,6 @@ export default async function ShopPage() {
         title="소장하기"
       />
 
-      <CartReturnNotice />
       <ProductGrid products={products} />
     </PageShell>
   );

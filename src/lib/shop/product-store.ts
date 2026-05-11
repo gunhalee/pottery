@@ -23,16 +23,13 @@ import {
   isSupabaseConfigured,
   isSupabasePublicReadConfigured,
 } from "@/lib/supabase/server";
-import { cafe24ProductMap } from "./cafe24-product-map";
 import { productCatalog } from "./product-catalog";
 import type {
   AvailabilityStatus,
-  Cafe24ProductMapping,
   ConsepotProduct,
   LimitedType,
   ProductImage,
   ProductListItem,
-  ProductSyncLog,
   ProductKind,
   RestockCtaType,
 } from "./product-model";
@@ -102,33 +99,7 @@ type ProductListRow = Pick<
   | "updated_at"
 >;
 
-type Cafe24MappingRow = {
-  category_no: number | null;
-  checkout_url: string | null;
-  display_group: number | null;
-  last_sync_error: string | null;
-  last_synced_at: string | null;
-  mapping_status: Cafe24ProductMapping["mappingStatus"];
-  product_no: string | null;
-  product_url: string | null;
-  variant_code: string | null;
-};
-
-type ProductSyncLogRow = {
-  action: ProductSyncLog["action"];
-  created_at: string;
-  id: number;
-  message: string | null;
-  product_id: string;
-  provider: "cafe24";
-  request_payload: unknown;
-  response_payload: unknown;
-  status: ProductSyncLog["status"];
-};
-
-type ProductSelectRow = ProductRow & {
-  shop_product_cafe24_mappings?: Cafe24MappingRow | Cafe24MappingRow[] | null;
-};
+type ProductSelectRow = ProductRow;
 
 type ProductQueryOptions = {
   id?: string;
@@ -156,7 +127,6 @@ const imageVariantsSchema = z
 
 const imageSchema = z.object({
   alt: z.string().min(1),
-  cafe24ImagePath: z.string().optional(),
   caption: z.string().optional(),
   height: z.number().int().positive().optional(),
   id: z.string().optional(),
@@ -175,25 +145,12 @@ const commerceSchema = z.object({
   availabilityStatus: z.enum(["available", "sold_out", "upcoming", "archive"]),
   currency: z.literal("KRW"),
   price: z.number().int().nonnegative().nullable(),
-  source: z.literal("cafe24"),
+  source: z.literal("internal"),
   stockQuantity: z.number().int().nonnegative().nullable(),
   syncedAt: z.string().optional(),
 });
 
-const cafe24Schema = z.object({
-  categoryNo: z.number().int().positive().optional(),
-  checkoutUrl: z.string().optional(),
-  displayGroup: z.number().int().positive().optional(),
-  lastSyncError: z.string().optional(),
-  lastSyncedAt: z.string().optional(),
-  mappingStatus: z.enum(["pending", "mapped", "sync_failed", "not_applicable"]),
-  productNo: z.string().nullable(),
-  productUrl: z.string().optional(),
-  variantCode: z.string().optional(),
-});
-
 const productSchema = z.object({
-  cafe24: cafe24Schema,
   careNote: z.string().optional(),
   category: z.string().min(1),
   commerce: commerceSchema,
@@ -279,15 +236,6 @@ export type ProductUpdateInput = {
   usageNote?: string;
 };
 
-export type ProductSyncLogInput = {
-  action: ProductSyncLog["action"];
-  message?: string | null;
-  productId: string;
-  requestPayload?: unknown;
-  responsePayload?: unknown;
-  status: ProductSyncLog["status"];
-};
-
 export type ProductInventoryUpdateInput = {
   availabilityStatus: AvailabilityStatus;
   stockQuantity: number | null;
@@ -353,17 +301,6 @@ export async function updateProduct(id: string, input: ProductUpdateInput) {
   return updateProductInJson(id, input);
 }
 
-export async function updateProductCafe24Mapping(
-  id: string,
-  cafe24: Cafe24ProductMapping,
-) {
-  if (isSupabaseConfigured()) {
-    return updateProductCafe24MappingInSupabase(id, cafe24);
-  }
-
-  return updateProductCafe24MappingInJson(id, cafe24);
-}
-
 export async function updateProductInventory(
   id: string,
   input: ProductInventoryUpdateInput,
@@ -397,55 +334,6 @@ export async function deleteProductImageAssets(images: ProductImage[]) {
   }
 
   await deleteUnusedMediaAssetsByMasterPaths(masterPaths);
-}
-
-export async function readProductSyncLogs(productId: string, limit = 8) {
-  if (!isSupabaseConfigured()) {
-    return [] satisfies ProductSyncLog[];
-  }
-
-  const supabase = getSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("shop_product_sync_logs")
-    .select("*")
-    .eq("product_id", productId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  if (error) {
-    throw new Error(`Supabase ?숆린??濡쒓렇 議고쉶 ?ㅽ뙣: ${error.message}`);
-  }
-
-  return (data ?? []).map((row) =>
-    fromSupabaseSyncLogRow(row as ProductSyncLogRow),
-  );
-}
-
-export async function appendProductSyncLog(input: ProductSyncLogInput) {
-  if (!isSupabaseConfigured()) {
-    return null;
-  }
-
-  const supabase = getSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("shop_product_sync_logs")
-    .insert({
-      action: input.action,
-      message: input.message ?? null,
-      product_id: input.productId,
-      provider: "cafe24",
-      request_payload: input.requestPayload ?? null,
-      response_payload: input.responsePayload ?? null,
-      status: input.status,
-    })
-    .select("*")
-    .single();
-
-  if (error) {
-    throw new Error(`Supabase ?숆린??濡쒓렇 ????ㅽ뙣: ${error.message}`);
-  }
-
-  return fromSupabaseSyncLogRow(data as ProductSyncLogRow);
 }
 
 export function normalizeSlug(slug: string) {
@@ -579,12 +467,7 @@ async function readProductsFromSupabaseQuery(
   const supabase = client ?? getSupabaseAdminClient();
   let query = supabase
     .from("shop_products")
-    .select(
-      `
-        *,
-        shop_product_cafe24_mappings (*)
-      `,
-    )
+    .select("*")
     .order("created_at", { ascending: false });
 
   if (options.id) {
@@ -707,9 +590,7 @@ async function writeProductsToSupabase(products: ConsepotProduct[]) {
   const parsed = productListSchema.parse(products);
 
   for (const product of parsed) {
-    await saveProductWithRelationsInSupabase(product, {
-      syncCafe24Mapping: true,
-    });
+    await saveProductWithRelationsInSupabase(product);
   }
 }
 
@@ -719,18 +600,12 @@ async function createProductDraftInSupabase(input: ProductDraftInput) {
   const titleKo = input.titleKo.trim();
 
   const product: ConsepotProduct = productSchema.parse({
-    cafe24: {
-      categoryNo: getDefaultCategoryNo(),
-      displayGroup: getDefaultDisplayGroup(),
-      mappingStatus: "pending",
-      productNo: null,
-    },
     category: "cup",
     commerce: {
       availabilityStatus: "upcoming",
       currency: "KRW",
       price: null,
-      source: "cafe24",
+      source: "internal",
       stockQuantity: null,
     },
     createdAt: new Date().toISOString(),
@@ -748,9 +623,7 @@ async function createProductDraftInSupabase(input: ProductDraftInput) {
     updatedAt: new Date().toISOString(),
   });
 
-  await saveProductWithRelationsInSupabase(product, {
-    syncCafe24Mapping: true,
-  });
+  await saveProductWithRelationsInSupabase(product);
 
   return (await getProductById(id)) ?? product;
 }
@@ -797,19 +670,9 @@ async function updateProductInSupabase(id: string, input: ProductUpdateInput) {
     usageNote: emptyToUndefined(input.usageNote),
   });
 
-  await saveProductWithRelationsInSupabase(product, {
-    syncCafe24Mapping: false,
-  });
+  await saveProductWithRelationsInSupabase(product);
 
   return (await getProductById(id)) ?? product;
-}
-
-async function updateProductCafe24MappingInSupabase(
-  id: string,
-  cafe24: Cafe24ProductMapping,
-) {
-  await upsertCafe24Mapping(id, cafe24);
-  return getProductById(id);
 }
 
 async function updateProductInventoryInSupabase(
@@ -875,18 +738,12 @@ async function createProductDraftInJson(input: ProductDraftInput) {
   }
 
   const product: ConsepotProduct = productSchema.parse({
-    cafe24: {
-      categoryNo: getDefaultCategoryNo(),
-      displayGroup: getDefaultDisplayGroup(),
-      mappingStatus: "pending",
-      productNo: null,
-    },
     category: "cup",
     commerce: {
       availabilityStatus: "upcoming",
       currency: "KRW",
       price: null,
-      source: "cafe24",
+      source: "internal",
       stockQuantity: null,
     },
     createdAt: now,
@@ -967,29 +824,6 @@ async function updateProductInJson(id: string, input: ProductUpdateInput) {
   return nextProducts.find((product) => product.id === id) ?? null;
 }
 
-async function updateProductCafe24MappingInJson(
-  id: string,
-  cafe24: Cafe24ProductMapping,
-) {
-  const products = await readProductsFromJson();
-  const nextProducts = products.map((product) =>
-    product.id === id
-      ? productSchema.parse({
-          ...product,
-          cafe24,
-          commerce: {
-            ...product.commerce,
-            syncedAt: cafe24.lastSyncedAt ?? product.commerce.syncedAt,
-          },
-          updatedAt: new Date().toISOString(),
-        })
-      : product,
-  );
-
-  await writeJsonProducts(nextProducts);
-  return nextProducts.find((product) => product.id === id) ?? null;
-}
-
 async function updateProductInventoryInJson(
   id: string,
   input: ProductInventoryUpdateInput,
@@ -1031,15 +865,9 @@ async function writeJsonProducts(products: ConsepotProduct[]) {
   await writeFile(dataFilePath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
 }
 
-async function saveProductWithRelationsInSupabase(
-  product: ConsepotProduct,
-  options: { syncCafe24Mapping: boolean },
-) {
+async function saveProductWithRelationsInSupabase(product: ConsepotProduct) {
   const supabase = getSupabaseAdminClient();
   const { error } = await supabase.rpc("save_shop_product_with_relations", {
-    cafe24_row: options.syncCafe24Mapping
-      ? toSupabaseCafe24MappingRow(product.id, product.cafe24)
-      : null,
     media_usage_rows: toSupabaseProductMediaUsageRows(product),
     product_row: toSupabaseProductRow(product),
   });
@@ -1083,48 +911,19 @@ function toSupabaseProductMediaUsageRows(product: ConsepotProduct) {
   });
 }
 
-async function upsertCafe24Mapping(
-  productId: string,
-  cafe24: Cafe24ProductMapping,
-) {
-  const supabase = getSupabaseAdminClient();
-  const row = toSupabaseCafe24MappingRow(productId, cafe24);
-  const { error } = await supabase
-    .from("shop_product_cafe24_mappings")
-    .upsert(row, { onConflict: "product_id" });
-
-  if (error) {
-    throw new Error(`Supabase Cafe24 留ㅽ븨 ????ㅽ뙣: ${error.message}`);
-  }
-}
-
 function fromSupabaseRow(
   row: ProductSelectRow,
   usages: MediaUsage[],
 ): ConsepotProduct {
-  const mapping = normalizeMappingRow(row.shop_product_cafe24_mappings);
-
   return productSchema.parse({
-    cafe24: {
-      categoryNo: mapping?.category_no ?? getDefaultCategoryNo(),
-      checkoutUrl: mapping?.checkout_url ?? undefined,
-      displayGroup: mapping?.display_group ?? getDefaultDisplayGroup(),
-      lastSyncError: mapping?.last_sync_error ?? undefined,
-      lastSyncedAt: mapping?.last_synced_at ?? undefined,
-      mappingStatus: mapping?.mapping_status ?? "pending",
-      productNo: mapping?.product_no ?? null,
-      productUrl: mapping?.product_url ?? undefined,
-      variantCode: mapping?.variant_code ?? undefined,
-    },
     careNote: row.care_note ?? undefined,
     category: row.category,
     commerce: {
       availabilityStatus: row.availability_status,
       currency: row.currency,
       price: row.price_krw,
-      source: "cafe24",
+      source: "internal",
       stockQuantity: row.stock_quantity,
-      syncedAt: mapping?.last_synced_at ?? undefined,
     },
     createdAt: row.created_at,
     glaze: row.glaze ?? undefined,
@@ -1161,7 +960,7 @@ function fromSupabaseProductListRow(
       availabilityStatus: row.availability_status,
       currency: row.currency,
       price: row.price_krw,
-      source: "cafe24",
+      source: "internal",
       stockQuantity: row.stock_quantity,
     },
     createdAt: row.created_at,
@@ -1202,20 +1001,6 @@ function toProductListItem(product: ConsepotProduct): ProductListItem {
   });
 }
 
-function fromSupabaseSyncLogRow(row: ProductSyncLogRow): ProductSyncLog {
-  return {
-    action: row.action,
-    createdAt: row.created_at,
-    id: row.id,
-    message: row.message,
-    productId: row.product_id,
-    provider: row.provider,
-    requestPayload: row.request_payload,
-    responsePayload: row.response_payload,
-    status: row.status,
-  };
-}
-
 function toSupabaseProductRow(product: ConsepotProduct) {
   return {
     availability_status: product.commerce.availabilityStatus,
@@ -1248,54 +1033,8 @@ function toSupabaseProductRow(product: ConsepotProduct) {
   };
 }
 
-function toSupabaseCafe24MappingRow(
-  productId: string,
-  cafe24: Cafe24ProductMapping,
-) {
-  return {
-    category_no: cafe24.categoryNo ?? null,
-    checkout_url: cafe24.checkoutUrl ?? null,
-    display_group: cafe24.displayGroup ?? getDefaultDisplayGroup(),
-    last_sync_error: cafe24.lastSyncError ?? null,
-    last_synced_at: cafe24.lastSyncedAt ?? null,
-    mapping_status: cafe24.mappingStatus,
-    product_id: productId,
-    product_no: cafe24.productNo,
-    product_url: cafe24.productUrl ?? null,
-    variant_code: cafe24.variantCode ?? null,
-  };
-}
-
-function normalizeMappingRow(
-  value: Cafe24MappingRow | Cafe24MappingRow[] | null | undefined,
-) {
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-
-  return value ?? null;
-}
-
 function getSeedProducts(): ConsepotProduct[] {
-  return productCatalog.map((product) => ({
-    ...product,
-    cafe24: cafe24ProductMap[product.slug] ?? {
-      categoryNo: getDefaultCategoryNo(),
-      displayGroup: getDefaultDisplayGroup(),
-      mappingStatus: "pending",
-      productNo: null,
-    },
-  }));
-}
-
-function getDefaultCategoryNo() {
-  const value = process.env.CAFE24_DEFAULT_CATEGORY_NO;
-  return value ? Number(value) : 29;
-}
-
-function getDefaultDisplayGroup() {
-  const value = process.env.CAFE24_DEFAULT_DISPLAY_GROUP;
-  return value ? Number(value) : 1;
+  return productCatalog;
 }
 
 function mediaUsagesToProductImages(usages: MediaUsage[]) {
@@ -1364,7 +1103,6 @@ function normalizeProductImages(images: ProductImage[], fallbackTitle: string) {
   const cleaned = images
     .map((image) => ({
       alt: image.alt.trim() || `${fallbackTitle.trim() || "?곹뭹"} ?대?吏`,
-      cafe24ImagePath: emptyToUndefined(image.cafe24ImagePath),
       caption: emptyToUndefined(image.caption),
       height: image.height,
       id: emptyToUndefined(image.id),
@@ -1378,10 +1116,7 @@ function normalizeProductImages(images: ProductImage[], fallbackTitle: string) {
       variants: image.variants,
       width: image.width,
     }))
-    .filter(
-      (image) =>
-        image.src || image.placeholderLabel || image.cafe24ImagePath,
-    );
+    .filter((image) => image.src || image.placeholderLabel);
 
   const primaryIndex = cleaned.findIndex((image) => image.isPrimary);
   const listIndex = cleaned.findIndex((image) => image.isListImage);

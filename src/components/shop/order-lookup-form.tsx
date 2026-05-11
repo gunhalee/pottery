@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import type { Cafe24OrderLookupResult } from "@/lib/cafe24/order-lookup";
+import type { OrderLookupResult } from "@/lib/orders/order-model";
 
 type LookupState =
   | { kind: "idle" }
   | { kind: "loading" }
   | { kind: "error"; message: string }
-  | { kind: "success"; result: Cafe24OrderLookupResult };
+  | { kind: "success"; result: OrderLookupResult };
 
 export function OrderLookupForm() {
   const [state, setState] = useState<LookupState>({ kind: "idle" });
@@ -18,10 +18,9 @@ export function OrderLookupForm() {
     try {
       const response = await fetch("/api/orders/lookup", {
         body: JSON.stringify({
-          buyerName: String(formData.get("buyerName") ?? ""),
-          email: String(formData.get("email") ?? ""),
-          orderId: String(formData.get("orderId") ?? ""),
-          phone: String(formData.get("phone") ?? ""),
+          orderNumber: String(formData.get("orderNumber") ?? ""),
+          password: String(formData.get("password") ?? ""),
+          phoneLast4: String(formData.get("phoneLast4") ?? ""),
         }),
         headers: {
           "Content-Type": "application/json",
@@ -38,7 +37,7 @@ export function OrderLookupForm() {
         );
       }
 
-      setState({ kind: "success", result: payload as Cafe24OrderLookupResult });
+      setState({ kind: "success", result: payload as OrderLookupResult });
     } catch (error) {
       setState({
         kind: "error",
@@ -55,25 +54,35 @@ export function OrderLookupForm() {
       <form action={lookupOrder} className="order-lookup-form">
         <label>
           <span>주문번호</span>
-          <input name="orderId" required placeholder="20260506-0000000" />
-        </label>
-        <label>
-          <span>주문자명</span>
-          <input name="buyerName" autoComplete="name" />
-        </label>
-        <label>
-          <span>휴대폰 뒤 4자리</span>
           <input
-            inputMode="numeric"
-            maxLength={4}
-            name="phone"
-            pattern="[0-9]{4}"
-            placeholder="1234"
+            name="orderNumber"
+            placeholder="CP-20260510-123456"
+            required
           />
         </label>
         <label>
-          <span>이메일</span>
-          <input name="email" type="email" autoComplete="email" />
+          <span>연락처 끝 4자리</span>
+          <input
+            inputMode="numeric"
+            maxLength={4}
+            name="phoneLast4"
+            pattern="[0-9]{4}"
+            placeholder="1234"
+            required
+          />
+        </label>
+        <label>
+          <span>주문 비밀번호</span>
+          <input
+            autoComplete="off"
+            inputMode="numeric"
+            maxLength={4}
+            name="password"
+            pattern="[0-9]{4}"
+            placeholder="0000"
+            required
+            type="password"
+          />
         </label>
         <button className="button-primary" disabled={state.kind === "loading"}>
           {state.kind === "loading" ? "조회 중" : "주문 조회"}
@@ -89,8 +98,11 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
   if (state.kind === "idle") {
     return (
       <aside className="order-lookup-empty">
-        <strong>주문번호와 연락처가 일치할 때만 결과가 표시됩니다.</strong>
-        <p>Cafe24 주문 정보를 기준으로 결제와 배송 상태를 확인합니다.</p>
+        <strong>
+          주문번호, 연락처 끝 4자리, 주문 비밀번호가 일치할 때만 결과가
+          표시됩니다.
+        </strong>
+        <p>결제 상태와 배송 상태는 자체 주문 기록을 기준으로 확인합니다.</p>
       </aside>
     );
   }
@@ -116,25 +128,25 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
   return (
     <aside className="order-lookup-result">
       <div className="order-lookup-result-head">
-        <span>{result.orderId}</span>
+        <span>{result.orderNumber}</span>
         <strong>{result.shippingSummary}</strong>
       </div>
       <dl>
         <div>
           <dt>주문일</dt>
-          <dd>{formatDate(result.orderDate)}</dd>
+          <dd>{formatDate(result.createdAt)}</dd>
         </div>
         <div>
           <dt>주문 상태</dt>
-          <dd>{result.orderStatus ?? "확인 중"}</dd>
+          <dd>{orderStatusLabel(result.orderStatus)}</dd>
         </div>
         <div>
           <dt>결제 상태</dt>
-          <dd>{result.paymentStatus ?? "확인 중"}</dd>
+          <dd>{paymentStatusLabel(result.paymentStatus)}</dd>
         </div>
         <div>
           <dt>받는 분</dt>
-          <dd>{result.receiverName ?? result.buyerName ?? "확인 중"}</dd>
+          <dd>{result.recipientName ?? "확인 중"}</dd>
         </div>
       </dl>
       {result.items.length > 0 ? (
@@ -144,8 +156,8 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
               <strong>{item.name}</strong>
               <span>
                 {[
-                  item.option,
-                  item.quantity ? `${item.quantity}개` : null,
+                  `${item.quantity}개`,
+                  `${formatCurrency(item.lineTotal)}`,
                   item.status,
                 ]
                   .filter(Boolean)
@@ -158,11 +170,19 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
       {result.shipments.length > 0 ? (
         <div className="order-lookup-shipments">
           {result.shipments.map((shipment, index) => (
-            <div key={`${shipment.invoiceNo ?? index}`}>
+            <div key={`${shipment.trackingNumber ?? index}`}>
               <strong>{shipment.carrier ?? "배송사 확인 중"}</strong>
-              <span>{shipment.invoiceNo ?? shipment.status ?? "송장 준비 중"}</span>
+              <span>
+                {shipment.trackingNumber ??
+                  shipmentStatusLabel(shipment.status) ??
+                  "송장 준비 중"}
+              </span>
               {shipment.trackingUrl ? (
-                <a href={shipment.trackingUrl} rel="noopener noreferrer" target="_blank">
+                <a
+                  href={shipment.trackingUrl}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
                   배송 추적
                 </a>
               ) : null}
@@ -170,6 +190,16 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
           ))}
         </div>
       ) : null}
+      <div className="order-lookup-items">
+        <div>
+          <strong>총 결제금액</strong>
+          <span>
+            상품 {formatCurrency(result.subtotal)} · 배송비{" "}
+            {formatCurrency(result.shippingFee)} · 합계{" "}
+            {formatCurrency(result.total)}
+          </span>
+        </div>
+      </div>
     </aside>
   );
 }
@@ -189,4 +219,45 @@ function formatDate(value: string | null) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+function formatCurrency(value: number) {
+  return `${new Intl.NumberFormat("ko-KR", {
+    maximumFractionDigits: 0,
+  }).format(value)}원`;
+}
+
+function orderStatusLabel(status: OrderLookupResult["orderStatus"]) {
+  return {
+    canceled: "주문 취소",
+    delivered: "배송 완료",
+    draft: "주문 작성 중",
+    paid: "결제 완료",
+    pending_payment: "결제 대기",
+    preparing: "배송 준비",
+    refunded: "환불 완료",
+    shipped: "배송 중",
+  }[status];
+}
+
+function paymentStatusLabel(status: OrderLookupResult["paymentStatus"]) {
+  return {
+    canceled: "결제 취소",
+    failed: "결제 실패",
+    paid: "결제 완료",
+    partial_refunded: "부분 환불",
+    pending: "결제 확인 중",
+    refunded: "환불 완료",
+    unpaid: "미결제",
+  }[status];
+}
+
+function shipmentStatusLabel(status: string) {
+  return {
+    canceled: "배송 취소",
+    delivered: "배송 완료",
+    preparing: "배송 준비",
+    returned: "반품 처리",
+    shipped: "배송 중",
+  }[status as "canceled" | "delivered" | "preparing" | "returned" | "shipped"];
 }

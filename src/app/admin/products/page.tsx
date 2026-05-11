@@ -35,8 +35,8 @@ export default async function AdminProductsPage({
           <p className="admin-eyebrow">Consepot Admin</p>
           <h1>상품 관리</h1>
           <p>
-            Consepot에서 상품 내용을 입력하고, 필요할 때 Cafe24로 수동
-            동기화합니다.
+            Consepot 자체 상품 원장을 관리합니다. 저장한 가격, 재고, 판매 상태는
+            사이트 구매 흐름의 기준이 됩니다.
           </p>
         </div>
         <AdminNav />
@@ -100,7 +100,6 @@ function ProductRow({ product }: { product: ConsepotProduct }) {
       <div>{statusLabel(product.commerce.availabilityStatus)}</div>
       <div>{formatProductPrice(product)}</div>
       <div>{product.commerce.stockQuantity ?? "재고 미입력"}</div>
-      <div>{mappingLabel(product.cafe24.mappingStatus)}</div>
       <Link
         className="admin-text-button"
         href={`/admin/products/${product.id}`}
@@ -118,17 +117,6 @@ function statusLabel(status: ConsepotProduct["commerce"]["availabilityStatus"]) 
     available: "판매중",
     sold_out: "판매완료",
     upcoming: "입고 예정",
-  };
-
-  return labels[status];
-}
-
-function mappingLabel(status: ConsepotProduct["cafe24"]["mappingStatus"]) {
-  const labels = {
-    mapped: "Cafe24 연결됨",
-    not_applicable: "연결 제외",
-    pending: "동기화 대기",
-    sync_failed: "동기화 실패",
   };
 
   return labels[status];

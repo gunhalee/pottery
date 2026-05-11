@@ -10,14 +10,11 @@ import {
   verifyAdminPassword,
 } from "@/lib/admin/auth";
 import {
-  appendProductSyncLog,
   createProductDraft,
   deleteProduct,
   getProductById,
   normalizeSlug,
   updateProduct,
-  updateProductCafe24Mapping,
-  type Cafe24ProductMapping,
 } from "@/lib/shop";
 import {
   createContentDraft,
@@ -38,10 +35,6 @@ import {
   walkLexicalNodes,
 } from "@/lib/content-manager/rich-text-utils";
 import {
-  buildCafe24SyncRequestSnapshot,
-  syncProductToCafe24,
-} from "@/lib/cafe24/product-sync";
-import {
   revalidateContentSurfaces,
   revalidateDeletedProductSurfaces,
   revalidateProductSurfaces,
@@ -59,7 +52,6 @@ const draftSchema = z.object({
 
 const productImageUpdateSchema = z.object({
   alt: z.string(),
-  cafe24ImagePath: z.string().optional(),
   caption: z.string().optional(),
   height: z.number().int().positive().optional(),
   id: z.string().optional(),
@@ -100,16 +92,6 @@ const productUpdateSchema = z.object({
   story: z.string().optional(),
   titleKo: z.string().min(1),
   usageNote: z.string().optional(),
-});
-
-const cafe24MappingSchema = z.object({
-  categoryNo: z.number().int().positive().nullable(),
-  checkoutUrl: z.string().nullable(),
-  displayGroup: z.number().int().positive().nullable(),
-  id: z.string().min(1),
-  productNo: z.string().nullable(),
-  productUrl: z.string().nullable(),
-  variantCode: z.string().nullable(),
 });
 
 const productDeleteSchema = z.object({
@@ -468,105 +450,6 @@ export async function redirectToProductEditorAction(formData: FormData) {
   }
 
   redirect(`/admin/products/${product.id}`);
-}
-
-export async function syncProductToCafe24Action(formData: FormData) {
-  await assertAdmin();
-
-  const id = String(formData.get("id") ?? "");
-  const product = await getProductById(id);
-
-  if (!product) {
-    redirect("/admin/products?missing=1");
-  }
-
-  try {
-    const requestSnapshot = await buildCafe24SyncRequestSnapshot(product);
-    const cafe24 = await syncProductToCafe24(product);
-    const updated = await updateProductCafe24Mapping(product.id, cafe24);
-
-    await appendProductSyncLog({
-      action: "sync",
-      message: "Cafe24 상품 동기화를 완료했습니다.",
-      productId: product.id,
-      requestPayload: requestSnapshot,
-      responsePayload: cafe24,
-      status: "success",
-    });
-
-    revalidateProductPaths(updated?.slug ?? product.slug);
-  } catch (error) {
-    const message = getErrorMessage(error);
-
-    await updateProductCafe24Mapping(product.id, {
-      ...product.cafe24,
-      lastSyncError: message,
-      mappingStatus: "sync_failed",
-    });
-
-    await appendProductSyncLog({
-      action: "sync",
-      message,
-      productId: product.id,
-      requestPayload: await buildCafe24SyncRequestSnapshot(product),
-      status: "failed",
-    });
-
-    revalidateProductSurfaces(product.slug);
-    redirect(
-      `/admin/products/${product.id}?sync_error=${encodeURIComponent(message)}`,
-    );
-  }
-
-  redirect(`/admin/products/${product.id}?synced=1`);
-}
-
-export async function saveCafe24MappingAction(formData: FormData) {
-  await assertAdmin();
-
-  const parsed = cafe24MappingSchema.parse({
-    categoryNo: nullableIntegerValue(formData.get("categoryNo")),
-    checkoutUrl: nullableStringValue(formData.get("checkoutUrl")),
-    displayGroup: nullableIntegerValue(formData.get("displayGroup")),
-    id: stringValue(formData.get("id")),
-    productNo: nullableStringValue(formData.get("productNo")),
-    productUrl: nullableStringValue(formData.get("productUrl")),
-    variantCode: nullableStringValue(formData.get("variantCode")),
-  });
-
-  const product = await getProductById(parsed.id);
-
-  if (!product) {
-    redirect("/admin/products?missing=1");
-  }
-
-  const cafe24: Cafe24ProductMapping = {
-    ...product.cafe24,
-    categoryNo: parsed.categoryNo ?? undefined,
-    checkoutUrl: parsed.checkoutUrl ?? undefined,
-    displayGroup: parsed.displayGroup ?? undefined,
-    lastSyncError: undefined,
-    mappingStatus:
-      parsed.checkoutUrl || parsed.productNo || parsed.productUrl
-        ? "mapped"
-        : "pending",
-    productNo: parsed.productNo,
-    productUrl: parsed.productUrl ?? undefined,
-    variantCode: parsed.variantCode ?? undefined,
-  };
-
-  const updated = await updateProductCafe24Mapping(product.id, cafe24);
-
-  await appendProductSyncLog({
-    action: "manual_mapping",
-    message: "Cafe24 매핑 정보를 수동 저장했습니다.",
-    productId: product.id,
-    requestPayload: cafe24,
-    status: "success",
-  });
-
-  revalidateProductPaths(updated?.slug ?? product.slug);
-  redirect(`/admin/products/${product.id}?mapping_saved=1`);
 }
 
 export async function deleteProductAction(formData: FormData) {

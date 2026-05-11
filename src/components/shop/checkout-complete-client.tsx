@@ -1,0 +1,164 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import type { PortOnePaymentCompleteResult } from "@/lib/payments/portone-model";
+
+type CheckoutCompleteClientProps = {
+  errorCode?: string;
+  errorMessage?: string;
+  orderId?: string;
+  paymentId?: string;
+};
+
+type CompletionState =
+  | {
+      error: null;
+      result: null;
+      status: "idle" | "verifying";
+    }
+  | {
+      error: string;
+      result: null;
+      status: "error";
+    }
+  | {
+      error: null;
+      result: PortOnePaymentCompleteResult;
+      status: "success";
+    };
+
+export function CheckoutCompleteClient({
+  errorCode,
+  errorMessage,
+  orderId,
+  paymentId,
+}: CheckoutCompleteClientProps) {
+  const [state, setState] = useState<CompletionState>(() =>
+    getInitialCompletionState({
+      errorCode,
+      errorMessage,
+      orderId,
+      paymentId,
+    }),
+  );
+
+  useEffect(() => {
+    if (errorCode || !orderId || !paymentId) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function verifyPayment() {
+      try {
+        const response = await fetch("/api/payments/portone/complete", {
+          body: JSON.stringify({
+            orderId,
+            paymentId,
+          }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+          method: "POST",
+          signal: controller.signal,
+        });
+        const result = (await response.json().catch(() => ({}))) as
+          | (PortOnePaymentCompleteResult & { error?: never })
+          | { error?: string };
+
+        if (!response.ok || !("orderNumber" in result)) {
+          throw new Error(result.error ?? "결제 검증에 실패했습니다.");
+        }
+
+        setState({
+          error: null,
+          result,
+          status: "success",
+        });
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        setState({
+          error:
+            error instanceof Error
+              ? error.message
+              : "결제 검증 중 오류가 발생했습니다.",
+          result: null,
+          status: "error",
+        });
+      }
+    }
+
+    verifyPayment();
+
+    return () => {
+      controller.abort();
+    };
+  }, [errorCode, errorMessage, orderId, paymentId]);
+
+  if (state.status === "success") {
+    return (
+      <div className="checkout-result">
+        <span>결제 확인</span>
+        <strong>{state.result.orderNumber}</strong>
+        <p>결제 검증이 완료되었습니다. 주문 조회에서 진행 상태를 확인해 주세요.</p>
+        <Link className="button-primary" href="/order/lookup" prefetch={false}>
+          주문 조회하기
+        </Link>
+      </div>
+    );
+  }
+
+  if (state.status === "error") {
+    return (
+      <div className="checkout-result">
+        <span>결제 확인</span>
+        <strong>확인이 필요합니다</strong>
+        <p className="checkout-error">{state.error}</p>
+        <Link className="button-primary" href="/order/lookup" prefetch={false}>
+          주문 조회하기
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="checkout-result">
+      <span>결제 확인</span>
+      <strong>결제 정보를 확인하고 있습니다</strong>
+      <p>브라우저를 닫지 말고 잠시만 기다려 주세요.</p>
+    </div>
+  );
+}
+
+function getInitialCompletionState({
+  errorCode,
+  errorMessage,
+  orderId,
+  paymentId,
+}: CheckoutCompleteClientProps): CompletionState {
+  if (errorCode) {
+    return {
+      error: errorMessage ?? "결제가 완료되지 않았습니다.",
+      result: null,
+      status: "error",
+    };
+  }
+
+  if (!orderId || !paymentId) {
+    return {
+      error: "결제 완료 정보를 찾지 못했습니다.",
+      result: null,
+      status: "error",
+    };
+  }
+
+  return {
+    error: null,
+    result: null,
+    status: "verifying",
+  };
+}

@@ -84,7 +84,6 @@ export function ProductImageManager({
       JSON.stringify(
         images.map((image) => ({
           alt: image.alt,
-          cafe24ImagePath: image.cafe24ImagePath,
           caption: image.caption,
           height: image.height,
           id: image.id,
@@ -617,7 +616,7 @@ function normalizeEditableImage(
 }
 
 function hasRealImageSource(image: ProductImage) {
-  return Boolean(image.src || image.cafe24ImagePath);
+  return Boolean(image.src);
 }
 
 function ensureSinglePrimary(images: EditableProductImage[]) {

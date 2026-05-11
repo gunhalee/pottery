@@ -9,6 +9,7 @@
     "lint": "eslint",
     "media:migrate": "node scripts/migrate-media-assets.mjs",
     "media:migrate:apply": "node scripts/migrate-media-assets.mjs --apply",
+    "orders:seed": "node scripts/seed-shop-orders.mjs",
     "smoke:supabase": "node scripts/smoke-supabase-rpc.mjs",
     "typecheck": "tsc --noEmit"
   },
@@ -21,6 +22,7 @@
     "@lexical/rich-text": "^0.44.0",
     "@lexical/selection": "^0.44.0",
     "@lexical/utils": "^0.44.0",
+    "@portone/browser-sdk": "^0.1.6",
     "@supabase/supabase-js": "^2.105.3",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",

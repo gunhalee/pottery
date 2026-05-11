@@ -46,15 +46,8 @@ export type ProductCtaKind =
   | "coming_soon"
   | "archive";
 
-export type Cafe24MappingStatus =
-  | "pending"
-  | "mapped"
-  | "sync_failed"
-  | "not_applicable";
-
 export type ProductImage = {
   alt: string;
-  cafe24ImagePath?: string;
   caption?: string;
   height?: number;
   id?: string;
@@ -73,21 +66,9 @@ export type ProductCommerceSnapshot = {
   availabilityStatus: AvailabilityStatus;
   currency: "KRW";
   price: number | null;
-  source: "cafe24";
+  source: "internal";
   stockQuantity: number | null;
   syncedAt?: string;
-};
-
-export type Cafe24ProductMapping = {
-  categoryNo?: number;
-  checkoutUrl?: string;
-  displayGroup?: number;
-  lastSyncError?: string;
-  lastSyncedAt?: string;
-  mappingStatus: Cafe24MappingStatus;
-  productNo: string | null;
-  productUrl?: string;
-  variantCode?: string;
 };
 
 export type ProductContent = {
@@ -117,10 +98,7 @@ export type ProductContent = {
   updatedAt: string;
   usageNote?: string;
 };
-
-export type ConsepotProduct = ProductContent & {
-  cafe24: Cafe24ProductMapping;
-};
+export type ConsepotProduct = ProductContent;
 
 export type ProductListItem = Pick<
   ProductContent,
@@ -145,18 +123,4 @@ export type ProductListItem = Pick<
 export type ProductCta = {
   kind: ProductCtaKind;
   label: string;
-};
-
-export type ProductSyncLogStatus = "success" | "failed" | "preview";
-
-export type ProductSyncLog = {
-  action: "preview" | "sync" | "manual_mapping";
-  createdAt: string;
-  id: number;
-  message: string | null;
-  productId: string;
-  provider: "cafe24";
-  requestPayload: unknown;
-  responsePayload: unknown;
-  status: ProductSyncLogStatus;
 };

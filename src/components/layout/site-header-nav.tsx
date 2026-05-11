@@ -13,7 +13,7 @@ type SiteHeaderNavProps = {
 };
 
 const relatedRoutePrefixes: Record<string, readonly string[]> = {
-  "/shop": ["/order/lookup", "/success", "/fail"],
+  "/shop": ["/checkout", "/order/lookup"],
 };
 
 export function SiteHeaderNav({ items }: SiteHeaderNavProps) {

@@ -102,7 +102,6 @@ async function verifyMediaAssetRpcSuccess() {
 
 async function verifyProductRpcSuccess() {
   const { error } = await service.rpc("save_shop_product_with_relations", {
-    cafe24_row: buildCafe24Row(),
     media_usage_rows: [
       {
         alt_override: "Codex smoke product cover",
@@ -119,23 +118,9 @@ async function verifyProductRpcSuccess() {
   assertNoError(error, "save_shop_product_with_relations");
 
   await expectCount(service, "shop_products", "id", ids.product, 1);
-  await expectCount(
-    service,
-    "shop_product_cafe24_mappings",
-    "product_id",
-    ids.product,
-    1,
-  );
   await expectCount(service, "media_usages", "owner_id", ids.product, 1);
 
   await expectCount(publicClient, "shop_products", "id", ids.product, 1);
-  await expectCount(
-    publicClient,
-    "shop_product_cafe24_mappings",
-    "product_id",
-    ids.product,
-    1,
-  );
   await expectCount(publicClient, "media_usages", "owner_id", ids.product, 1);
   await expectCount(publicClient, "media_assets", "id", ids.productAsset, 1);
   await expectCount(
@@ -145,7 +130,7 @@ async function verifyProductRpcSuccess() {
     ids.productAsset,
     2,
   );
-  pass("published product, mapping, media usage, asset, and variants are public readable");
+  pass("published product, media usage, asset, and variants are public readable");
 }
 
 async function verifyPublishedContentRls() {
@@ -198,7 +183,6 @@ async function verifyPrivateRowsStayPrivate() {
   const { error: productError } = await service.rpc(
     "save_shop_product_with_relations",
     {
-      cafe24_row: null,
       media_usage_rows: [],
       product_row: buildProductRow(
         ids.privateProduct,
@@ -307,7 +291,6 @@ async function verifyMediaAssetRpcAtomicFailure() {
 async function verifyProductRpcAtomicFailure() {
   const missingAssetId = randomUUID();
   const { error } = await service.rpc("save_shop_product_with_relations", {
-    cafe24_row: buildCafe24Row(),
     media_usage_rows: [
       {
         alt_override: "Missing asset",
@@ -323,15 +306,8 @@ async function verifyProductRpcAtomicFailure() {
 
   assert(error, "expected product RPC with missing asset to fail");
   await expectCount(service, "shop_products", "id", ids.failedProduct, 0);
-  await expectCount(
-    service,
-    "shop_product_cafe24_mappings",
-    "product_id",
-    ids.failedProduct,
-    0,
-  );
   await expectCount(service, "media_usages", "owner_id", ids.failedProduct, 0);
-  pass("failed product RPC leaves no partial product, mapping, or usage rows");
+  pass("failed product RPC leaves no partial product or usage rows");
 }
 
 async function verifyPublicRpcDenied() {
@@ -345,7 +321,6 @@ async function verifyPublicRpcDenied() {
   );
 
   const deniedProduct = await publicClient.rpc("save_shop_product_with_relations", {
-    cafe24_row: null,
     media_usage_rows: [],
     product_row: buildProductRow(ids.deniedProduct, true, "codex-smoke-denied"),
   });
@@ -406,13 +381,6 @@ async function verifyDeleteRpcsSuccess() {
   assertNoError(productDelete.error, "delete_shop_product_with_relations");
 
   await expectCount(service, "shop_products", "id", ids.product, 0);
-  await expectCount(
-    service,
-    "shop_product_cafe24_mappings",
-    "product_id",
-    ids.product,
-    0,
-  );
   await expectCount(service, "media_usages", "owner_id", ids.product, 0);
   await expectCount(publicClient, "media_assets", "id", ids.productAsset, 0);
 
@@ -637,20 +605,6 @@ function buildContentEntryRow(id, kind, published, slugPrefix) {
   };
 }
 
-function buildCafe24Row() {
-  return {
-    category_no: 29,
-    checkout_url: null,
-    display_group: 1,
-    last_sync_error: null,
-    last_synced_at: null,
-    mapping_status: "pending",
-    product_no: null,
-    product_url: null,
-    variant_code: null,
-  };
-}
-
 async function expectCount(client, table, column, value, expected) {
   const { count, error } = await client
     .from(table)
@@ -700,7 +654,6 @@ async function cleanup() {
 
   await deleteIn("media_usages", "owner_id", [...productIds, ...contentIds]);
   await deleteIn("media_usages", "asset_id", assetIds);
-  await deleteIn("shop_product_cafe24_mappings", "product_id", productIds);
   await deleteIn("shop_products", "id", productIds);
   await deleteIn("content_entries", "id", contentIds);
   await deleteIn("media_variants", "asset_id", assetIds);

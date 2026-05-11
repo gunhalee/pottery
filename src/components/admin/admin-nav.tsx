@@ -8,6 +8,9 @@ export function AdminNav() {
         <Link href="/admin/products" prefetch={false}>
           상품
         </Link>
+        <Link href="/admin/orders" prefetch={false}>
+          주문
+        </Link>
         <Link href="/admin/news" prefetch={false}>
           소식
         </Link>

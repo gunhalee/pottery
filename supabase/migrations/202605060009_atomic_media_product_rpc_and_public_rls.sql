@@ -1,6 +1,5 @@
 create or replace function public.save_shop_product_with_relations(
   product_row jsonb,
-  cafe24_row jsonb default null,
   media_usage_rows jsonb default '[]'::jsonb
 )
 returns uuid
@@ -104,64 +103,6 @@ begin
     title_ko = excluded.title_ko,
     updated_at = excluded.updated_at,
     usage_note = excluded.usage_note;
-
-  if cafe24_row is not null and jsonb_typeof(cafe24_row) = 'object' then
-    insert into public.shop_product_cafe24_mappings (
-      product_id,
-      category_no,
-      checkout_url,
-      display_group,
-      last_sync_error,
-      last_synced_at,
-      mapping_status,
-      product_no,
-      product_url,
-      variant_code
-    )
-    values (
-      v_product_id,
-      nullif(cafe24_row->>'category_no', '')::integer,
-      nullif(cafe24_row->>'checkout_url', ''),
-      coalesce(nullif(cafe24_row->>'display_group', '')::integer, 1),
-      nullif(cafe24_row->>'last_sync_error', ''),
-      nullif(cafe24_row->>'last_synced_at', '')::timestamptz,
-      coalesce(nullif(cafe24_row->>'mapping_status', ''), 'pending'),
-      nullif(cafe24_row->>'product_no', ''),
-      nullif(cafe24_row->>'product_url', ''),
-      nullif(cafe24_row->>'variant_code', '')
-    )
-    on conflict (product_id) do update set
-      category_no = excluded.category_no,
-      checkout_url = excluded.checkout_url,
-      display_group = excluded.display_group,
-      last_sync_error = excluded.last_sync_error,
-      last_synced_at = excluded.last_synced_at,
-      mapping_status = excluded.mapping_status,
-      product_no = excluded.product_no,
-      product_url = excluded.product_url,
-      variant_code = excluded.variant_code
-    where (
-      shop_product_cafe24_mappings.category_no,
-      shop_product_cafe24_mappings.checkout_url,
-      shop_product_cafe24_mappings.display_group,
-      shop_product_cafe24_mappings.last_sync_error,
-      shop_product_cafe24_mappings.last_synced_at,
-      shop_product_cafe24_mappings.mapping_status,
-      shop_product_cafe24_mappings.product_no,
-      shop_product_cafe24_mappings.product_url,
-      shop_product_cafe24_mappings.variant_code
-    ) is distinct from (
-      excluded.category_no,
-      excluded.checkout_url,
-      excluded.display_group,
-      excluded.last_sync_error,
-      excluded.last_synced_at,
-      excluded.mapping_status,
-      excluded.product_no,
-      excluded.product_url,
-      excluded.variant_code
-    );
-  end if;
 
   delete from public.media_usages
   where owner_type = 'product'
@@ -284,13 +225,13 @@ begin
 end;
 $$;
 
-revoke all on function public.save_shop_product_with_relations(jsonb, jsonb, jsonb) from public;
+revoke all on function public.save_shop_product_with_relations(jsonb, jsonb) from public;
 revoke all on function public.create_media_asset_with_variants(jsonb, jsonb) from public;
 
 do $$
 begin
   if exists (select 1 from pg_roles where rolname = 'service_role') then
-    execute 'grant execute on function public.save_shop_product_with_relations(jsonb, jsonb, jsonb) to service_role';
+    execute 'grant execute on function public.save_shop_product_with_relations(jsonb, jsonb) to service_role';
     execute 'grant execute on function public.create_media_asset_with_variants(jsonb, jsonb) to service_role';
   end if;
 end;
@@ -352,7 +293,6 @@ begin
     execute 'grant execute on function public.is_public_media_usage(text, uuid) to anon';
     execute 'grant execute on function public.is_public_media_asset(uuid) to anon';
     execute 'grant select on public.shop_products to anon';
-    execute 'grant select on public.shop_product_cafe24_mappings to anon';
     execute 'grant select on public.content_entries to anon';
     execute 'grant select on public.media_assets to anon';
     execute 'grant select on public.media_variants to anon';
@@ -364,7 +304,6 @@ begin
     execute 'grant execute on function public.is_public_media_usage(text, uuid) to authenticated';
     execute 'grant execute on function public.is_public_media_asset(uuid) to authenticated';
     execute 'grant select on public.shop_products to authenticated';
-    execute 'grant select on public.shop_product_cafe24_mappings to authenticated';
     execute 'grant select on public.content_entries to authenticated';
     execute 'grant select on public.media_assets to authenticated';
     execute 'grant select on public.media_variants to authenticated';
@@ -379,20 +318,6 @@ on public.shop_products
 for select
 to anon, authenticated
 using (published = true);
-
-drop policy if exists "Public can read published product mappings" on public.shop_product_cafe24_mappings;
-create policy "Public can read published product mappings"
-on public.shop_product_cafe24_mappings
-for select
-to anon, authenticated
-using (
-  exists (
-    select 1
-    from public.shop_products product
-    where product.id = product_id
-      and product.published = true
-  )
-);
 
 drop policy if exists "Public can read published content entries" on public.content_entries;
 create policy "Public can read published content entries"

@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import {
-  Cafe24OrderLookupVerificationError,
-  lookupCafe24Order,
-} from "@/lib/cafe24/order-lookup";
-import { Cafe24ApiError } from "@/lib/cafe24/client";
+import { OrderLookupVerificationError } from "@/lib/orders/order-model";
+import { lookupOrder } from "@/lib/orders/order-store";
 import {
   consumeRateLimit,
   getClientIp,
@@ -16,16 +13,16 @@ const lookupRateLimit = {
   limit: 8,
   windowMs: 60_000,
 };
+
 const lookupPayloadSchema = z.object({
-  buyerName: z.string().trim().max(80).optional(),
-  email: z.string().trim().toLowerCase().max(254).optional(),
-  orderId: z
+  orderNumber: z
     .string()
     .trim()
     .min(1)
     .max(64)
-    .regex(/^[A-Za-z0-9-]+$/),
-  phone: z.string().trim().max(20).optional(),
+    .regex(/^CP-[0-9]{8}-[0-9]{6}$/i),
+  password: z.string().trim().regex(/^[0-9]{4}$/),
+  phoneLast4: z.string().trim().regex(/^[0-9]{4}$/),
 });
 
 export async function POST(request: Request) {
@@ -70,23 +67,20 @@ export async function POST(request: Request) {
 
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "주문번호와 연락처를 입력해 주세요." },
+      { error: "주문번호, 연락처 끝 4자리, 주문 비밀번호 4자리를 입력해 주세요." },
       { status: 400 },
     );
   }
 
   try {
-    const result = await lookupCafe24Order(parsed.data);
+    const result = await lookupOrder(parsed.data);
     return NextResponse.json(result, {
       headers: {
         "Cache-Control": "no-store",
       },
     });
   } catch (error) {
-    if (
-      error instanceof Cafe24OrderLookupVerificationError ||
-      (error instanceof Cafe24ApiError && [404, 422].includes(error.status))
-    ) {
+    if (error instanceof OrderLookupVerificationError) {
       return NextResponse.json(
         { error: "주문 정보를 확인하지 못했습니다." },
         { status: 404 },

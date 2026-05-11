@@ -35,7 +35,7 @@ export default async function AdminLoginPage({
           <p className="admin-eyebrow">Consepot Admin</p>
           <h1>운영자 로그인</h1>
           <p>
-            상품 등록과 Cafe24 동기화는 단일 운영자 세션에서만 실행합니다.
+            상품 등록과 주문 운영은 단일 운영자 세션에서만 실행합니다.
           </p>
         </div>
 

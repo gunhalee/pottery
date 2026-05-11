@@ -1,4 +1,4 @@
-create extension if not exists pgcrypto;
+﻿create extension if not exists pgcrypto;
 
 create table if not exists public.shop_products (
   id uuid primary key default gen_random_uuid(),
@@ -45,27 +45,9 @@ create table if not exists public.shop_product_images (
   product_id uuid not null references public.shop_products (id) on delete cascade,
   src text,
   alt text not null,
-  cafe24_image_path text,
   placeholder_label text,
   is_primary boolean not null default false,
   sort_order integer not null default 0 check (sort_order >= 0),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create table if not exists public.shop_product_cafe24_mappings (
-  product_id uuid primary key references public.shop_products (id) on delete cascade,
-  product_no text unique,
-  variant_code text,
-  product_url text,
-  checkout_url text,
-  category_no integer check (category_no is null or category_no > 0),
-  display_group integer not null default 1 check (display_group > 0),
-  mapping_status text not null default 'pending' check (
-    mapping_status in ('pending', 'mapped', 'sync_failed', 'not_applicable')
-  ),
-  last_synced_at timestamptz,
-  last_sync_error text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -92,13 +74,6 @@ before update on public.shop_product_images
 for each row
 execute function public.set_updated_at();
 
-drop trigger if exists shop_product_cafe24_mappings_set_updated_at
-on public.shop_product_cafe24_mappings;
-create trigger shop_product_cafe24_mappings_set_updated_at
-before update on public.shop_product_cafe24_mappings
-for each row
-execute function public.set_updated_at();
-
 create index if not exists shop_products_published_created_at_idx
 on public.shop_products (published, created_at desc);
 
@@ -112,12 +87,8 @@ create unique index if not exists shop_product_images_one_primary_idx
 on public.shop_product_images (product_id)
 where is_primary;
 
-create index if not exists shop_product_cafe24_mappings_status_idx
-on public.shop_product_cafe24_mappings (mapping_status);
-
 alter table public.shop_products enable row level security;
 alter table public.shop_product_images enable row level security;
-alter table public.shop_product_cafe24_mappings enable row level security;
 
 insert into public.shop_products (
   id,
@@ -164,7 +135,7 @@ values
     '지름 약 11cm, 높이 약 5cm',
     '식기로 사용할 수 있습니다.',
     '강한 충격과 급격한 온도 변화를 피해 주세요.',
-    '완충 포장 후 Cafe24 주문 정보를 기준으로 배송합니다.',
+    '완충 포장 후 자체 주문 기록을 기준으로 배송합니다.',
     true,
     '2026-05-05'
   ),
@@ -212,7 +183,7 @@ values
     '높이 약 13cm',
     '드라이플라워와 작은 생화를 꽂기 좋습니다.',
     '물 사용 후 바닥면을 충분히 말려 주세요.',
-    '입고 일정 확정 후 Cafe24 상품으로 연결합니다.',
+    '입고 일정 확정 후 자체 주문 화면으로 연결합니다.',
     true,
     '2026-05-05'
   )
@@ -268,19 +239,3 @@ values
     0
   )
 on conflict do nothing;
-
-insert into public.shop_product_cafe24_mappings (
-  product_id,
-  category_no,
-  display_group,
-  mapping_status,
-  product_no
-)
-values
-  ('00000000-0000-0000-0000-000000000001', 29, 1, 'pending', null),
-  ('00000000-0000-0000-0000-000000000002', 29, 1, 'pending', null),
-  ('00000000-0000-0000-0000-000000000003', 29, 1, 'pending', null)
-on conflict (product_id) do update set
-  category_no = excluded.category_no,
-  display_group = excluded.display_group,
-  mapping_status = excluded.mapping_status;

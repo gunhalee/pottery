@@ -1,8 +1,18 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import type { FocusEvent, KeyboardEvent } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import type {
+  CheckoutMode,
+  ShippingMethod,
+} from "@/lib/orders/order-model";
+import {
+  calculateOrderAmounts,
+  ORDER_FREE_SHIPPING_THRESHOLD_KRW,
+  ORDER_SHIPPING_FEE_KRW,
+} from "@/lib/orders/pricing";
 
 type ProductPurchasePanelProps = {
   availabilityLabel: string;
@@ -19,10 +29,6 @@ type ActionMessage = {
   text: string;
 };
 
-type ShippingMethod = "parcel" | "pickup";
-
-const shippingFee = 3000;
-const freeShippingThreshold = 50000;
 const shippingOptions: Array<{
   label: string;
   value: ShippingMethod;
@@ -40,6 +46,7 @@ export function ProductPurchasePanel({
   productSlug,
   productTitle,
 }: ProductPurchasePanelProps) {
+  const router = useRouter();
   const effectiveMaxQuantity = Math.max(1, maxQuantity ?? 99);
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -54,22 +61,24 @@ export function ProductPurchasePanel({
     useState(false);
   const shippingMenuId = useId();
   const clampedQuantity = clampQuantity(quantity, effectiveMaxQuantity);
-  const productTotal = price === null ? null : price * clampedQuantity;
-  const includedShippingFee =
-    shippingMethod === "parcel" &&
-    productTotal !== null &&
-    productTotal < freeShippingThreshold
-      ? shippingFee
-      : 0;
-  const orderTotal =
-    productTotal === null ? null : productTotal + includedShippingFee;
+  const orderAmounts = calculateOrderAmounts({
+    quantity: clampedQuantity,
+    shippingMethod,
+    unitPrice: price,
+  });
+  const includedShippingFee = orderAmounts.shippingFeeKrw;
+  const orderTotal = orderAmounts.totalKrw;
   const selectedShippingOption =
     shippingOptions.find((option) => option.value === shippingMethod) ??
     shippingOptions[0];
 
   const formatted = useMemo(
     () => ({
-      shipping: formatCurrency(shippingFee, currency),
+      freeShippingThreshold: formatCurrency(
+        ORDER_FREE_SHIPPING_THRESHOLD_KRW,
+        currency,
+      ),
+      shipping: formatCurrency(ORDER_SHIPPING_FEE_KRW, currency),
       total:
         orderTotal === null
           ? "가격 입력 예정"
@@ -152,6 +161,22 @@ export function ProductPurchasePanel({
       id: Date.now(),
       text: `${prefix} 기능은 결제 연동 후 활성화됩니다.`,
     });
+  }
+
+  function startCheckout(checkoutMode: CheckoutMode) {
+    if (!isPurchasable || price === null) {
+      showPlaceholder(checkoutMode === "gift" ? "선물하기" : "구매하기");
+      return;
+    }
+
+    const params = new URLSearchParams({
+      mode: checkoutMode,
+      product: productSlug,
+      quantity: String(clampedQuantity),
+      shipping: shippingMethod,
+    });
+
+    router.push(`/checkout?${params.toString()}`);
   }
 
   function selectShippingMethod(value: ShippingMethod) {
@@ -341,7 +366,8 @@ export function ProductPurchasePanel({
             ) : (
               <>
                 <span>
-                  택배 · 배송비 {formatted.shipping} · 50,000원 이상 무료배송
+                  택배 · 배송비 {formatted.shipping} ·{" "}
+                  {formatted.freeShippingThreshold} 이상 무료배송
                 </span>
                 <strong>도서산간 배송비는 주문 전 별도 안내드립니다.</strong>
               </>
@@ -398,14 +424,14 @@ export function ProductPurchasePanel({
       <div className="product-action-grid">
         <button
           className="product-buy-button"
-          onClick={() => showPlaceholder("구매하기")}
+          onClick={() => startCheckout("standard")}
           type="button"
         >
           구매하기
         </button>
         <button
           className="product-secondary-button"
-          onClick={() => showPlaceholder("선물하기")}
+          onClick={() => startCheckout("gift")}
           type="button"
         >
           <GiftIcon />
@@ -424,7 +450,7 @@ export function ProductPurchasePanel({
         <button
           aria-label="N pay 구매하기"
           className="product-npay-button"
-          onClick={() => showPlaceholder("N pay 구매하기")}
+          onClick={() => startCheckout("naver_pay")}
           type="button"
         >
           <Image
@@ -463,7 +489,7 @@ export function ProductPurchasePanel({
           aria-label="선물하기"
           className="product-mobile-gift"
           disabled={!isMobilePurchaseBarVisible}
-          onClick={() => showPlaceholder("선물하기")}
+          onClick={() => startCheckout("gift")}
           type="button"
         >
           <GiftIcon />
@@ -472,7 +498,7 @@ export function ProductPurchasePanel({
           aria-label="N pay 구매하기"
           className="product-mobile-npay"
           disabled={!isMobilePurchaseBarVisible}
-          onClick={() => showPlaceholder("N pay 구매하기")}
+          onClick={() => startCheckout("naver_pay")}
           type="button"
         >
           <Image
@@ -487,7 +513,7 @@ export function ProductPurchasePanel({
         <button
           className="product-mobile-buy"
           disabled={!isMobilePurchaseBarVisible}
-          onClick={() => showPlaceholder("구매하기")}
+          onClick={() => startCheckout("standard")}
           type="button"
         >
           구매하기

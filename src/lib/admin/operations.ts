@@ -63,20 +63,7 @@ export type OperationsHealthItem = {
   status: "danger" | "neutral" | "warning";
 };
 
-export type Cafe24SyncLogItem = {
-  action: "manual_mapping" | "preview" | "sync";
-  createdAt: string;
-  id: number;
-  message: string | null;
-  productHref: string;
-  productId: string;
-  productSlug: string | null;
-  productTitle: string;
-  status: "failed" | "preview" | "success";
-};
-
 export type OperationsDashboardData = {
-  cafe24SyncLogs: Cafe24SyncLogItem[];
   cleanupLogs: UploadCleanupLog[];
   cleanupPreview: Awaited<ReturnType<typeof inspectOrphanUploads>>;
   cronRunLogs: CronRunLog[];
@@ -87,7 +74,6 @@ export type OperationsDashboardData = {
   rateLimitBuckets: RateLimitBucketSnapshot[];
   stats: {
     bodyUnlinkedImages: number;
-    cafe24SyncFailures: number;
     cleanupFailures: number;
     cleanupPreviewCandidates: number;
     contentImages: number;
@@ -111,20 +97,8 @@ type CleanupLogRow = {
   success: boolean;
 };
 
-type ProductSyncLogRow = {
-  action: Cafe24SyncLogItem["action"];
-  created_at: string;
-  id: number;
-  message: string | null;
-  product_id: string;
-  request_payload: unknown;
-  response_payload: unknown;
-  status: Cafe24SyncLogItem["status"];
-};
-
 export async function getOperationsDashboardData(): Promise<OperationsDashboardData> {
   const [
-    cafe24SyncLogRows,
     cleanupLogs,
     cleanupPreview,
     cronRunLogs,
@@ -133,7 +107,6 @@ export async function getOperationsDashboardData(): Promise<OperationsDashboardD
     entries,
     mediaDiagnostics,
   ] = await Promise.all([
-    readCafe24SyncLogs(),
     readUploadCleanupLogs(),
     inspectOrphanUploads({ maxCandidates: 30, minAgeHours: 48 }),
     readCronRunLogs(),
@@ -143,22 +116,6 @@ export async function getOperationsDashboardData(): Promise<OperationsDashboardD
     getMediaDiagnostics(120),
   ]);
   const productBySlug = new Map(products.map((product) => [product.slug, product]));
-  const productById = new Map(products.map((product) => [product.id, product]));
-  const cafe24SyncLogs = cafe24SyncLogRows.map((log) => {
-    const product = productById.get(log.product_id);
-
-    return {
-      action: log.action,
-      createdAt: log.created_at,
-      id: log.id,
-      message: log.message,
-      productHref: product ? `/admin/products/${product.id}` : "/admin/products",
-      productId: log.product_id,
-      productSlug: product?.slug ?? null,
-      productTitle: product?.titleKo ?? "삭제되었거나 찾을 수 없는 상품",
-      status: log.status,
-    } satisfies Cafe24SyncLogItem;
-  });
   const mediaReferences: MediaReferenceItem[] = [];
   const productContentLinks: ProductContentLinkItem[] = [];
 
@@ -243,8 +200,6 @@ export async function getOperationsDashboardData(): Promise<OperationsDashboardD
     bodyUnlinkedImages: mediaReferences.filter(
       (item) => item.status === "body-unlinked",
     ).length,
-    cafe24SyncFailures: cafe24SyncLogs.filter((log) => log.status === "failed")
-      .length,
     cleanupFailures: cleanupLogs.filter((log) => !log.success).length,
     cleanupPreviewCandidates: cleanupPreview.candidates.length,
     contentImages,
@@ -263,12 +218,10 @@ export async function getOperationsDashboardData(): Promise<OperationsDashboardD
   };
 
   return {
-    cafe24SyncLogs,
     cleanupLogs,
     cleanupPreview,
     cronRunLogs,
     healthItems: buildHealthItems({
-      cafe24SyncLogs,
       cleanupLogs,
       cleanupPreviewCandidates: stats.cleanupPreviewCandidates,
       cronRunLogs,
@@ -287,7 +240,6 @@ export async function getOperationsDashboardData(): Promise<OperationsDashboardD
 }
 
 function buildHealthItems({
-  cafe24SyncLogs,
   cleanupLogs,
   cleanupPreviewCandidates,
   cronRunLogs,
@@ -295,7 +247,6 @@ function buildHealthItems({
   rateLimitBuckets,
   stats,
 }: {
-  cafe24SyncLogs: Cafe24SyncLogItem[];
   cleanupLogs: UploadCleanupLog[];
   cleanupPreviewCandidates: number;
   cronRunLogs: CronRunLog[];
@@ -305,9 +256,6 @@ function buildHealthItems({
 }): OperationsHealthItem[] {
   const recentCleanupFailures = cleanupLogs.filter(
     (log) => !log.success && isWithinHours(log.createdAt, 24),
-  );
-  const recentCafe24Failures = cafe24SyncLogs.filter(
-    (log) => log.status === "failed" && isWithinHours(log.createdAt, 24),
   );
   const recentCronFailures = cronRunLogs.filter(
     (log) => log.status === "failed" && isWithinHours(log.startedAt, 24),
@@ -381,43 +329,7 @@ function buildHealthItems({
           ? "danger"
           : "neutral",
     },
-    {
-      detail:
-        recentCafe24Failures.length > 0
-          ? `${recentCafe24Failures.length}건의 최근 Cafe24 동기화 실패가 있습니다.`
-          : cafe24SyncLogs.length > 0
-            ? "최근 Cafe24 동기화 로그에 즉시 조치할 실패가 없습니다."
-            : "아직 Cafe24 동기화 로그가 없습니다.",
-      href: "/admin/products",
-      label: "Cafe24 동기화",
-      status: recentCafe24Failures.length > 0 ? "danger" : "neutral",
-    },
   ];
-}
-
-async function readCafe24SyncLogs(limit = 30): Promise<ProductSyncLogRow[]> {
-  if (!isSupabaseConfigured()) {
-    return [];
-  }
-
-  const supabase = getSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("shop_product_sync_logs")
-    .select(
-      "id, product_id, action, status, message, request_payload, response_payload, created_at",
-    )
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  if (error) {
-    if (isMissingProductSyncLogTableError(error)) {
-      return [];
-    }
-
-    throw new Error(`Failed to read Cafe24 sync logs: ${error.message}`);
-  }
-
-  return (data ?? []) as ProductSyncLogRow[];
 }
 
 async function readUploadCleanupLogs(limit = 40): Promise<UploadCleanupLog[]> {
@@ -458,14 +370,6 @@ function isMissingCleanupLogTableError(error: { message?: string }) {
   const message = error.message ?? "";
   return (
     message.includes("upload_cleanup_logs") &&
-    (message.includes("schema cache") || message.includes("does not exist"))
-  );
-}
-
-function isMissingProductSyncLogTableError(error: { message?: string }) {
-  const message = error.message ?? "";
-  return (
-    message.includes("shop_product_sync_logs") &&
     (message.includes("schema cache") || message.includes("does not exist"))
   );
 }

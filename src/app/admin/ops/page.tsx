@@ -24,7 +24,7 @@ export default async function AdminOpsPage() {
           <p className="admin-eyebrow">Consepot Admin</p>
           <h1>운영 점검</h1>
           <p>
-            업로드 cleanup, 미디어 참조, Cafe24 동기화, 상품-콘텐츠 연결 상태를
+            업로드 cleanup, 미디어 참조, 상품-콘텐츠 연결 상태를
             한 곳에서 확인합니다.
           </p>
         </div>
@@ -48,11 +48,6 @@ export default async function AdminOpsPage() {
           label="cleanup 실패"
           tone={dashboard.stats.cleanupFailures > 0 ? "danger" : "neutral"}
           value={dashboard.stats.cleanupFailures}
-        />
-        <StatCard
-          label="Cafe24 실패"
-          tone={dashboard.stats.cafe24SyncFailures > 0 ? "danger" : "neutral"}
-          value={dashboard.stats.cafe24SyncFailures}
         />
         <StatCard
           label="Cron 실패"
@@ -221,38 +216,6 @@ export default async function AdminOpsPage() {
 
       <section className="admin-panel">
         <div className="admin-panel-head">
-          <h2>Cafe24 동기화 로그</h2>
-          <span>최근 {dashboard.cafe24SyncLogs.length}건</span>
-        </div>
-        {dashboard.cafe24SyncLogs.length > 0 ? (
-          <div className="admin-ops-table">
-            {dashboard.cafe24SyncLogs.map((log) => (
-              <article
-                className={`admin-ops-row ${
-                  log.status === "failed" ? "admin-ops-row-danger" : ""
-                }`}
-                key={log.id}
-              >
-                <div>
-                  <strong>{log.productTitle}</strong>
-                  <Link href={log.productHref} prefetch={false}>
-                    {log.productSlug ?? log.productId}
-                  </Link>
-                </div>
-                <span>{syncActionLabel(log.action)}</span>
-                <span>{syncStatusLabel(log.status)}</span>
-                <time dateTime={log.createdAt}>{formatDateTime(log.createdAt)}</time>
-                {log.message ? <p>{log.message}</p> : null}
-              </article>
-            ))}
-          </div>
-        ) : (
-          <p className="admin-empty-text">아직 Cafe24 동기화 로그가 없습니다.</p>
-        )}
-      </section>
-
-      <section className="admin-panel">
-        <div className="admin-panel-head">
           <h2>업로드 cleanup 로그</h2>
           <span>최근 {dashboard.cleanupLogs.length}건</span>
         </div>
@@ -408,9 +371,8 @@ function healthStatusLabel(status: "danger" | "neutral" | "warning") {
   }[status];
 }
 
-function cronJobLabel(jobName: "cafe24_inventory" | "upload_cleanup") {
+function cronJobLabel(jobName: "upload_cleanup") {
   return {
-    cafe24_inventory: "Cafe24 재고 동기화",
     upload_cleanup: "업로드 cleanup",
   }[jobName];
 }
@@ -419,22 +381,6 @@ function cronStatusLabel(status: "failed" | "running" | "success") {
   return {
     failed: "실패",
     running: "실행 중",
-    success: "성공",
-  }[status];
-}
-
-function syncActionLabel(action: "manual_mapping" | "preview" | "sync") {
-  return {
-    manual_mapping: "수동 매핑",
-    preview: "미리보기",
-    sync: "동기화",
-  }[action];
-}
-
-function syncStatusLabel(status: "failed" | "preview" | "success") {
-  return {
-    failed: "실패",
-    preview: "미리보기",
     success: "성공",
   }[status];
 }

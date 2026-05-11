@@ -1,4 +1,4 @@
-import type { ProductContent } from "./product-model";
+﻿import type { ProductContent } from "./product-model";
 
 export const productCatalog = [
   {
@@ -26,7 +26,7 @@ export const productCatalog = [
       availabilityStatus: "available",
       currency: "KRW",
       price: 38000,
-      source: "cafe24",
+      source: "internal",
       stockQuantity: 4,
     },
     material: "백자토",
@@ -35,7 +35,7 @@ export const productCatalog = [
     usageNote: "식기로 사용할 수 있습니다.",
     careNote: "강한 충격과 급격한 온도 변화를 피해 주세요.",
     shippingNote:
-      "완충 포장 후 Cafe24 주문 정보를 기준으로 배송합니다.",
+      "완충 포장 후 자체 주문 기록을 기준으로 배송합니다.",
     published: true,
     publishedAt: "2026-05-05",
     createdAt: "2026-05-05T00:00:00.000Z",
@@ -66,7 +66,7 @@ export const productCatalog = [
       availabilityStatus: "sold_out",
       currency: "KRW",
       price: 42000,
-      source: "cafe24",
+      source: "internal",
       stockQuantity: 0,
     },
     material: "분청토",
@@ -105,7 +105,7 @@ export const productCatalog = [
       availabilityStatus: "upcoming",
       currency: "KRW",
       price: 68000,
-      source: "cafe24",
+      source: "internal",
       stockQuantity: 1,
     },
     material: "혼합토",
@@ -113,7 +113,7 @@ export const productCatalog = [
     size: "높이 약 13cm",
     usageNote: "드라이플라워와 작은 생화를 꽂기 좋습니다.",
     careNote: "물 사용 후 바닥면을 충분히 말려 주세요.",
-    shippingNote: "입고 일정 확정 후 Cafe24 상품으로 연결합니다.",
+    shippingNote: "입고 일정 확정 후 자체 주문 화면으로 연결합니다.",
     published: true,
     publishedAt: "2026-05-05",
     createdAt: "2026-05-05T00:00:00.000Z",
