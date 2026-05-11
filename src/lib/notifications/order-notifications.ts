@@ -33,10 +33,21 @@ export type OrderNotificationJobInput = {
 
 type NotificationJobRow = {
   channel: OrderNotificationChannel;
+  created_at?: string;
+  id?: string;
   order_id: string;
   payload: Record<string, unknown>;
   recipient: string | null;
   template: OrderNotificationTemplate;
+};
+
+export type ProcessOrderNotificationJobsSummary = {
+  dryRun: boolean;
+  failed: number;
+  pending: number;
+  processed: number;
+  skipped: number;
+  unconfigured: number;
 };
 
 export async function enqueueOrderNotificationJobs(
@@ -82,6 +93,103 @@ export function templateForFulfillmentStatus(status: string) {
   }[status] as OrderNotificationTemplate | null;
 }
 
+export async function processPendingOrderNotificationJobs({
+  dryRun = true,
+  limit = 20,
+  skipUnconfigured = false,
+}: {
+  dryRun?: boolean;
+  limit?: number;
+  skipUnconfigured?: boolean;
+} = {}): Promise<ProcessOrderNotificationJobsSummary> {
+  const summary: ProcessOrderNotificationJobsSummary = {
+    dryRun,
+    failed: 0,
+    pending: 0,
+    processed: 0,
+    skipped: 0,
+    unconfigured: 0,
+  };
+
+  if (!isSupabaseConfigured()) {
+    return summary;
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("shop_notification_jobs")
+    .select("id, order_id, channel, template, recipient, payload, created_at")
+    .eq("status", "pending")
+    .order("created_at", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    if (isNotificationStorageMissingError(error)) {
+      return summary;
+    }
+
+    throw new Error(`Notification jobs could not be read: ${error.message}`);
+  }
+
+  const jobs = (data ?? []) as Required<NotificationJobRow>[];
+  summary.pending = jobs.length;
+
+  for (const job of jobs) {
+    if (dryRun) {
+      continue;
+    }
+
+    const unconfiguredMessage = getUnconfiguredProviderMessage(job.channel);
+
+    if (unconfiguredMessage) {
+      summary.unconfigured += 1;
+
+      if (skipUnconfigured) {
+        await markNotificationJob(job.id, {
+          errorMessage: unconfiguredMessage,
+          status: "skipped",
+        });
+        summary.processed += 1;
+        summary.skipped += 1;
+      }
+
+      continue;
+    }
+
+    // Provider adapters are intentionally explicit. Once an email or Kakao
+    // sender is connected, call it here and mark the job as sent/failed.
+    summary.unconfigured += 1;
+  }
+
+  return summary;
+}
+
+async function markNotificationJob(
+  id: string,
+  {
+    errorMessage,
+    status,
+  }: {
+    errorMessage: string | null;
+    status: "failed" | "sent" | "skipped";
+  },
+) {
+  const supabase = getSupabaseAdminClient();
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("shop_notification_jobs")
+    .update({
+      error_message: errorMessage,
+      sent_at: status === "sent" ? now : null,
+      status,
+    })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(`Notification job update failed: ${error.message}`);
+  }
+}
+
 function buildNotificationRows(
   input: OrderNotificationJobInput,
 ): NotificationJobRow[] {
@@ -112,6 +220,14 @@ function buildNotificationRows(
   }
 
   return rows;
+}
+
+function getUnconfiguredProviderMessage(channel: OrderNotificationChannel) {
+  if (channel === "email") {
+    return "Email provider is not configured.";
+  }
+
+  return "Kakao Alimtalk provider is not configured.";
 }
 
 function isNotificationStorageMissingError(error: {

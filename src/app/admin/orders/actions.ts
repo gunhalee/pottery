@@ -7,6 +7,7 @@ import { assertAdmin } from "@/lib/admin/auth";
 import { updateAdminOrderFulfillment } from "@/lib/admin/orders";
 
 const fulfillmentUpdateSchema = z.object({
+  allowBackwardFulfillment: z.boolean(),
   carrier: z.string().trim().max(60).optional(),
   fulfillmentStatus: z.enum([
     "unfulfilled",
@@ -28,16 +29,18 @@ export async function updateAdminOrderFulfillmentAction(formData: FormData) {
   await assertAdmin();
 
   const parsed = fulfillmentUpdateSchema.parse({
-    carrier: formData.get("carrier"),
+    allowBackwardFulfillment: formData.get("allowBackwardFulfillment") === "1",
+    carrier: optionalFormString(formData.get("carrier")),
     fulfillmentStatus: formData.get("fulfillmentStatus"),
-    note: formData.get("note"),
+    note: optionalFormString(formData.get("note")),
     orderId: formData.get("orderId"),
-    trackingNumber: formData.get("trackingNumber"),
-    trackingUrl: formData.get("trackingUrl"),
+    trackingNumber: optionalFormString(formData.get("trackingNumber")),
+    trackingUrl: optionalFormString(formData.get("trackingUrl")),
   });
 
   try {
     await updateAdminOrderFulfillment({
+      allowBackwardFulfillment: parsed.allowBackwardFulfillment,
       carrier: nullableString(parsed.carrier),
       fulfillmentStatus: parsed.fulfillmentStatus,
       note: nullableString(parsed.note),
@@ -58,4 +61,8 @@ export async function updateAdminOrderFulfillmentAction(formData: FormData) {
 function nullableString(value: string | undefined) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
+}
+
+function optionalFormString(value: FormDataEntryValue | null) {
+  return typeof value === "string" ? value : undefined;
 }

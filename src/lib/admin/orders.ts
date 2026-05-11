@@ -157,6 +157,7 @@ export type AdminOrderShipment = {
 };
 
 export type UpdateAdminOrderFulfillmentInput = {
+  allowBackwardFulfillment: boolean;
   carrier: string | null;
   fulfillmentStatus: FulfillmentStatus;
   note: string | null;
@@ -443,6 +444,15 @@ export async function updateAdminOrderFulfillment(
     | "payment_status"
     | "shipping_method"
   >;
+
+  assertFulfillmentUpdateAllowed({
+    allowBackwardFulfillment: input.allowBackwardFulfillment,
+    currentFulfillmentStatus: order.fulfillment_status,
+    nextFulfillmentStatus: input.fulfillmentStatus,
+    paymentStatus: order.payment_status,
+    shippingMethod: order.shipping_method,
+  });
+
   const nextOrderStatus = deriveOrderStatus({
     fulfillmentStatus: input.fulfillmentStatus,
     orderStatus: order.order_status,
@@ -1018,6 +1028,75 @@ function deriveOrderStatus({
   }
 
   return "paid";
+}
+
+function assertFulfillmentUpdateAllowed({
+  allowBackwardFulfillment,
+  currentFulfillmentStatus,
+  nextFulfillmentStatus,
+  paymentStatus,
+  shippingMethod,
+}: {
+  allowBackwardFulfillment: boolean;
+  currentFulfillmentStatus: FulfillmentStatus;
+  nextFulfillmentStatus: FulfillmentStatus;
+  paymentStatus: PaymentStatus;
+  shippingMethod: ShippingMethod;
+}) {
+  if (
+    paymentStatus !== "paid" &&
+    nextFulfillmentStatus !== currentFulfillmentStatus
+  ) {
+    throw new Error(
+      "결제 완료 전에는 배송/수령 상태를 변경할 수 없습니다.",
+    );
+  }
+
+  if (
+    isBackwardFulfillmentChange({
+      currentFulfillmentStatus,
+      nextFulfillmentStatus,
+      shippingMethod,
+    }) &&
+    !allowBackwardFulfillment
+  ) {
+    throw new Error("이전 단계로 되돌리려면 확인 체크가 필요합니다.");
+  }
+}
+
+function isBackwardFulfillmentChange({
+  currentFulfillmentStatus,
+  nextFulfillmentStatus,
+  shippingMethod,
+}: {
+  currentFulfillmentStatus: FulfillmentStatus;
+  nextFulfillmentStatus: FulfillmentStatus;
+  shippingMethod: ShippingMethod;
+}) {
+  const weights =
+    shippingMethod === "pickup"
+      ? {
+          canceled: 4,
+          delivered: 3,
+          picked_up: 3,
+          pickup_ready: 2,
+          preparing: 1,
+          returned: 4,
+          shipped: 2,
+          unfulfilled: 0,
+        }
+      : {
+          canceled: 4,
+          delivered: 3,
+          picked_up: 3,
+          pickup_ready: 1,
+          preparing: 1,
+          returned: 4,
+          shipped: 2,
+          unfulfilled: 0,
+        };
+
+  return weights[nextFulfillmentStatus] < weights[currentFulfillmentStatus];
 }
 
 function shipmentStatusFromFulfillment(

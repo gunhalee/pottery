@@ -371,8 +371,9 @@ function healthStatusLabel(status: "danger" | "neutral" | "warning") {
   }[status];
 }
 
-function cronJobLabel(jobName: "upload_cleanup") {
+function cronJobLabel(jobName: "order_notifications" | "upload_cleanup") {
   return {
+    order_notifications: "주문 알림",
     upload_cleanup: "업로드 cleanup",
   }[jobName];
 }

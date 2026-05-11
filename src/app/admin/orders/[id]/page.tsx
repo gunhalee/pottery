@@ -47,6 +47,12 @@ export default async function AdminOrderDetailPage({
     notFound();
   }
 
+  const fulfillmentEditable = order.paymentStatus === "paid";
+  const parcelShipping = order.shippingMethod === "parcel";
+  const showBackwardConfirmation = needsBackwardFulfillmentConfirmation(
+    order.fulfillmentStatus,
+  );
+
   return (
     <main className="admin-page admin-order-detail-page">
       <header className="admin-header">
@@ -99,12 +105,18 @@ export default async function AdminOrderDetailPage({
             <h2>배송/수령 처리</h2>
             <span>{fulfillmentStatusLabel(order.fulfillmentStatus)}</span>
           </div>
+          {!fulfillmentEditable ? (
+            <div className="admin-alert admin-alert-warning">
+              결제 완료 전 주문은 배송/수령 상태를 변경할 수 없습니다.
+            </div>
+          ) : null}
           <form action={updateAdminOrderFulfillmentAction} className="admin-form">
             <input name="orderId" type="hidden" value={order.id} />
             <label>
               <span>처리 상태</span>
               <select
                 defaultValue={order.fulfillmentStatus}
+                disabled={!fulfillmentEditable}
                 name="fulfillmentStatus"
                 required
               >
@@ -115,44 +127,101 @@ export default async function AdminOrderDetailPage({
                 ))}
               </select>
             </label>
-            <div className="admin-form-grid">
+            {parcelShipping ? (
+              <>
+                <div className="admin-form-grid">
+                  <label>
+                    <span>택배사</span>
+                    <input
+                      defaultValue={order.latestShipment?.carrier ?? ""}
+                      disabled={!fulfillmentEditable}
+                      name="carrier"
+                      placeholder="계약 택배사"
+                    />
+                  </label>
+                  <label>
+                    <span>송장번호</span>
+                    <input
+                      defaultValue={order.latestShipment?.trackingNumber ?? ""}
+                      disabled={!fulfillmentEditable}
+                      name="trackingNumber"
+                      placeholder="송장번호"
+                    />
+                  </label>
+                </div>
+                <label>
+                  <span>배송 조회 URL</span>
+                  <input
+                    defaultValue={order.latestShipment?.trackingUrl ?? ""}
+                    disabled={!fulfillmentEditable}
+                    name="trackingUrl"
+                    placeholder="https://"
+                    type="url"
+                  />
+                </label>
+              </>
+            ) : (
+              <p className="admin-empty-text">
+                방문수령 주문은 송장 정보를 입력하지 않습니다.
+              </p>
+            )}
+            {showBackwardConfirmation && fulfillmentEditable ? (
               <label>
-                <span>택배사</span>
-                <input
-                  defaultValue={order.latestShipment?.carrier ?? ""}
-                  name="carrier"
-                  placeholder="계약 택배사"
-                />
+                <span>이전 단계 확인</span>
+                <span className="admin-check-row">
+                  <label>
+                    <input
+                      name="allowBackwardFulfillment"
+                      type="checkbox"
+                      value="1"
+                    />
+                    상태를 이전 단계로 되돌리는 작업임을 확인했습니다.
+                  </label>
+                </span>
               </label>
-              <label>
-                <span>송장번호</span>
-                <input
-                  defaultValue={order.latestShipment?.trackingNumber ?? ""}
-                  name="trackingNumber"
-                  placeholder="송장번호"
-                />
-              </label>
-            </div>
-            <label>
-              <span>배송 조회 URL</span>
-              <input
-                defaultValue={order.latestShipment?.trackingUrl ?? ""}
-                name="trackingUrl"
-                placeholder="https://"
-                type="url"
-              />
-            </label>
+            ) : null}
             <label>
               <span>처리 메모</span>
               <textarea
+                disabled={!fulfillmentEditable}
                 name="note"
                 placeholder="고객 안내 또는 내부 확인 내용을 남깁니다."
                 rows={4}
               />
             </label>
-            <button className="button-primary" type="submit">
+            <button
+              className="button-primary"
+              disabled={!fulfillmentEditable}
+              type="submit"
+            >
               처리 상태 저장
             </button>
+            {!fulfillmentEditable ? (
+              <input
+                name="fulfillmentStatus"
+                type="hidden"
+                value={order.fulfillmentStatus}
+              />
+            ) : null}
+            {!parcelShipping ? (
+              <>
+                <input
+                  name="carrier"
+                  type="hidden"
+                  value=""
+                />
+                <input
+                  name="trackingNumber"
+                  type="hidden"
+                  value=""
+                />
+                <input
+                  name="trackingUrl"
+                  type="hidden"
+                  value=""
+                />
+              </>
+            ) : null}
           </form>
         </section>
 
@@ -424,6 +493,10 @@ function primaryActionLabel(order: AdminOrderDetail) {
     shipped: "배송 추적",
     unfulfilled: "포장/발송 준비",
   }[order.fulfillmentStatus];
+}
+
+function needsBackwardFulfillmentConfirmation(status: FulfillmentStatus) {
+  return ["delivered", "picked_up", "returned", "canceled"].includes(status);
 }
 
 function fulfillmentOptions(shippingMethod: AdminOrderDetail["shippingMethod"]) {
