@@ -8,6 +8,10 @@ import {
 export type OrderNotificationChannel = "email" | "kakao";
 
 export type OrderNotificationTemplate =
+  | "admin_feedback_received"
+  | "admin_fulfillment_shipped"
+  | "admin_order_received"
+  | "admin_payment_paid"
   | "deposit_expired"
   | "deposit_guide"
   | "deposit_reminder"
@@ -29,22 +33,50 @@ export type OrderNotificationRecipient = {
 };
 
 export type OrderNotificationJobInput = {
-  orderId: string;
+  orderId?: string | null;
   orderNumber: string;
   payload?: Record<string, unknown>;
   recipient: OrderNotificationRecipient;
   template: OrderNotificationTemplate;
 };
 
+export type AdminNotificationJobInput = {
+  orderId?: string | null;
+  orderNumber?: string;
+  payload?: Record<string, unknown>;
+  template: Extract<
+    OrderNotificationTemplate,
+    | "admin_feedback_received"
+    | "admin_fulfillment_shipped"
+    | "admin_order_received"
+    | "admin_payment_paid"
+  >;
+};
+
 type NotificationJobRow = {
   channel: OrderNotificationChannel;
   created_at?: string;
   id?: string;
-  order_id: string;
+  order_id: string | null;
   payload: Record<string, unknown>;
   recipient: string | null;
   template: OrderNotificationTemplate;
 };
+
+type PendingNotificationJob = Required<
+  Pick<NotificationJobRow, "channel" | "created_at" | "id" | "payload" | "recipient" | "template">
+> & {
+  order_id: string | null;
+};
+
+type NotificationSendResult =
+  | {
+      status: "sent";
+    }
+  | {
+      errorMessage: string;
+      status: "skipped" | "unconfigured";
+    };
 
 export type ProcessOrderNotificationJobsSummary = {
   dryRun: boolean;
@@ -68,21 +100,34 @@ export async function enqueueOrderNotificationJobs(
     return;
   }
 
-  const supabase = getSupabaseAdminClient();
-  const { error } = await supabase.from("shop_notification_jobs").insert(rows);
+  await insertNotificationRows(rows);
+}
 
-  if (!error) {
+export async function enqueueAdminNotificationJob(
+  input: AdminNotificationJobInput,
+) {
+  if (!isSupabaseConfigured()) {
     return;
   }
 
-  if (isNotificationStorageMissingError(error)) {
-    console.warn(
-      "shop_notification_jobs is not ready yet; notification jobs were skipped.",
-    );
+  const recipient = process.env.ADMIN_NOTIFICATION_EMAIL?.trim();
+
+  if (!recipient) {
     return;
   }
 
-  console.error(`Notification job enqueue failed: ${error.message}`);
+  await insertNotificationRows([
+    {
+      channel: "email",
+      order_id: input.orderId ?? null,
+      payload: {
+        orderNumber: input.orderNumber ?? null,
+        ...(input.payload ?? {}),
+      },
+      recipient,
+      template: input.template,
+    },
+  ]);
 }
 
 export function templateForFulfillmentStatus(status: string) {
@@ -136,7 +181,7 @@ export async function processPendingOrderNotificationJobs({
     throw new Error(`Notification jobs could not be read: ${error.message}`);
   }
 
-  const jobs = (data ?? []) as Required<NotificationJobRow>[];
+  const jobs = (data ?? []) as PendingNotificationJob[];
   summary.pending = jobs.length;
 
   for (const job of jobs) {
@@ -161,12 +206,159 @@ export async function processPendingOrderNotificationJobs({
       continue;
     }
 
-    // Provider adapters are intentionally explicit. Once an email or Kakao
-    // sender is connected, call it here and mark the job as sent/failed.
-    summary.unconfigured += 1;
+    try {
+      const result = await sendNotificationJob(job);
+
+      if (result.status === "unconfigured") {
+        summary.unconfigured += 1;
+
+        if (skipUnconfigured) {
+          await markNotificationJob(job.id, {
+            errorMessage: result.errorMessage,
+            status: "skipped",
+          });
+          summary.processed += 1;
+          summary.skipped += 1;
+        }
+
+        continue;
+      }
+
+      await markNotificationJob(job.id, {
+        errorMessage: result.status === "skipped" ? result.errorMessage : null,
+        status: result.status,
+      });
+      summary.processed += 1;
+
+      if (result.status === "skipped") {
+        summary.skipped += 1;
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Notification send failed.";
+
+      await markNotificationJob(job.id, {
+        errorMessage: message,
+        status: "failed",
+      });
+      summary.failed += 1;
+      summary.processed += 1;
+    }
   }
 
   return summary;
+}
+
+async function insertNotificationRows(rows: NotificationJobRow[]) {
+  const supabase = getSupabaseAdminClient();
+  const { error } = await supabase.from("shop_notification_jobs").insert(rows);
+
+  if (!error) {
+    return;
+  }
+
+  if (isNotificationStorageMissingError(error)) {
+    console.warn(
+      "shop_notification_jobs is not ready yet; notification jobs were skipped.",
+    );
+    return;
+  }
+
+  console.error(`Notification job enqueue failed: ${error.message}`);
+}
+
+async function sendNotificationJob(
+  job: PendingNotificationJob,
+): Promise<NotificationSendResult> {
+  if (!job.recipient) {
+    return {
+      errorMessage: "Notification recipient is empty.",
+      status: "skipped",
+    };
+  }
+
+  if (job.channel === "email") {
+    return sendResendEmail(job);
+  }
+
+  return sendKakaoAlimtalk(job);
+}
+
+async function sendResendEmail(
+  job: PendingNotificationJob,
+): Promise<NotificationSendResult> {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const from = process.env.RESEND_FROM_EMAIL?.trim();
+
+  if (!apiKey || !from) {
+    return {
+      errorMessage: "Resend API key or sender is not configured.",
+      status: "unconfigured",
+    };
+  }
+
+  const content = buildNotificationContent(job);
+  const replyTo = process.env.RESEND_REPLY_TO_EMAIL?.trim();
+  const response = await fetch("https://api.resend.com/emails", {
+    body: JSON.stringify({
+      from,
+      html: content.html,
+      reply_to: replyTo || undefined,
+      subject: content.subject,
+      text: content.text,
+      to: job.recipient,
+    }),
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Resend send failed: ${await response.text()}`);
+  }
+
+  return { status: "sent" };
+}
+
+async function sendKakaoAlimtalk(
+  job: PendingNotificationJob,
+): Promise<NotificationSendResult> {
+  const apiUrl = process.env.KAKAO_NOTIFICATION_API_URL?.trim();
+  const apiKey = process.env.KAKAO_NOTIFICATION_API_KEY?.trim();
+  const provider = process.env.KAKAO_NOTIFICATION_PROVIDER?.trim();
+  const senderKey = process.env.KAKAO_NOTIFICATION_SENDER_KEY?.trim();
+
+  if (!apiUrl || !apiKey || !provider || !senderKey) {
+    return {
+      errorMessage: "Kakao Alimtalk provider settings are not configured.",
+      status: "unconfigured",
+    };
+  }
+
+  const content = buildNotificationContent(job);
+  const response = await fetch(apiUrl, {
+    body: JSON.stringify({
+      message: content.text,
+      payload: job.payload,
+      provider,
+      recipient: job.recipient,
+      senderKey,
+      template: job.template,
+    }),
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Kakao Alimtalk send failed: ${await response.text()}`);
+  }
+
+  return { status: "sent" };
 }
 
 async function markNotificationJob(
@@ -207,7 +399,7 @@ function buildNotificationRows(
   if (input.recipient.email) {
     rows.push({
       channel: "email",
-      order_id: input.orderId,
+      order_id: input.orderId ?? null,
       payload: basePayload,
       recipient: input.recipient.email,
       template: input.template,
@@ -217,7 +409,7 @@ function buildNotificationRows(
   if (input.recipient.phone) {
     rows.push({
       channel: "kakao",
-      order_id: input.orderId,
+      order_id: input.orderId ?? null,
       payload: basePayload,
       recipient: input.recipient.phone,
       template: input.template,
@@ -229,10 +421,131 @@ function buildNotificationRows(
 
 function getUnconfiguredProviderMessage(channel: OrderNotificationChannel) {
   if (channel === "email") {
-    return "Email provider is not configured.";
+    if (!process.env.RESEND_API_KEY?.trim()) {
+      return "RESEND_API_KEY is not configured.";
+    }
+
+    if (!process.env.RESEND_FROM_EMAIL?.trim()) {
+      return "RESEND_FROM_EMAIL is not configured.";
+    }
+
+    return null;
   }
 
-  return "Kakao Alimtalk provider is not configured.";
+  if (!process.env.KAKAO_NOTIFICATION_PROVIDER?.trim()) {
+    return "KAKAO_NOTIFICATION_PROVIDER is not configured.";
+  }
+
+  if (!process.env.KAKAO_NOTIFICATION_API_URL?.trim()) {
+    return "KAKAO_NOTIFICATION_API_URL is not configured.";
+  }
+
+  if (!process.env.KAKAO_NOTIFICATION_API_KEY?.trim()) {
+    return "KAKAO_NOTIFICATION_API_KEY is not configured.";
+  }
+
+  if (!process.env.KAKAO_NOTIFICATION_SENDER_KEY?.trim()) {
+    return "KAKAO_NOTIFICATION_SENDER_KEY is not configured.";
+  }
+
+  return null;
+}
+
+function buildNotificationContent(job: PendingNotificationJob) {
+  const orderNumber = stringPayload(job.payload.orderNumber) ?? "주문";
+  const total = numberPayload(job.payload.total);
+  const totalText = total === null ? null : formatCurrency(total);
+  const title = titleForTemplate(job.template, orderNumber);
+  const lines = [
+    title,
+    `주문번호: ${orderNumber}`,
+    totalText ? `금액: ${totalText}` : null,
+    stringPayload(job.payload.productTitle)
+      ? `상품: ${stringPayload(job.payload.productTitle)}`
+      : null,
+    stringPayload(job.payload.authorName)
+      ? `작성자: ${stringPayload(job.payload.authorName)}`
+      : null,
+    numberPayload(job.payload.rating) !== null
+      ? `평점: ${numberPayload(job.payload.rating)}점`
+      : null,
+    stringPayload(job.payload.trackingNumber)
+      ? `운송장: ${stringPayload(job.payload.trackingNumber)}`
+      : null,
+    stringPayload(job.payload.trackingUrl)
+      ? `배송조회: ${stringPayload(job.payload.trackingUrl)}`
+      : null,
+    stringPayload(job.payload.depositDueAt)
+      ? `입금기한: ${formatDateTime(stringPayload(job.payload.depositDueAt))}`
+      : null,
+    "자세한 내용은 관리자 화면 또는 주문 조회에서 확인해 주세요.",
+  ].filter(Boolean) as string[];
+
+  return {
+    html: `<div>${lines.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div>`,
+    subject: title,
+    text: lines.join("\n"),
+  };
+}
+
+function titleForTemplate(template: OrderNotificationTemplate, orderNumber: string) {
+  return {
+    admin_feedback_received: "[관리자] 새 구매평이 접수되었습니다",
+    admin_fulfillment_shipped: `[관리자] 배송 시작 알림 ${orderNumber}`,
+    admin_order_received: `[관리자] 새 주문 접수 ${orderNumber}`,
+    admin_payment_paid: `[관리자] 결제 확인 ${orderNumber}`,
+    deposit_expired: `입금 기한이 만료되었습니다 ${orderNumber}`,
+    deposit_guide: `가상계좌가 발급되었습니다 ${orderNumber}`,
+    deposit_reminder: `입금 기한을 확인해 주세요 ${orderNumber}`,
+    fulfillment_delivered: `배송이 완료되었습니다 ${orderNumber}`,
+    fulfillment_preparing: `배송 준비가 시작되었습니다 ${orderNumber}`,
+    fulfillment_shipped: `배송이 시작되었습니다 ${orderNumber}`,
+    made_to_order_confirmed: `주문 제작 일정이 확정되었습니다 ${orderNumber}`,
+    made_to_order_delay: `주문 제작 일정 안내 ${orderNumber}`,
+    order_canceled: `주문 상태가 변경되었습니다 ${orderNumber}`,
+    order_received: `주문이 접수되었습니다 ${orderNumber}`,
+    payment_attention: `결제 확인 안내 ${orderNumber}`,
+    payment_paid: `결제가 확인되었습니다 ${orderNumber}`,
+    picked_up: `수령이 완료되었습니다 ${orderNumber}`,
+    pickup_ready: `방문 수령 준비가 완료되었습니다 ${orderNumber}`,
+  }[template];
+}
+
+function stringPayload(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function numberPayload(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function formatCurrency(value: number) {
+  return `${value.toLocaleString("ko-KR")}원`;
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) {
+    return "확인 중";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
 function isNotificationStorageMissingError(error: {

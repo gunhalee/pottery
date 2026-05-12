@@ -9,7 +9,10 @@ import type {
   PaymentMethod,
   PaymentStatus,
 } from "@/lib/orders/order-model";
-import { enqueueOrderNotificationJobs } from "@/lib/notifications/order-notifications";
+import {
+  enqueueAdminNotificationJob,
+  enqueueOrderNotificationJobs,
+} from "@/lib/notifications/order-notifications";
 import { decryptSensitiveText } from "@/lib/security/sensitive-data";
 import { getSupabaseAdminClient } from "@/lib/supabase/server";
 import type {
@@ -313,6 +316,16 @@ export async function syncPortOnePayment({
           phone: order.orderer_phone,
         },
         template: "payment_paid",
+      });
+      await enqueueAdminNotificationJob({
+        orderId: order.id,
+        orderNumber: result.orderNumber,
+        payload: {
+          paymentId,
+          paymentMethod: syncedPaymentMethod,
+          total: order.total_krw,
+        },
+        template: "admin_payment_paid",
       });
 
       if (order.is_made_to_order) {

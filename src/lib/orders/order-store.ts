@@ -2,7 +2,10 @@ import "server-only";
 
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { commerceConfig } from "@/lib/config/commerce";
-import { enqueueOrderNotificationJobs } from "@/lib/notifications/order-notifications";
+import {
+  enqueueAdminNotificationJob,
+  enqueueOrderNotificationJobs,
+} from "@/lib/notifications/order-notifications";
 import {
   getSupabaseAdminClient,
   isSupabaseConfigured,
@@ -386,6 +389,17 @@ export async function createOrderDraft(
       phone: ordererPhone,
     },
     template: "order_received",
+  });
+  await enqueueAdminNotificationJob({
+    orderId: order.id,
+    orderNumber: order.order_number,
+    payload: {
+      checkoutMode: input.checkoutMode,
+      ordererName: input.ordererName.trim(),
+      paymentMethod,
+      total: amounts.totalKrw,
+    },
+    template: "admin_order_received",
   });
 
   return {

@@ -906,6 +906,10 @@ function eventTypeLabel(eventType: string) {
 
 function notificationTemplateLabel(template: string) {
   return {
+    admin_feedback_received: "관리자 구매평 접수 알림",
+    admin_fulfillment_shipped: "관리자 배송 시작 알림",
+    admin_order_received: "관리자 주문 접수 알림",
+    admin_payment_paid: "관리자 결제 확인 알림",
     deposit_expired: "입금기한 만료 안내",
     deposit_guide: "입금 안내",
     deposit_reminder: "입금 리마인드",

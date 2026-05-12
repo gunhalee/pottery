@@ -12,7 +12,7 @@ export default function ClassPage() {
         <h1 className="sr-only">함께하기</h1>
 
         <ClassCardGrid
-          actionHref={siteConfig.kakaoChannelUrl}
+          actionHref={siteConfig.naverReservationUrl}
           items={classItems}
         />
 

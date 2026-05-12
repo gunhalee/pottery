@@ -66,9 +66,9 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const dryRun = request.nextUrl.searchParams.get("dryRun") !== "0";
+  const dryRun = request.nextUrl.searchParams.get("dryRun") === "1";
   const skipUnconfigured =
-    request.nextUrl.searchParams.get("skipUnconfigured") === "1";
+    request.nextUrl.searchParams.get("skipUnconfigured") !== "0";
   const limit = readBoundedNumber(
     request.nextUrl.searchParams.get("limit"),
     defaultLimit,

@@ -6,12 +6,18 @@ export const siteConfig = {
   email: "consepot@gmail.com",
   phone: "0507-0177-5929",
   privacyOfficer: "하지영",
-  instagramUrl: "https://www.instagram.com/",
+  instagramUrl:
+    process.env.NEXT_PUBLIC_INSTAGRAM_URL ||
+    "https://www.instagram.com/pottery_conse/",
   kakaoChannelUrl:
     process.env.NEXT_PUBLIC_KAKAO_CHANNEL_URL || "https://pf.kakao.com/",
+  naverReservationUrl:
+    process.env.NEXT_PUBLIC_NAVER_RESERVATION_URL ||
+    "https://booking.naver.com/booking/6/bizes/1654694",
   naverBlogUrl:
-    process.env.NEXT_PUBLIC_NAVER_BLOG_URL || "https://blog.naver.com/",
-  youtubeUrl: process.env.NEXT_PUBLIC_YOUTUBE_URL || "https://www.youtube.com/",
+    process.env.NEXT_PUBLIC_NAVER_BLOG_URL || "https://blog.naver.com/consepot",
+  youtubeUrl:
+    process.env.NEXT_PUBLIC_YOUTUBE_URL || "https://www.youtube.com/@consepot",
   navigation: [
     { href: "/intro", label: "소개" },
     { href: "/news", label: "소식" },

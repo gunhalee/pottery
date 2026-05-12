@@ -87,10 +87,7 @@ export const artworkSubscribeLinks = [
 
 export const footerSocialLinks = [
   socialLinks.instagram,
-  {
-    ...socialLinks.youtube,
-    href: null,
-  },
+  socialLinks.youtube,
   socialLinks.naverblog,
   socialLinks.kakao,
 ] as const satisfies readonly SocialIconLinkData[];

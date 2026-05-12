@@ -1,5 +1,8 @@
 "use server";
 
+import { redirect } from "next/navigation";
+import { siteConfig } from "@/lib/config/site";
+
 export async function subscribeNewsletter() {
-  throw new Error("subscribeNewsletter is not implemented yet.");
+  redirect(siteConfig.kakaoChannelUrl);
 }

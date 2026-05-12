@@ -5,6 +5,7 @@ import {
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
 import {
+  enqueueAdminNotificationJob,
   enqueueOrderNotificationJobs,
   templateForFulfillmentStatus,
 } from "@/lib/notifications/order-notifications";
@@ -656,6 +657,19 @@ export async function updateAdminOrderFulfillment(
       },
       template: notificationTemplate,
     });
+
+    if (input.fulfillmentStatus === "shipped") {
+      await enqueueAdminNotificationJob({
+        orderId: order.id,
+        orderNumber: order.order_number,
+        payload: {
+          carrier: input.carrier,
+          trackingNumber: input.trackingNumber,
+          trackingUrl: input.trackingUrl,
+        },
+        template: "admin_fulfillment_shipped",
+      });
+    }
   }
 
   return {

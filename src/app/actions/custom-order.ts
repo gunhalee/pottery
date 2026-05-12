@@ -1,5 +1,8 @@
 "use server";
 
 export async function submitCustomOrderInquiry() {
-  throw new Error("submitCustomOrderInquiry is not implemented yet.");
+  return {
+    ok: false,
+    reason: "custom_order_out_of_scope",
+  } as const;
 }

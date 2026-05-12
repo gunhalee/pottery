@@ -1,12 +1,22 @@
 "use client";
 
+import Image from "next/image";
 import { useState, type FormEvent } from "react";
+
+type ProductFeedbackImage = {
+  alt: string;
+  height: number;
+  id: string;
+  src: string;
+  width: number;
+};
 
 type ProductFeedbackEntry = {
   authorName: string;
   body: string;
   createdAt: string;
   id: string;
+  images: ProductFeedbackImage[];
   rating: number;
 };
 
@@ -30,7 +40,11 @@ export function ProductFeedbackPanel({
 }: ProductFeedbackPanelProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [onlyPhotoReviews, setOnlyPhotoReviews] = useState(false);
   const [status, setStatus] = useState<FeedbackFormStatus>(null);
+  const visibleReviews = onlyPhotoReviews
+    ? reviews.filter((review) => review.images.length > 0)
+    : reviews;
 
   const toggleForm = () => {
     setIsFormOpen((current) => !current);
@@ -42,25 +56,16 @@ export function ProductFeedbackPanel({
 
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const payload: Record<string, unknown> = {
-      authorName: getFormValue(formData, "authorName"),
-      body: getFormValue(formData, "body"),
-      contact: getFormValue(formData, "contact"),
-      productId,
-      productSlug,
-      rating: Number(getFormValue(formData, "rating")),
-      website: getFormValue(formData, "website"),
-    };
+
+    formData.set("productId", productId);
+    formData.set("productSlug", productSlug);
 
     setIsSubmitting(true);
     setStatus(null);
 
     try {
       const response = await fetch("/api/product-feedback", {
-        body: JSON.stringify(payload),
-        headers: {
-          "Content-Type": "application/json",
-        },
+        body: formData,
         method: "POST",
       });
       const result = (await response.json().catch(() => ({}))) as {
@@ -110,12 +115,16 @@ export function ProductFeedbackPanel({
         />
       ) : null}
       <label className="product-photo-review-filter">
-        <input type="checkbox" disabled />
+        <input
+          checked={onlyPhotoReviews}
+          onChange={(event) => setOnlyPhotoReviews(event.target.checked)}
+          type="checkbox"
+        />
         포토 구매평만 보기
       </label>
       <ProductFeedbackList
         emptyText="등록된 구매평이 없습니다."
-        entries={reviews}
+        entries={visibleReviews}
       />
     </section>
   );
@@ -158,6 +167,18 @@ function ProductFeedbackForm({
         내용
         <textarea name="body" required minLength={5} maxLength={1200} />
       </label>
+      <label className="product-feedback-field product-feedback-field-wide">
+        사진
+        <input
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          name="photos"
+          type="file"
+        />
+        <span className="product-feedback-help">
+          jpg, png, webp / 최대 5장 / 각 20MB 이하
+        </span>
+      </label>
       <div className="product-feedback-form-actions">
         {status ? (
           <p
@@ -196,15 +217,30 @@ function ProductFeedbackList({
             <span>평점 {entry.rating}점</span>
           </div>
           <p className="product-feedback-body">{entry.body}</p>
+          {entry.images.length > 0 ? (
+            <div className="product-feedback-image-grid">
+              {entry.images.map((image) => (
+                <a
+                  href={image.src}
+                  key={image.id}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  <Image
+                    alt={image.alt}
+                    height={image.height}
+                    loading="lazy"
+                    src={image.src}
+                    width={image.width}
+                  />
+                </a>
+              ))}
+            </div>
+          ) : null}
         </li>
       ))}
     </ul>
   );
-}
-
-function getFormValue(formData: FormData, key: string) {
-  const value = formData.get(key);
-  return typeof value === "string" ? value.trim() : "";
 }
 
 function formatFeedbackDate(value: string) {

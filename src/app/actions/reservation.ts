@@ -1,5 +1,8 @@
 "use server";
 
+import { redirect } from "next/navigation";
+import { siteConfig } from "@/lib/config/site";
+
 export async function createReservationDraft() {
-  throw new Error("createReservationDraft is not implemented yet.");
+  redirect(siteConfig.naverReservationUrl);
 }
