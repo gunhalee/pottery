@@ -65,6 +65,20 @@ export type RefundAccountStatus =
   | "rejected"
   | "refunded";
 
+export type GiftAddressStatus =
+  | "not_applicable"
+  | "pending"
+  | "submitted"
+  | "expired"
+  | "canceled";
+
+export type ReturnRequestType =
+  | "exchange"
+  | "return"
+  | "refund"
+  | "damage"
+  | "other";
+
 export type DepositAccount = {
   accountHolder: string;
   accountNumber: string;
@@ -78,12 +92,15 @@ export type OrderDraftInput = {
   checkoutMode: CheckoutMode;
   giftMessage?: string;
   lookupPassword: string;
+  livePlantAcknowledged?: boolean;
   madeToOrder?: boolean;
   madeToOrderAcknowledged?: boolean;
   ordererEmail: string;
   ordererName: string;
   ordererPhone: string;
+  orderSummaryAcknowledged?: boolean;
   paymentMethod?: PaymentMethod;
+  privacyAgreed?: boolean;
   productOption?: ProductOption;
   productSlug: string;
   quantity: number;
@@ -94,6 +111,7 @@ export type OrderDraftInput = {
   shippingMemo?: string;
   shippingMethod: ShippingMethod;
   shippingPostcode?: string;
+  termsAgreed?: boolean;
 };
 
 export type OrderDraftResult = {
@@ -146,7 +164,10 @@ export type OrderLookupResult = {
   depositConfirmedAt: string | null;
   depositDueAt: string | null;
   fulfillmentStatus: FulfillmentStatus;
+  giftAddressExpiresAt: string | null;
+  giftAddressStatus: GiftAddressStatus;
   items: OrderLookupItem[];
+  isGift: boolean;
   isMadeToOrder: boolean;
   madeToOrderDueMaxDays: number | null;
   madeToOrderDueMinDays: number | null;

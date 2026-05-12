@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { GalleryInstagramSection } from "@/components/gallery/gallery-instagram-section";
 import { HomeSubscribeLinksSection } from "@/components/home/home-subscribe-links-section";
 import { ArtworkImage } from "@/components/media/artwork-image";
 import { PageBottomCtaSection } from "@/components/site/page-bottom-cta-section";
 import { PageShell } from "@/components/site/primitives";
+import { siteConfig } from "@/lib/config/site";
 import { artworkSubscribeLinks } from "@/lib/config/social-links";
 import { pageBottomCtas } from "@/lib/content/page-ctas";
 import { getContentListImage } from "@/lib/content-manager/content-images";
@@ -49,6 +51,7 @@ export default async function GalleryPage() {
             </div>
           )}
         </div>
+        <GalleryInstagramSection profileUrl={siteConfig.instagramUrl} />
       </PageShell>
       <PageBottomCtaSection
         className="gallery-cta-section"

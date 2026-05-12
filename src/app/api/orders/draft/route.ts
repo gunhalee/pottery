@@ -19,11 +19,13 @@ const orderDraftSchema = z.object({
   checkoutMode: z.enum(["standard", "gift", "naver_pay"]),
   giftMessage: z.string().max(200).optional(),
   lookupPassword: z.string().regex(/^[0-9]{4}$/),
+  livePlantAcknowledged: z.boolean().optional(),
   madeToOrder: z.boolean().optional(),
   madeToOrderAcknowledged: z.boolean().optional(),
   ordererEmail: z.email().max(120),
   ordererName: z.string().trim().min(1).max(40),
   ordererPhone: z.string().trim().min(8).max(30),
+  orderSummaryAcknowledged: z.boolean().optional(),
   paymentMethod: z
     .enum([
       "portone_card",
@@ -32,6 +34,7 @@ const orderDraftSchema = z.object({
       "naver_pay",
     ])
     .optional(),
+  privacyAgreed: z.boolean().optional(),
   productOption: z.enum(["plant_excluded", "plant_included"]).optional(),
   productSlug: z.string().trim().min(1).max(120),
   quantity: z.number().int().min(1).max(99),
@@ -42,6 +45,7 @@ const orderDraftSchema = z.object({
   shippingMemo: z.string().trim().max(120).optional(),
   shippingMethod: z.enum(["parcel", "pickup"]),
   shippingPostcode: z.string().trim().max(12).optional(),
+  termsAgreed: z.boolean().optional(),
 });
 
 const orderDraftRateLimit = {

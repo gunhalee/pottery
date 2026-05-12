@@ -8,16 +8,21 @@ import {
 export type OrderNotificationChannel = "email" | "kakao";
 
 export type OrderNotificationTemplate =
+  | "admin_class_review_consent_received"
   | "admin_feedback_received"
   | "admin_fulfillment_shipped"
+  | "admin_gift_address_submitted"
   | "admin_order_received"
   | "admin_payment_paid"
+  | "admin_return_request_received"
   | "deposit_expired"
   | "deposit_guide"
   | "deposit_reminder"
   | "fulfillment_delivered"
   | "fulfillment_preparing"
   | "fulfillment_shipped"
+  | "gift_address_request"
+  | "gift_address_submitted"
   | "made_to_order_confirmed"
   | "made_to_order_delay"
   | "order_canceled"
@@ -25,7 +30,8 @@ export type OrderNotificationTemplate =
   | "payment_attention"
   | "payment_paid"
   | "picked_up"
-  | "pickup_ready";
+  | "pickup_ready"
+  | "return_request_confirmation";
 
 export type OrderNotificationRecipient = {
   email?: string | null;
@@ -48,8 +54,11 @@ export type AdminNotificationJobInput = {
     OrderNotificationTemplate,
     | "admin_feedback_received"
     | "admin_fulfillment_shipped"
+    | "admin_gift_address_submitted"
     | "admin_order_received"
     | "admin_payment_paid"
+    | "admin_return_request_received"
+    | "admin_class_review_consent_received"
   >;
 };
 
@@ -475,6 +484,33 @@ function buildNotificationContent(job: PendingNotificationJob) {
     stringPayload(job.payload.trackingUrl)
       ? `배송조회: ${stringPayload(job.payload.trackingUrl)}`
       : null,
+    stringPayload(job.payload.actionUrl)
+      ? `확인 링크: ${stringPayload(job.payload.actionUrl)}`
+      : null,
+    stringPayload(job.payload.requestType)
+      ? `요청 유형: ${stringPayload(job.payload.requestType)}`
+      : null,
+    stringPayload(job.payload.reason)
+      ? `사유: ${stringPayload(job.payload.reason)}`
+      : null,
+    stringPayload(job.payload.customerContact)
+      ? `연락처: ${stringPayload(job.payload.customerContact)}`
+      : null,
+    stringPayload(job.payload.recipientName)
+      ? `수령인: ${stringPayload(job.payload.recipientName)}`
+      : null,
+    stringPayload(job.payload.participantName)
+      ? `참여자: ${stringPayload(job.payload.participantName)}`
+      : null,
+    stringPayload(job.payload.classTitle)
+      ? `클래스: ${stringPayload(job.payload.classTitle)}`
+      : null,
+    stringPayload(job.payload.displayName)
+      ? `표시명: ${stringPayload(job.payload.displayName)}`
+      : null,
+    stringPayload(job.payload.consentScope)
+      ? `동의 범위: ${stringPayload(job.payload.consentScope)}`
+      : null,
     stringPayload(job.payload.depositDueAt)
       ? `입금기한: ${formatDateTime(stringPayload(job.payload.depositDueAt))}`
       : null,
@@ -490,16 +526,21 @@ function buildNotificationContent(job: PendingNotificationJob) {
 
 function titleForTemplate(template: OrderNotificationTemplate, orderNumber: string) {
   return {
+    admin_class_review_consent_received: "[관리자] 클래스 후기/사진 동의가 접수되었습니다",
     admin_feedback_received: "[관리자] 새 구매평이 접수되었습니다",
     admin_fulfillment_shipped: `[관리자] 배송 시작 알림 ${orderNumber}`,
+    admin_gift_address_submitted: `[관리자] 선물 배송지가 입력되었습니다 ${orderNumber}`,
     admin_order_received: `[관리자] 새 주문 접수 ${orderNumber}`,
     admin_payment_paid: `[관리자] 결제 확인 ${orderNumber}`,
+    admin_return_request_received: `[관리자] 교환·반품 문의가 접수되었습니다 ${orderNumber}`,
     deposit_expired: `입금 기한이 만료되었습니다 ${orderNumber}`,
     deposit_guide: `가상계좌가 발급되었습니다 ${orderNumber}`,
     deposit_reminder: `입금 기한을 확인해 주세요 ${orderNumber}`,
     fulfillment_delivered: `배송이 완료되었습니다 ${orderNumber}`,
     fulfillment_preparing: `배송 준비가 시작되었습니다 ${orderNumber}`,
     fulfillment_shipped: `배송이 시작되었습니다 ${orderNumber}`,
+    gift_address_request: `선물 배송 정보를 입력해 주세요 ${orderNumber}`,
+    gift_address_submitted: `선물 배송 정보가 입력되었습니다 ${orderNumber}`,
     made_to_order_confirmed: `주문 제작 일정이 확정되었습니다 ${orderNumber}`,
     made_to_order_delay: `주문 제작 일정 안내 ${orderNumber}`,
     order_canceled: `주문 상태가 변경되었습니다 ${orderNumber}`,
@@ -508,6 +549,7 @@ function titleForTemplate(template: OrderNotificationTemplate, orderNumber: stri
     payment_paid: `결제가 확인되었습니다 ${orderNumber}`,
     picked_up: `수령이 완료되었습니다 ${orderNumber}`,
     pickup_ready: `방문 수령 준비가 완료되었습니다 ${orderNumber}`,
+    return_request_confirmation: `교환·반품 문의가 접수되었습니다 ${orderNumber}`,
   }[template];
 }
 

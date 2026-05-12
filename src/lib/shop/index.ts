@@ -16,7 +16,7 @@ type ProductActionHref = {
 type ProductImageSource = Pick<ProductListItem, "images">;
 type ProductBadgeSource = Pick<
   ProductListItem,
-  "commerce" | "isLimited" | "kind"
+  "commerce" | "isLimited" | "kind" | "madeToOrder" | "plantOption"
 >;
 type ProductPriceSource = Pick<ProductListItem, "commerce">;
 
@@ -85,6 +85,18 @@ export function getProductBadges(product: ProductBadgeSource) {
 
   if (product.kind === "one_of_a_kind") {
     badges.push("one_of_a_kind");
+  }
+
+  if (product.madeToOrder.available) {
+    badges.push("made_to_order");
+  }
+
+  if (product.plantOption.enabled) {
+    badges.push("live_plant");
+  }
+
+  if (product.commerce.availabilityStatus === "available") {
+    badges.push("pickup_available", "gift_available");
   }
 
   return badges;

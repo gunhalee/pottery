@@ -9,6 +9,7 @@ import type {
   PaymentMethod,
   PaymentStatus,
 } from "@/lib/orders/order-model";
+import { ensureGiftRecipientAddressRequest } from "@/lib/orders/gift-recipient";
 import {
   enqueueAdminNotificationJob,
   enqueueOrderNotificationJobs,
@@ -30,8 +31,10 @@ type OrderPaymentRow = {
   cash_receipt_requested: boolean;
   cash_receipt_status: string;
   cash_receipt_type: Exclude<CashReceiptType, "none"> | null;
+  contains_live_plant: boolean;
   deposit_due_at: string | null;
   id: string;
+  is_gift: boolean;
   is_made_to_order: boolean;
   order_number: string;
   order_status: string;
@@ -41,6 +44,8 @@ type OrderPaymentRow = {
   payment_method: PaymentMethod;
   payment_status: PaymentStatus;
   portone_payment_id: string | null;
+  recipient_name: string | null;
+  recipient_phone: string | null;
   total_krw: number;
   virtual_account_account_holder: string | null;
   virtual_account_account_number: string | null;
@@ -343,6 +348,20 @@ export async function syncPortOnePayment({
           template: "made_to_order_confirmed",
         });
       }
+
+      await ensureGiftRecipientAddressRequest({
+        order: {
+          contains_live_plant: order.contains_live_plant,
+          id: order.id,
+          is_gift: order.is_gift,
+          order_number: result.orderNumber,
+          orderer_email: order.orderer_email,
+          orderer_phone: order.orderer_phone,
+          recipient_name: order.recipient_name,
+          recipient_phone: order.recipient_phone,
+        },
+        paidAt: new Date(readPaymentPaidAt(payment) ?? Date.now()),
+      });
     }
 
     return {
@@ -445,7 +464,11 @@ const paymentOrderSelect = [
   "orderer_email",
   "total_krw",
   "portone_payment_id",
+  "contains_live_plant",
+  "is_gift",
   "is_made_to_order",
+  "recipient_name",
+  "recipient_phone",
   "deposit_due_at",
   "virtual_account_bank_name",
   "virtual_account_account_number",

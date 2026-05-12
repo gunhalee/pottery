@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArtworkImage } from "@/components/media/artwork-image";
 import type { ProductOption } from "@/lib/orders/order-model";
-import { calculateOrderAmounts } from "@/lib/orders/pricing";
+import {
+  calculateOrderAmounts,
+  ORDER_FREE_SHIPPING_THRESHOLD_KRW,
+  ORDER_SHIPPING_FEE_KRW,
+} from "@/lib/orders/pricing";
 import {
   cartChangedEventName,
   cartStorageKey,
@@ -65,6 +69,14 @@ export function CartPageClient({ products }: CartPageClientProps) {
   const itemCount = getCartItemCount(snapshot);
   const estimatedSubtotal = rows.reduce((total, row) => total + row.subtotal, 0);
   const estimatedTotal = rows.reduce((total, row) => total + row.total, 0);
+  const freeShippingRemaining = Math.max(
+    0,
+    ORDER_FREE_SHIPPING_THRESHOLD_KRW - estimatedSubtotal,
+  );
+  const containsLivePlant = rows.some(
+    (row) => row.productOption === "plant_included",
+  );
+  const containsMadeToOrder = rows.some((row) => row.item.madeToOrder);
 
   useEffect(() => {
     function syncCart() {
@@ -245,14 +257,34 @@ export function CartPageClient({ products }: CartPageClientProps) {
             <dd>{formatCurrency(estimatedSubtotal)}</dd>
           </div>
           <div>
+            <dt>무료배송 기준</dt>
+            <dd>
+              {freeShippingRemaining > 0
+                ? `${formatCurrency(freeShippingRemaining)} 남음`
+                : "무료배송 가능"}
+            </dd>
+          </div>
+          <div>
             <dt>예상 결제 금액</dt>
             <dd>{formatCurrency(estimatedTotal)}</dd>
           </div>
         </dl>
         <p>
-          현재 주문 화면은 상품별로 진입합니다. 장바구니는 이 브라우저에만
-          저장됩니다.
+          할인 전 상품금액 기준 {formatCurrency(ORDER_FREE_SHIPPING_THRESHOLD_KRW)}
+          이상 무료배송됩니다. 택배 기본 배송비는 {formatCurrency(ORDER_SHIPPING_FEE_KRW)}
+          입니다.
         </p>
+        <p>
+          무료배송 주문을 부분 반품하여 최종 구매금액이 무료배송 기준 미만이
+          되는 경우 최초 배송비 {formatCurrency(ORDER_SHIPPING_FEE_KRW)}이
+          환불금에서 차감될 수 있습니다.
+        </p>
+        {containsLivePlant ? (
+          <p>식물 포함 상품은 수령 지연 또는 관리 상태에 따라 교환·반품이 제한될 수 있습니다.</p>
+        ) : null}
+        {containsMadeToOrder ? (
+          <p>주문 제작 상품은 제작 착수 전 제작 내용, 견적, 예상 일정을 확인해 주세요.</p>
+        ) : null}
         <button className="button-quiet" onClick={removeAllItems} type="button">
           장바구니 비우기
         </button>

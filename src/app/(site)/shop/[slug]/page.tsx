@@ -11,6 +11,14 @@ import {
   ProductImageGallery,
   type ProductGalleryImage,
 } from "@/components/shop/product-image-gallery";
+import {
+  HandmadeCeramicNotice,
+  LivePlantNotice,
+  PickupNotice,
+  ReturnNotice,
+  ShippingNotice,
+  UsageNotice,
+} from "@/components/shop/policy-notices";
 import { ProductPurchasePanel } from "@/components/shop/product-purchase-panel";
 import { ProductSpecList } from "@/components/shop/product-spec-list";
 import { ProductTitleActions } from "@/components/shop/product-title-actions";
@@ -153,6 +161,17 @@ export default async function ShopDetailPage({
             </p>
           )}
         </div>
+      </section>
+
+      <section className="product-policy-section" aria-label="구매 전 안내">
+        {product.plantOption.enabled ? (
+          <LivePlantNotice returnNotice={product.plantOption.returnNotice} />
+        ) : null}
+        <ShippingNotice />
+        <ReturnNotice />
+        <HandmadeCeramicNotice />
+        <UsageNotice />
+        <PickupNotice />
       </section>
 
       {relatedGalleryEntries.length > 0 ? (

@@ -9,7 +9,7 @@ const footerInfoGroups = [
     ["대표자 · 개인정보보호책임자", siteConfig.privacyOfficer],
     ["사업장 주소", "12772 1층 경기도 광주시 수레실길 25-10 (능평동)"],
     ["사업자 등록번호", "129-37-99678"],
-    ["통신판매업 신고번호", ""],
+    ["통신판매업 신고번호", "신고 완료 후 기재 예정"],
   ],
   [["연락처", `${siteConfig.email} · ${siteConfig.phone}`]],
 ] as const;

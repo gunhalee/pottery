@@ -107,12 +107,13 @@ export function CheckoutCompleteClient({
 
     return (
       <div className="checkout-result">
-        <span>{isVirtualAccount ? "가상계좌 발급" : "결제 확인"}</span>
+        <span>{isVirtualAccount ? "입금대기" : "주문 완료"}</span>
         <strong>{result.orderNumber}</strong>
         {isVirtualAccount ? (
           <>
             <p>
-              가상계좌가 발급되었습니다. 입금 확인 후 주문이 확정됩니다.
+              가상계좌가 발급되었습니다. 입금기한 내 입금해 주세요. 입금 확인
+              후 주문이 확정되고 배송 준비가 시작됩니다.
             </p>
             <dl className="checkout-bank-result">
               <div>
@@ -135,7 +136,8 @@ export function CheckoutCompleteClient({
           </>
         ) : (
           <p>
-            결제 검증이 완료되었습니다. 주문 조회에서 진행 상태를 확인해 주세요.
+            결제가 완료되어 주문이 접수되었습니다. 주문 및 배송 안내는 이메일과
+            카카오 알림톡으로 발송됩니다.
           </p>
         )}
         <Link className="button-primary" href="/order/lookup" prefetch={false}>

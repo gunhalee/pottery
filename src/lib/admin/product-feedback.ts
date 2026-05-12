@@ -18,6 +18,9 @@ export type AdminProductFeedbackEntry = {
   createdAt: string;
   id: string;
   images: ProductFeedbackImage[];
+  marketingConsent: boolean;
+  marketingConsentAt: string | null;
+  marketingConsentScope: string | null;
   productId: string;
   productSlug: string | null;
   productTitle: string | null;
@@ -32,6 +35,9 @@ type ProductFeedbackRow = {
   contact: string | null;
   created_at: string;
   id: string;
+  marketing_consent: boolean;
+  marketing_consent_at: string | null;
+  marketing_consent_scope: string | null;
   product_id: string;
   rating: number;
   shop_products?: {
@@ -62,6 +68,9 @@ export async function getAdminProductFeedback({
         contact,
         body,
         rating,
+        marketing_consent,
+        marketing_consent_at,
+        marketing_consent_scope,
         status,
         created_at,
         updated_at,
@@ -94,6 +103,9 @@ export async function getAdminProductFeedback({
     createdAt: row.created_at,
     id: row.id,
     images: imageMap.get(row.id) ?? [],
+    marketingConsent: row.marketing_consent,
+    marketingConsentAt: row.marketing_consent_at,
+    marketingConsentScope: row.marketing_consent_scope,
     productId: row.product_id,
     productSlug: row.shop_products?.slug ?? null,
     productTitle: row.shop_products?.title_ko ?? null,

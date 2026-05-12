@@ -40,6 +40,7 @@ export type ProductFeedbackInput = {
   authorName: string;
   body: string;
   contact?: string | null;
+  marketingConsent?: boolean;
   productId: string;
   rating: number;
 };
@@ -88,6 +89,13 @@ export async function createProductFeedback(input: ProductFeedbackInput) {
       author_name: input.authorName,
       body: input.body,
       contact: input.contact || null,
+      marketing_consent: Boolean(input.marketingConsent),
+      marketing_consent_at: input.marketingConsent
+        ? new Date().toISOString()
+        : null,
+      marketing_consent_scope: input.marketingConsent
+        ? "site_sns_promotion"
+        : null,
       product_id: input.productId,
       rating: input.rating,
       status: "pending",
@@ -99,7 +107,18 @@ export async function createProductFeedback(input: ProductFeedbackInput) {
     throw new Error(`Supabase product feedback insert failed: ${error.message}`);
   }
 
-  return fromProductFeedbackRow(data as ProductFeedbackRow);
+  const feedback = fromProductFeedbackRow(data as ProductFeedbackRow);
+
+  if (input.marketingConsent) {
+    await supabase.from("shop_review_marketing_consents").insert({
+      consent_text:
+        "작성한 구매평과 사진을 콩새와 도자기공방의 SNS, 홍보 콘텐츠에 활용하는 데 동의합니다.",
+      feedback_id: feedback.id,
+      scope: "site_sns_promotion",
+    });
+  }
+
+  return feedback;
 }
 
 export async function attachProductFeedbackImages({

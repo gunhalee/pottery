@@ -179,6 +179,14 @@ function ProductFeedbackForm({
           jpg, png, webp / 최대 5장 / 각 20MB 이하
         </span>
       </label>
+      <label className="product-feedback-consent">
+        <input name="marketingConsent" type="checkbox" />
+        <span>
+          [선택] 작성한 구매평과 사진을 콩새와 도자기공방의 SNS, 홍보
+          콘텐츠에 활용하는 데 동의합니다. 동의하지 않아도 구매평 작성은
+          가능합니다.
+        </span>
+      </label>
       <div className="product-feedback-form-actions">
         {status ? (
           <p

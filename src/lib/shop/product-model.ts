@@ -36,7 +36,11 @@ export type ProductBadgeKind =
   | "upcoming"
   | "archive"
   | "limited"
-  | "one_of_a_kind";
+  | "one_of_a_kind"
+  | "made_to_order"
+  | "live_plant"
+  | "pickup_available"
+  | "gift_available";
 
 export type ProductCtaKind =
   | "buy"

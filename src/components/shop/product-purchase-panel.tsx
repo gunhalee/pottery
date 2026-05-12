@@ -468,6 +468,7 @@ export function ProductPurchasePanel({
           {plantOption?.shippingRestrictionNotice ? (
             <p>{plantOption.shippingRestrictionNotice}</p>
           ) : null}
+          {plantOption?.returnNotice ? <p>{plantOption.returnNotice}</p> : null}
         </div>
       ) : null}
 

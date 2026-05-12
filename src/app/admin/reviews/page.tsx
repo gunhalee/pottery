@@ -98,6 +98,12 @@ function ReviewCard({ review }: { review: AdminProductFeedbackEntry }) {
             {formatDateTime(review.createdAt)}
           </p>
           {review.contact ? <p>연락처: {review.contact}</p> : null}
+          <p>
+            홍보 활용 동의:{" "}
+            {review.marketingConsent
+              ? `동의${review.marketingConsentAt ? ` (${formatDateTime(review.marketingConsentAt)})` : ""}`
+              : "미동의"}
+          </p>
         </div>
         {review.productSlug ? (
           <Link

@@ -4454,6 +4454,92 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   min-height: 260px;
 }
 
+.gallery-instagram-section {
+  margin-top: 72px;
+  padding-top: 26px;
+  border-top: 0.5px solid var(--brd);
+}
+
+.gallery-instagram-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.gallery-instagram-head h2 {
+  margin: 0;
+  color: var(--tx);
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.gallery-instagram-head a {
+  color: var(--tx2);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  text-decoration: none;
+  text-transform: lowercase;
+  transition: color 0.2s ease;
+}
+
+.gallery-instagram-head a:hover,
+.gallery-instagram-head a:focus-visible {
+  color: var(--tx);
+}
+
+.gallery-instagram-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.gallery-instagram-item {
+  position: relative;
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--bg3);
+  color: var(--tx);
+}
+
+.gallery-instagram-item img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: var(--image-treatment-artwork);
+  transition: transform 0.24s ease;
+}
+
+.gallery-instagram-item:hover img,
+.gallery-instagram-item:focus-visible img {
+  transform: scale(1.03);
+}
+
+.gallery-instagram-item span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  padding: 12px;
+  background: linear-gradient(transparent, rgba(251, 251, 250, 0.92));
+  color: var(--tx);
+  font-size: 11px;
+  line-height: 1.45;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.gallery-instagram-item:hover span,
+.gallery-instagram-item:focus-visible span {
+  opacity: 1;
+}
+
 .content-detail-shell {
   width: min(100% - 112px, 1180px);
 }
@@ -5277,6 +5363,10 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
     grid-template-columns: 1fr 1fr;
   }
 
+  .gallery-instagram-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .gallery-item.featured {
     grid-column: auto;
     aspect-ratio: 1;
@@ -5499,6 +5589,24 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   .product-grid,
   .gallery-grid {
     grid-template-columns: 1fr;
+  }
+
+  .gallery-instagram-section {
+    margin-top: 48px;
+  }
+
+  .gallery-instagram-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .gallery-instagram-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gallery-instagram-item span {
+    opacity: 1;
   }
 
   .order-lookup-layout,
@@ -7235,6 +7343,157 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 
   .cart-item-total .button-primary {
     width: 100%;
+  }
+}
+
+.product-policy-section {
+  display: grid;
+  gap: 14px;
+  margin: 42px 0;
+}
+
+.policy-notice,
+.gift-address-form,
+.gift-address-result,
+.class-consent-form,
+.order-return-request-form {
+  border: 1px solid rgba(38, 38, 38, 0.12);
+  border-radius: 8px;
+  background: #fffdf8;
+  padding: 22px;
+}
+
+.policy-notice h2,
+.gift-address-head strong,
+.class-consent-head strong,
+.order-return-request-form strong {
+  display: block;
+  margin: 0 0 8px;
+  color: #1f2428;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.policy-notice p,
+.gift-address-note,
+.class-consent-note,
+.order-return-request-form p,
+.order-lookup-privacy-note {
+  margin: 8px 0 0;
+  color: #606873;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.policy-notice a {
+  display: inline-flex;
+  margin-top: 12px;
+  color: #2f5f8f;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.policy-notice-accent {
+  border-color: rgba(76, 118, 89, 0.25);
+  background: #f7fbf6;
+}
+
+.gift-address-page-shell {
+  max-width: 760px;
+}
+
+.gift-address-form,
+.class-consent-form,
+.order-return-request-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.gift-address-head,
+.gift-address-field-wide,
+.gift-address-note,
+.gift-address-form .button-primary,
+.gift-address-form .checkout-error,
+.class-consent-head,
+.class-consent-check,
+.class-consent-note,
+.class-consent-form .button-primary,
+.class-consent-form .checkout-error,
+.class-consent-status,
+.order-return-request-form > strong,
+.order-return-request-form > p,
+.order-return-request-form .order-refund-field-wide,
+.order-return-request-form .button-primary,
+.order-return-request-form .checkout-error {
+  grid-column: 1 / -1;
+}
+
+.gift-address-form label,
+.class-consent-form label,
+.order-return-request-form label {
+  display: grid;
+  gap: 7px;
+  color: #3a3f44;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.gift-address-form input,
+.gift-address-form textarea,
+.class-consent-form input,
+.order-return-request-form input,
+.order-return-request-form select,
+.order-return-request-form textarea {
+  width: 100%;
+  border: 1px solid rgba(38, 38, 38, 0.16);
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2428;
+  font: inherit;
+  min-height: 42px;
+  padding: 10px 12px;
+}
+
+.gift-address-form textarea,
+.order-return-request-form textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.class-consent-check,
+.product-feedback-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #4f5863;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.class-consent-check input,
+.product-feedback-consent input {
+  width: auto;
+  margin-top: 4px;
+}
+
+.product-feedback-consent {
+  grid-column: 1 / -1;
+}
+
+.class-consent-status {
+  color: #2d6b43;
+  font-weight: 800;
+}
+
+@media (max-width: 720px) {
+  .gift-address-form,
+  .class-consent-form,
+  .order-return-request-form {
+    grid-template-columns: 1fr;
+    padding: 18px;
   }
 }
 

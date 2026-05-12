@@ -36,6 +36,7 @@ import type {
   ShippingMethod,
 } from "./order-model";
 import { OrderLookupVerificationError } from "./order-model";
+import { readGiftAddressStatus } from "./gift-recipient";
 import { calculateOrderAmounts } from "./pricing";
 import { isRestrictedPlantShippingAddress } from "./shipping-restrictions";
 
@@ -50,6 +51,7 @@ type OrderRow = {
   deposit_due_at: string | null;
   fulfillment_status: FulfillmentStatus;
   id: string;
+  is_gift: boolean;
   is_made_to_order: boolean;
   lookup_password_hash: string;
   made_to_order_due_max_days: number | null;
@@ -183,6 +185,18 @@ export async function createOrderDraft(
     throw new OrderDraftError("이 상품은 식물 포함 옵션을 선택할 수 없습니다.");
   }
 
+  if (
+    !input.orderSummaryAcknowledged ||
+    !input.termsAgreed ||
+    !input.privacyAgreed
+  ) {
+    throw new OrderDraftError("필수 확인 및 약관 동의 항목을 확인해 주세요.");
+  }
+
+  if (containsLivePlant && !input.livePlantAcknowledged) {
+    throw new OrderDraftError("생화·식물 포함 상품 안내를 확인해 주세요.");
+  }
+
   if (isMadeToOrder) {
     if (!canMakeToOrder) {
       throw new OrderDraftError("이 상품은 추가 제작 주문을 받을 수 없습니다.");
@@ -249,6 +263,14 @@ export async function createOrderDraft(
 
   if (!/^[0-9]{4}$/.test(ordererPhoneLast4)) {
     throw new OrderDraftError("주문자 연락처를 확인해 주세요.");
+  }
+
+  if (input.checkoutMode === "gift") {
+    const recipientPhone = normalizePhone(input.recipientPhone ?? "");
+
+    if (!input.recipientName?.trim() || recipientPhone.length < 8) {
+      throw new OrderDraftError("선물을 받을 분의 이름과 연락처를 입력해 주세요.");
+    }
   }
 
   const cashReceipt = prepareCashReceipt(input, paymentMethod);
@@ -416,10 +438,16 @@ export async function lookupOrder(
   input: OrderLookupInput,
 ): Promise<OrderLookupResult> {
   const orderRow = await readVerifiedOrder(input);
-  const [items, shipments, refundAccountStatus] = await Promise.all([
+  const [items, shipments, refundAccountStatus, giftAddress] = await Promise.all([
     readOrderItems(orderRow.id),
     readOrderShipments(orderRow.id),
     readRefundAccountStatus(orderRow.id),
+    orderRow.is_gift
+      ? readGiftAddressStatus(orderRow.id)
+      : Promise.resolve({
+          expiresAt: null,
+          status: "not_applicable" as const,
+        }),
   ]);
 
   return {
@@ -430,6 +458,9 @@ export async function lookupOrder(
     depositConfirmedAt: orderRow.deposit_confirmed_at,
     depositDueAt: orderRow.deposit_due_at,
     fulfillmentStatus: orderRow.fulfillment_status,
+    giftAddressExpiresAt: giftAddress.expiresAt,
+    giftAddressStatus: giftAddress.status,
+    isGift: orderRow.is_gift,
     isMadeToOrder: orderRow.is_made_to_order,
     items,
     madeToOrderDueMaxDays: orderRow.made_to_order_due_max_days,
@@ -521,6 +552,7 @@ async function readVerifiedOrder(input: OrderLookupInput): Promise<OrderRow> {
         "payment_status",
         "payment_method",
         "fulfillment_status",
+        "is_gift",
         "recipient_name",
         "shipping_method",
         "subtotal_krw",

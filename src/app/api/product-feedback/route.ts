@@ -31,6 +31,7 @@ const feedbackPayloadSchema = z.object({
   authorName: z.string().trim().min(1).max(40),
   body: z.string().trim().min(5).max(1200),
   contact: z.string().trim().max(120).optional(),
+  marketingConsent: z.boolean().optional(),
   productId: z.uuid(),
   productSlug: z.string().trim().min(1).max(120).regex(slugPattern),
   rating: z.number().int().min(1).max(5),
@@ -106,6 +107,7 @@ export async function POST(request: Request) {
       authorName: parsed.data.authorName,
       body: parsed.data.body,
       contact: parsed.data.contact,
+      marketingConsent: parsed.data.marketingConsent,
       productId: parsed.data.productId,
       rating: parsed.data.rating,
     });
@@ -174,6 +176,7 @@ async function readFeedbackRequest(request: Request): Promise<
         authorName: getFormValue(formData, "authorName"),
         body: getFormValue(formData, "body"),
         contact: getFormValue(formData, "contact"),
+        marketingConsent: formData.get("marketingConsent") === "on",
         productId: getFormValue(formData, "productId"),
         productSlug: getFormValue(formData, "productSlug"),
         rating: Number(getFormValue(formData, "rating")),

@@ -144,10 +144,15 @@ export function CheckoutForm({
         madeToOrderAcknowledged: Boolean(
           formData.get("madeToOrderAcknowledged"),
         ),
+        livePlantAcknowledged: Boolean(formData.get("livePlantAcknowledged")),
         ordererEmail: String(formData.get("ordererEmail") ?? ""),
         ordererName: String(formData.get("ordererName") ?? ""),
         ordererPhone: String(formData.get("ordererPhone") ?? ""),
+        orderSummaryAcknowledged: Boolean(
+          formData.get("orderSummaryAcknowledged"),
+        ),
         paymentMethod: selectedPaymentMethod,
+        privacyAgreed: Boolean(formData.get("privacyAgreed")),
         productOption,
         productSlug,
         quantity,
@@ -158,6 +163,7 @@ export function CheckoutForm({
         shippingMemo: String(formData.get("shippingMemo") ?? ""),
         shippingMethod,
         shippingPostcode: String(formData.get("shippingPostcode") ?? ""),
+        termsAgreed: Boolean(formData.get("termsAgreed")),
       }),
       headers: {
         "Content-Type": "application/json",
@@ -281,11 +287,11 @@ export function CheckoutForm({
   if (state.status === "success") {
     return (
       <div className="checkout-result">
-        <span>주문 접수</span>
+        <span>주문 완료</span>
         <strong>{state.order.orderNumber}</strong>
         <p>
-          결제 검증이 완료되었습니다. 주문 조회에서 결제와 배송 진행 상태를
-          확인할 수 있습니다.
+          결제가 완료되어 주문이 접수되었습니다. 주문 및 배송 안내는 이메일과
+          카카오 알림톡으로 발송됩니다.
         </p>
         <Link className="button-primary" href="/order/lookup" prefetch={false}>
           주문 조회하기
@@ -590,6 +596,26 @@ export function CheckoutForm({
         {isGift ? (
           <fieldset>
             <legend>선물하기</legend>
+            <p className="checkout-note">
+              선물하기 주문은 결제 후 수령인이 배송 정보를 입력하는 방식으로
+              진행됩니다. 수령인이 결제 완료일 다음 날부터 7일 이내 배송 정보를
+              입력하지 않으면 주문이 취소될 수 있고, 환불은 결제자인 주문자에게
+              진행됩니다.
+            </p>
+            {isVirtualAccount ? (
+              <p className="checkout-note">
+                무통장입금(가상계좌) 주문은 입금 확인 후 수령인에게 배송 정보
+                입력 안내가 발송됩니다.
+              </p>
+            ) : null}
+            <label>
+              <span>수령인 이름</span>
+              <input name="recipientName" required />
+            </label>
+            <label>
+              <span>수령인 연락처</span>
+              <input inputMode="tel" name="recipientPhone" required />
+            </label>
             <label className="checkout-field-wide">
               <span>선물 메모</span>
               <textarea maxLength={200} name="giftMessage" />
@@ -633,7 +659,9 @@ export function CheckoutForm({
 
         {!isGift && !isParcel ? (
           <p className="checkout-note">
-            방문수령 일정은 주문 접수 후 카카오채널로 조율합니다.
+            방문수령 장소는 경기도 광주시 수레실길 25-10 1층입니다. 일정은
+            주문 접수 후 카카오채널로 조율하며, 수령 가능일 안내 후 15일 이내
+            수령을 원칙으로 합니다.
           </p>
         ) : null}
 
@@ -643,6 +671,46 @@ export function CheckoutForm({
             방식으로 진행됩니다.
           </p>
         ) : null}
+
+        <fieldset>
+          <legend>필수 확인</legend>
+          <label className="checkout-checkbox">
+            <input name="orderSummaryAcknowledged" required type="checkbox" />
+            <span>주문 상품, 가격, 배송비, 배송방법, 교환·환불 조건을 확인했습니다.</span>
+          </label>
+          {containsLivePlant ? (
+            <label className="checkout-checkbox">
+              <input name="livePlantAcknowledged" required type="checkbox" />
+              <span>
+                생화·식물 포함 상품의 수령·관리·교환/반품 제한 안내를
+                확인했습니다.
+              </span>
+            </label>
+          ) : null}
+          <label className="checkout-checkbox">
+            <input name="termsAgreed" required type="checkbox" />
+            <span>
+              <Link href="/terms" prefetch={false} target="_blank">
+                이용약관
+              </Link>
+              에 동의합니다.
+            </span>
+          </label>
+          <label className="checkout-checkbox">
+            <input name="privacyAgreed" required type="checkbox" />
+            <span>
+              <Link href="/privacy" prefetch={false} target="_blank">
+                개인정보 수집 및 이용
+              </Link>
+              에 동의합니다.
+            </span>
+          </label>
+          <p className="checkout-note">
+            주문·배송·결제 처리를 위해 주문자명, 연락처, 이메일, 수령인 정보,
+            배송지, 결제 정보를 수집합니다. 주문, 입금, 배송, 교환·환불 안내는
+            이메일과 카카오 알림톡으로 발송될 수 있습니다.
+          </p>
+        </fieldset>
 
         <div className="checkout-actions">
           <button
