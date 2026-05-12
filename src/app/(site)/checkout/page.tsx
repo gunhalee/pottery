@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckoutForm } from "@/components/shop/checkout-form";
 import { PageIntro, PageShell } from "@/components/site/primitives";
-import { commerceConfig } from "@/lib/config/commerce";
 import type {
   CheckoutMode,
   ProductOption,
@@ -95,7 +94,6 @@ export default async function CheckoutPage({
 
       {isPurchasable ? (
         <CheckoutForm
-          bankTransferAccount={commerceConfig.bankTransfer}
           checkoutMode={checkoutMode}
           containsLivePlant={containsLivePlant}
           isMadeToOrder={isMadeToOrder}

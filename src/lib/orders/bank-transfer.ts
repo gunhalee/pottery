@@ -6,7 +6,6 @@ import {
   getSupabaseAdminClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
-import type { BankTransferAccount } from "./order-model";
 
 type ExpirableBankTransferOrderRow = {
   deposit_due_at: string | null;
@@ -17,13 +16,10 @@ type ExpirableBankTransferOrderRow = {
   total_krw: number;
 };
 
-export function getBankTransferAccount(): BankTransferAccount {
-  return commerceConfig.bankTransfer;
-}
-
 export function getDepositDueAt(now = new Date()) {
   return new Date(
-    now.getTime() + commerceConfig.bankTransfer.depositDueHours * 60 * 60_000,
+    now.getTime() +
+      commerceConfig.payment.virtualAccountDepositDueHours * 60 * 60_000,
   );
 }
 
@@ -44,7 +40,7 @@ export async function cancelExpiredBankTransferOrders(limit = 50) {
     .select(
       "id, order_number, orderer_email, orderer_phone, total_krw, deposit_due_at",
     )
-    .eq("payment_method", "bank_transfer")
+    .in("payment_method", ["bank_transfer", "portone_virtual_account"])
     .eq("payment_status", "pending")
     .lte("deposit_due_at", new Date().toISOString())
     .order("deposit_due_at", { ascending: true })

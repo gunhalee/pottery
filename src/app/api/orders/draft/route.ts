@@ -24,7 +24,16 @@ const orderDraftSchema = z.object({
   ordererEmail: z.email().max(120),
   ordererName: z.string().trim().min(1).max(40),
   ordererPhone: z.string().trim().min(8).max(30),
-  paymentMethod: z.enum(["portone", "naver_pay", "bank_transfer"]).optional(),
+  paymentMethod: z
+    .enum([
+      "portone",
+      "portone_card",
+      "portone_transfer",
+      "portone_virtual_account",
+      "naver_pay",
+      "bank_transfer",
+    ])
+    .optional(),
   productOption: z.enum(["plant_excluded", "plant_included"]).optional(),
   productSlug: z.string().trim().min(1).max(120),
   quantity: z.number().int().min(1).max(99),

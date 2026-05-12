@@ -14,10 +14,11 @@ import {
   maskAccountNumber,
   maskCashReceiptIdentifier,
 } from "@/lib/security/sensitive-data";
-import { getBankTransferAccount, getDepositDueAt } from "./bank-transfer";
+import { getDepositDueAt } from "./bank-transfer";
 import type {
   CashReceiptStatus,
   CashReceiptType,
+  DepositAccount,
   FulfillmentStatus,
   OrderDraftInput,
   OrderDraftResult,
@@ -60,6 +61,10 @@ type OrderRow = {
   shipping_method: ShippingMethod;
   subtotal_krw: number;
   total_krw: number;
+  virtual_account_account_holder: string | null;
+  virtual_account_account_number: string | null;
+  virtual_account_bank_name: string | null;
+  virtual_account_issued_at: string | null;
 };
 
 type OrderItemRow = {
@@ -246,8 +251,9 @@ export async function createOrderDraft(
 
   const cashReceipt = prepareCashReceipt(input, paymentMethod);
   const lookupPasswordHash = hashOrderLookupPassword(input.lookupPassword);
-  const depositDueAt =
-    paymentMethod === "bank_transfer" ? getDepositDueAt().toISOString() : null;
+  const depositDueAt = isVirtualAccountPaymentMethod(paymentMethod)
+    ? getDepositDueAt().toISOString()
+    : null;
   const supabase = getSupabaseAdminClient();
   const order = await insertOrderWithRetry({
     cash_receipt_identifier_encrypted: cashReceipt.identifierEncrypted,
@@ -259,10 +265,10 @@ export async function createOrderDraft(
     contains_live_plant: containsLivePlant,
     currency: product.commerce.currency,
     deposit_due_at: depositDueAt,
-    deposit_review_status:
-      paymentMethod === "bank_transfer" ? "waiting" : "not_applicable",
-    depositor_name:
-      paymentMethod === "bank_transfer" ? input.ordererName.trim() : null,
+    deposit_review_status: isVirtualAccountPaymentMethod(paymentMethod)
+      ? "waiting"
+      : "not_applicable",
+    depositor_name: null,
     fulfillment_status: "unfulfilled",
     gift_message: emptyToNull(input.giftMessage),
     is_gift: input.checkoutMode === "gift",
@@ -391,7 +397,6 @@ export async function createOrderDraft(
       orderId: order.id,
       orderNumber: order.order_number,
       payload: {
-        account: getBankTransferAccount(),
         depositDueAt,
         depositorName: input.ordererName.trim(),
         total: amounts.totalKrw,
@@ -405,8 +410,6 @@ export async function createOrderDraft(
   }
 
   return {
-    bankTransferAccount:
-      paymentMethod === "bank_transfer" ? getBankTransferAccount() : undefined,
     depositDueAt,
     orderId: order.id,
     orderNumber: order.order_number,
@@ -427,13 +430,10 @@ export async function lookupOrder(
   ]);
 
   return {
-    bankTransferAccount:
-      orderRow.payment_method === "bank_transfer"
-        ? getBankTransferAccount()
-        : undefined,
     cashReceiptStatus: orderRow.cash_receipt_status,
     containsLivePlant: orderRow.contains_live_plant,
     createdAt: orderRow.created_at,
+    depositAccount: readDepositAccount(orderRow),
     depositConfirmedAt: orderRow.deposit_confirmed_at,
     depositDueAt: orderRow.deposit_due_at,
     fulfillmentStatus: orderRow.fulfillment_status,
@@ -459,9 +459,9 @@ export async function lookupOrder(
 export async function saveRefundAccountForOrder(input: RefundAccountInput) {
   const order = await readVerifiedOrder(input);
 
-  if (order.payment_method !== "bank_transfer") {
+  if (!requiresRefundAccountFallback(order.payment_method)) {
     throw new OrderDraftError(
-      "무통장입금 주문만 환불계좌를 등록할 수 있습니다.",
+      "계좌 환불 확인이 필요한 주문만 환불계좌를 등록할 수 있습니다.",
       400,
     );
   }
@@ -537,6 +537,10 @@ async function readVerifiedOrder(input: OrderLookupInput): Promise<OrderRow> {
         "created_at",
         "deposit_due_at",
         "deposit_confirmed_at",
+        "virtual_account_bank_name",
+        "virtual_account_account_number",
+        "virtual_account_account_holder",
+        "virtual_account_issued_at",
         "cash_receipt_status",
         "contains_live_plant",
         "is_made_to_order",
@@ -659,7 +663,7 @@ function prepareCashReceipt(
   paymentMethod: PaymentMethod,
 ) {
   const requested =
-    paymentMethod === "bank_transfer" &&
+    isCashReceiptPaymentMethod(paymentMethod) &&
     input.cashReceiptType !== undefined &&
     input.cashReceiptType !== "none";
 
@@ -700,7 +704,50 @@ function normalizePaymentMethod(
     return "naver_pay";
   }
 
-  return paymentMethod === "bank_transfer" ? "bank_transfer" : "portone";
+  if (paymentMethod === "portone_transfer") {
+    return "portone_transfer";
+  }
+
+  if (paymentMethod === "portone_virtual_account" || paymentMethod === "bank_transfer") {
+    return "portone_virtual_account";
+  }
+
+  return paymentMethod === "portone" ? "portone" : "portone_card";
+}
+
+function isVirtualAccountPaymentMethod(paymentMethod: PaymentMethod) {
+  return (
+    paymentMethod === "portone_virtual_account" ||
+    paymentMethod === "bank_transfer"
+  );
+}
+
+function isCashReceiptPaymentMethod(paymentMethod: PaymentMethod) {
+  return (
+    paymentMethod === "portone_transfer" ||
+    paymentMethod === "portone_virtual_account" ||
+    paymentMethod === "bank_transfer"
+  );
+}
+
+function requiresRefundAccountFallback(paymentMethod: PaymentMethod) {
+  return isCashReceiptPaymentMethod(paymentMethod);
+}
+
+function readDepositAccount(order: OrderRow): DepositAccount | undefined {
+  if (
+    !order.virtual_account_bank_name ||
+    !order.virtual_account_account_number ||
+    !order.virtual_account_account_holder
+  ) {
+    return undefined;
+  }
+
+  return {
+    accountHolder: order.virtual_account_account_holder,
+    accountNumber: order.virtual_account_account_number,
+    bankName: order.virtual_account_bank_name,
+  };
 }
 
 function normalizeProductOption(
