@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { dispatchWishlistChanged } from "@/lib/shop/wishlist-events";
+import {
+  dispatchWishlistChanged,
+  wishlistChangedEventName,
+  type WishlistChangedDetail,
+} from "@/lib/shop/wishlist-events";
 
 type ProductWishlistButtonProps = {
   className?: string;
@@ -59,6 +63,25 @@ export function ProductWishlistButton({
       controller.abort();
     };
   }, [initialWished, productSlug]);
+
+  useEffect(() => {
+    function syncWishlistState(event: Event) {
+      const detail = (event as CustomEvent<WishlistChangedDetail>).detail;
+
+      if (detail?.productSlug !== productSlug) {
+        return;
+      }
+
+      interactedRef.current = true;
+      setIsWished(detail.wished);
+    }
+
+    window.addEventListener(wishlistChangedEventName, syncWishlistState);
+
+    return () => {
+      window.removeEventListener(wishlistChangedEventName, syncWishlistState);
+    };
+  }, [productSlug]);
 
   async function toggleWishlist() {
     const nextWished = !isWished;

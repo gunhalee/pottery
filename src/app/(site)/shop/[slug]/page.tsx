@@ -13,6 +13,7 @@ import {
 } from "@/components/shop/product-image-gallery";
 import { ProductPurchasePanel } from "@/components/shop/product-purchase-panel";
 import { ProductSpecList } from "@/components/shop/product-spec-list";
+import { ProductTitleActions } from "@/components/shop/product-title-actions";
 import { getPublishedContentListEntries } from "@/lib/content-manager/content-store";
 import {
   formatProductPrice,
@@ -101,15 +102,23 @@ export default async function ShopDetailPage({
 
         <article className="product-detail-info">
           <div className="product-detail-heading">
-            <h1 className="product-detail-title">{product.titleKo}</h1>
+            <div className="product-detail-heading-copy">
+              <h1 className="product-detail-title">{product.titleKo}</h1>
+              <p className="product-detail-lead">{product.shortDescription}</p>
+            </div>
+            <ProductTitleActions
+              productSlug={product.slug}
+              productTitle={product.titleKo}
+            />
           </div>
-          <div className="product-badge-row">
-            {getProductBadges(product).map((badge) => (
-              <ProductBadge key={badge} kind={badge} />
-            ))}
+          <div className="product-detail-price-row">
+            <div className="product-badge-row">
+              {getProductBadges(product).map((badge) => (
+                <ProductBadge key={badge} kind={badge} />
+              ))}
+            </div>
+            <p className="product-detail-price">{formatProductPrice(product)}</p>
           </div>
-          <p className="product-detail-price">{formatProductPrice(product)}</p>
-          <p className="product-detail-lead">{product.shortDescription}</p>
           <ProductPurchasePanel
             availabilityLabel={cta.label}
             currency={product.commerce.currency}
@@ -124,16 +133,9 @@ export default async function ShopDetailPage({
             plantOption={product.plantOption}
             price={product.commerce.price}
             productSlug={product.slug}
-            productTitle={product.titleKo}
           />
         </article>
       </div>
-
-      <nav className="product-detail-tabs" aria-label="상품 정보">
-        <a href="#product-detail-description">상세정보</a>
-        <span aria-hidden="true">|</span>
-        <a href="#product-reviews">구매평</a>
-      </nav>
 
       <section
         className="product-detail-section product-detail-story-section"
@@ -143,10 +145,6 @@ export default async function ShopDetailPage({
           <h2>상세정보</h2>
         </div>
         <div className="product-detail-story-body">
-          <h3 className="product-detail-story-title">작업물 이야기</h3>
-          <p className="product-detail-lead product-detail-story-lead">
-            {product.shortDescription}
-          </p>
           {product.storyBody ? (
             <RichTextRenderer body={product.storyBody} />
           ) : (

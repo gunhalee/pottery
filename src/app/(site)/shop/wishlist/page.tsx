@@ -41,10 +41,7 @@ export default async function ShopWishlistPage() {
         <ShopBackButton fallbackHref="/shop" />
       </nav>
 
-      <PageIntro
-        subtitle="찜해 둔 작업물을 모아 보고, 다시 상세 화면으로 이어갈 수 있습니다."
-        title="찜 목록"
-      />
+      <PageIntro title="찜 목록" />
 
       <WishlistRefreshOnChange />
       {wishedProducts.length > 0 ? (

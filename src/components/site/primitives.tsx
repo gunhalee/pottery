@@ -130,7 +130,7 @@ export function PageIntro({
   title,
   titleEmphasis,
 }: {
-  subtitle: ReactNode;
+  subtitle?: ReactNode;
   title: string;
   titleEmphasis?: string;
 }) {
@@ -145,7 +145,7 @@ export function PageIntro({
           </>
         ) : null}
       </h1>
-      <p className="page-subtitle">{subtitle}</p>
+      {subtitle ? <p className="page-subtitle">{subtitle}</p> : null}
     </div>
   );
 }

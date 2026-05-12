@@ -15,7 +15,11 @@ import {
   ORDER_SHIPPING_FEE_KRW,
 } from "@/lib/orders/pricing";
 import { addCartItem } from "@/lib/shop/cart-storage";
-import { dispatchWishlistChanged } from "@/lib/shop/wishlist-events";
+import {
+  dispatchWishlistChanged,
+  wishlistChangedEventName,
+  type WishlistChangedDetail,
+} from "@/lib/shop/wishlist-events";
 
 type ProductPurchasePanelProps = {
   availabilityLabel: string;
@@ -38,7 +42,6 @@ type ProductPurchasePanelProps = {
   };
   price: number | null;
   productSlug: string;
-  productTitle: string;
 };
 
 type ActionMessage = {
@@ -63,7 +66,6 @@ export function ProductPurchasePanel({
   plantOption,
   price,
   productSlug,
-  productTitle,
 }: ProductPurchasePanelProps) {
   const router = useRouter();
   const effectiveMaxQuantity = Math.max(1, maxQuantity ?? 99);
@@ -154,6 +156,25 @@ export function ProductPurchasePanel({
 
     return () => {
       controller.abort();
+    };
+  }, [productSlug]);
+
+  useEffect(() => {
+    function syncFavoriteState(event: Event) {
+      const detail = (event as CustomEvent<WishlistChangedDetail>).detail;
+
+      if (detail?.productSlug !== productSlug) {
+        return;
+      }
+
+      favoriteInteractionRef.current = true;
+      setIsFavorite(detail.wished);
+    }
+
+    window.addEventListener(wishlistChangedEventName, syncFavoriteState);
+
+    return () => {
+      window.removeEventListener(wishlistChangedEventName, syncFavoriteState);
     };
   }, [productSlug]);
 
@@ -264,31 +285,6 @@ export function ProductPurchasePanel({
     }
   }
 
-  async function shareProduct() {
-    const shareData = {
-      title: productTitle,
-      url: window.location.href,
-    };
-
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-        return;
-      }
-
-      await navigator.clipboard.writeText(window.location.href);
-      setMessage({
-        id: Date.now(),
-        text: "상품 링크를 복사했습니다.",
-      });
-    } catch {
-      setMessage({
-        id: Date.now(),
-        text: "상품 링크를 복사하지 못했습니다.",
-      });
-    }
-  }
-
   async function toggleFavorite() {
     const nextFavorite = !isFavorite;
 
@@ -339,27 +335,6 @@ export function ProductPurchasePanel({
 
   return (
     <div className="product-commerce-panel">
-      <div className="product-detail-tools" aria-label="상품 도구">
-        <button
-          aria-label="상품 공유"
-          className="product-icon-button"
-          onClick={shareProduct}
-          type="button"
-        >
-          <ShareIcon />
-        </button>
-        <button
-          aria-label={isFavorite ? "찜 해제" : "찜하기"}
-          aria-pressed={isFavorite}
-          className="product-icon-button"
-          disabled={isFavoriteSaving}
-          onClick={toggleFavorite}
-          type="button"
-        >
-          <HeartIcon filled={isFavorite} />
-        </button>
-      </div>
-
       <dl className="product-commerce-info">
         {plantOption?.enabled ? (
           <div className="product-commerce-row product-option-row">
@@ -674,17 +649,6 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat("ko-KR", {
     maximumFractionDigits: 0,
   }).format(value);
-}
-
-function ShareIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
-      <circle cx="18" cy="5" r="3" />
-      <circle cx="6" cy="12" r="3" />
-      <circle cx="18" cy="19" r="3" />
-      <path d="m8.7 10.7 6.6-4.4M8.7 13.3l6.6 4.4" />
-    </svg>
-  );
 }
 
 function HeartIcon({ filled }: { filled: boolean }) {

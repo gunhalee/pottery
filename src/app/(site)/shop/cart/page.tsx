@@ -18,10 +18,7 @@ export default async function ShopCartPage() {
         <ShopBackButton fallbackHref="/shop" />
       </nav>
 
-      <PageIntro
-        subtitle="담아 둔 작업물의 옵션과 수량을 확인하고 상품별 주문 화면으로 이동합니다."
-        title="장바구니"
-      />
+      <PageIntro title="장바구니" />
 
       <CartPageClient products={products} />
     </PageShell>
