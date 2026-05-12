@@ -24,6 +24,9 @@ export const metadata: Metadata = {
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
+  other: {
+    "facebook-domain-verification": "g9ee8q8off76qu8k2b14nhiva4qwv3",
+  },
 };
 
 export default function RootLayout({
