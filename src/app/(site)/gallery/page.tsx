@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { GalleryInstagramSection } from "@/components/gallery/gallery-instagram-section";
+import { GalleryYoutubeSection } from "@/components/gallery/gallery-youtube-section";
 import { HomeSubscribeLinksSection } from "@/components/home/home-subscribe-links-section";
 import { ArtworkImage } from "@/components/media/artwork-image";
 import { PageBottomCtaSection } from "@/components/site/page-bottom-cta-section";
@@ -52,6 +53,7 @@ export default async function GalleryPage() {
           )}
         </div>
         <GalleryInstagramSection profileUrl={siteConfig.instagramUrl} />
+        <GalleryYoutubeSection channelUrl={siteConfig.youtubeUrl} />
       </PageShell>
       <PageBottomCtaSection
         className="gallery-cta-section"

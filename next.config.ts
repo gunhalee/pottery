@@ -9,15 +9,22 @@ const nextConfig: NextConfig = {
     imageSizes: [32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 31536000,
     qualities: [70, 75],
-    remotePatterns: supabaseImageHostname
-      ? [
-          {
-            hostname: supabaseImageHostname,
-            pathname: "/storage/v1/object/public/media-assets/**",
-            protocol: "https",
-          },
-        ]
-      : [],
+    remotePatterns: [
+      ...(supabaseImageHostname
+        ? [
+            {
+              hostname: supabaseImageHostname,
+              pathname: "/storage/v1/object/public/media-assets/**",
+              protocol: "https" as const,
+            },
+          ]
+        : []),
+      {
+        hostname: "i.ytimg.com",
+        pathname: "/vi/**",
+        protocol: "https",
+      },
+    ],
   },
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
