@@ -12,6 +12,7 @@ export default function ClassPage() {
         <PageIntro
           subtitle="흙을 만지고 형태를 만드는 시간을 예약하세요."
           title="함께하기"
+          variant="listing"
         />
 
         <ClassCardGrid

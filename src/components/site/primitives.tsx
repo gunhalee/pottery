@@ -126,26 +126,43 @@ export function Section({
 }
 
 export function PageIntro({
+  actions,
   subtitle,
   title,
   titleEmphasis,
+  variant = "editorial",
 }: {
+  actions?: ReactNode;
   subtitle?: ReactNode;
   title: string;
   titleEmphasis?: string;
+  variant?: "compact" | "editorial" | "listing";
 }) {
+  const hasActions = Boolean(actions);
+  const hasSubtitle = Boolean(subtitle);
+
   return (
-    <div className="page-intro">
-      <h1 className="page-title">
-        {title}
-        {titleEmphasis ? (
-          <>
-            {" "}
-            <em>{titleEmphasis}</em>
-          </>
-        ) : null}
-      </h1>
-      {subtitle ? <p className="page-subtitle">{subtitle}</p> : null}
+    <div
+      className={cx(
+        "page-intro",
+        `page-intro-${variant}`,
+        hasActions && "page-intro-with-actions",
+        hasSubtitle && "page-intro-has-subtitle",
+      )}
+    >
+      <div className="page-intro-copy">
+        <h1 className="page-title">
+          {title}
+          {titleEmphasis ? (
+            <>
+              {" "}
+              <em>{titleEmphasis}</em>
+            </>
+          ) : null}
+        </h1>
+        {subtitle ? <p className="page-subtitle">{subtitle}</p> : null}
+      </div>
+      {actions ? <div className="page-intro-actions">{actions}</div> : null}
     </div>
   );
 }

@@ -13,6 +13,7 @@ export default function IntroPage() {
         <PageIntro
           subtitle="흙과 손, 쓰임을 중심에 둔 공방입니다."
           title="소개"
+          variant="editorial"
         />
       </PageShell>
 

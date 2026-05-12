@@ -10,7 +10,7 @@ export default async function ShopPage() {
   return (
     <PageShell>
       <PageIntro
-        subtitle={
+        actions={
           <span className="shop-intro-links">
             <SiteLink href="/shop/wishlist">찜 목록</SiteLink>
             <span aria-hidden="true" className="shop-intro-links-divider">
@@ -34,6 +34,7 @@ export default async function ShopPage() {
           </span>
         }
         title="소장하기"
+        variant="listing"
       />
 
       <ProductGrid products={products} />

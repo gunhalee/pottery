@@ -41,7 +41,7 @@ export default async function ShopWishlistPage() {
         <ShopBackButton fallbackHref="/shop" />
       </nav>
 
-      <PageIntro title="찜 목록" />
+      <PageIntro title="찜 목록" variant="compact" />
 
       <WishlistRefreshOnChange />
       {wishedProducts.length > 0 ? (

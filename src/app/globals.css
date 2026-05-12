@@ -651,10 +651,11 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 
 .page-shell {
   min-height: 0;
-  padding-top: 64px;
+  padding-top: 40px;
 }
 
 .intro-page-header {
+  padding-top: 64px;
   padding-bottom: 0;
 }
 
@@ -3957,8 +3958,14 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   text-transform: none;
 }
 
-.page-hero,
+.page-hero {
+  padding: 80px 56px 72px;
+  text-align: center;
+}
+
 .page-intro {
+  display: grid;
+  gap: 18px;
   padding: 80px 56px 72px;
   text-align: center;
 }
@@ -3967,30 +3974,54 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   padding: 0 0 48px;
 }
 
-.page-social-intro {
-  padding-bottom: 48px;
-  text-align: center;
+.page-shell > .page-intro-listing {
+  padding-bottom: 28px;
 }
 
-.page-title-wrap {
-  position: relative;
-  display: inline-block;
-  margin-bottom: 14px;
+.page-shell > .page-intro-compact {
+  padding-bottom: 22px;
 }
 
-.page-title-wrap .page-title {
-  margin: 0;
+.page-intro-copy {
+  min-width: 0;
+}
+
+.page-intro-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.page-intro-listing,
+.page-intro-compact {
+  text-align: left;
+}
+
+.page-intro-listing {
+  align-items: end;
+}
+
+.page-intro-listing.page-intro-with-actions {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.page-intro-compact {
+  gap: 10px;
+}
+
+.page-intro-listing .page-subtitle,
+.page-intro-compact .page-subtitle {
+  max-width: min(640px, 100%);
+  margin-inline: 0;
 }
 
 .page-title-socials {
-  position: absolute;
-  top: 50%;
-  left: 100%;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 4px;
-  margin-left: 24px;
-  transform: translateY(-50%);
 }
 
 .page-title-social-link {
@@ -4067,8 +4098,28 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 }
 
 .page-title {
-  margin: 0 0 14px;
+  margin: 0;
   font-size: clamp(30px, 3.2vw, 46px);
+}
+
+.page-intro-editorial.page-intro-has-subtitle .page-title {
+  margin-bottom: 14px;
+}
+
+.page-intro-listing .page-title {
+  font-size: clamp(30px, 3vw, 42px);
+}
+
+.page-intro-listing.page-intro-has-subtitle .page-title {
+  margin-bottom: 8px;
+}
+
+.page-intro-compact .page-title {
+  font-size: clamp(26px, 2.4vw, 34px);
+}
+
+.page-intro-compact.page-intro-has-subtitle .page-title {
+  margin-bottom: 8px;
 }
 
 .page-subtitle {
@@ -4086,8 +4137,13 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 12px;
   color: var(--tx);
+}
+
+.page-intro-actions .shop-intro-links {
+  justify-content: flex-end;
 }
 
 .shop-intro-links a {
@@ -5088,6 +5144,10 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   }
 
   .page-shell {
+    padding-top: 32px;
+  }
+
+  .intro-page-header {
     padding-top: 52px;
   }
 
@@ -5168,7 +5228,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   }
 
   .page-hero,
-  .page-intro {
+  .page-intro-editorial {
     padding: 64px 24px 48px;
   }
 
@@ -5176,8 +5236,24 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
     padding: 0 0 40px;
   }
 
-  .page-social-intro {
-    padding-bottom: 40px;
+  .page-shell > .page-intro-listing {
+    padding-bottom: 24px;
+  }
+
+  .page-shell > .page-intro-compact {
+    padding-bottom: 20px;
+  }
+
+  .page-intro-listing.page-intro-with-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .page-intro-actions {
+    justify-content: flex-start;
+  }
+
+  .page-intro-actions .shop-intro-links {
+    justify-content: flex-start;
   }
 
   .quote-band,
@@ -5268,8 +5344,8 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   }
 
   .page-title-socials {
+    justify-content: flex-start;
     gap: 4px;
-    margin-left: 18px;
   }
 
   .page-title-social-link {
@@ -5609,6 +5685,11 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
     max-width: 28ch;
     overflow-wrap: anywhere;
     word-break: keep-all;
+  }
+
+  .page-intro-listing .page-subtitle,
+  .page-intro-compact .page-subtitle {
+    max-width: none;
   }
 }
 

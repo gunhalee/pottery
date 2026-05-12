@@ -1,4 +1,5 @@
 import { SocialIconLink } from "@/components/site/social-icon-link";
+import { PageIntro } from "@/components/site/primitives";
 import type { SocialIconLinkData } from "@/lib/config/social-links";
 
 type PageSocialIntroProps = {
@@ -12,23 +13,25 @@ export function PageSocialIntro({
   subtitle,
   title,
 }: PageSocialIntroProps) {
-  return (
-    <div className="page-social-intro">
-      <div className="page-title-wrap">
-        <h1 className="page-title">{title}</h1>
-        {socials.length > 0 ? (
-          <div className="page-title-socials">
-            {socials.map((social) => (
-              <SocialIconLink
-                key={social.key}
-                link={social}
-                variant="page-title"
-              />
-            ))}
-          </div>
-        ) : null}
+  const actions =
+    socials.length > 0 ? (
+      <div className="page-title-socials">
+        {socials.map((social) => (
+          <SocialIconLink
+            key={social.key}
+            link={social}
+            variant="page-title"
+          />
+        ))}
       </div>
-      <p className="page-subtitle">{subtitle}</p>
-    </div>
+    ) : null;
+
+  return (
+    <PageIntro
+      actions={actions}
+      subtitle={subtitle}
+      title={title}
+      variant="listing"
+    />
   );
 }

@@ -39,6 +39,7 @@ export default async function CheckoutPage({
         <PageIntro
           subtitle="주문할 작업물을 다시 선택해 주세요."
           title="주문하기"
+          variant="compact"
         />
         <div className="checkout-empty">
           <p>상품 정보를 찾지 못했습니다.</p>
@@ -90,6 +91,7 @@ export default async function CheckoutPage({
       <PageIntro
         subtitle="주문자 정보와 조회 비밀번호를 입력해 자체 주문 기록을 생성합니다."
         title="주문하기"
+        variant="compact"
       />
 
       {isPurchasable ? (

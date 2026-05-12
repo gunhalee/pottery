@@ -26,6 +26,7 @@ export default async function CheckoutCompletePage({
       <PageIntro
         subtitle="PortOne 결제 결과를 서버에서 다시 검증합니다."
         title="결제 확인"
+        variant="compact"
       />
       <CheckoutCompleteClient
         errorCode={params.code}

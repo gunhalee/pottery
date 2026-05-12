@@ -18,7 +18,7 @@ export default async function ShopCartPage() {
         <ShopBackButton fallbackHref="/shop" />
       </nav>
 
-      <PageIntro title="장바구니" />
+      <PageIntro title="장바구니" variant="compact" />
 
       <CartPageClient products={products} />
     </PageShell>
