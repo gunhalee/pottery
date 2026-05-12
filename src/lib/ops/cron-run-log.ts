@@ -7,6 +7,7 @@ import {
 } from "@/lib/supabase/server";
 
 export type CronJobName =
+  | "daily_maintenance"
   | "order_notifications"
   | "upload_cleanup"
   | "virtual_account_expiry";
