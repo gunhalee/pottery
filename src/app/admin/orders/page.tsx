@@ -7,7 +7,11 @@ import {
   type AdminOrderListItem,
   type AdminOrderView,
 } from "@/lib/admin/orders";
-import type { FulfillmentStatus, PaymentStatus } from "@/lib/orders/order-model";
+import type {
+  FulfillmentStatus,
+  PaymentMethod,
+  PaymentStatus,
+} from "@/lib/orders/order-model";
 
 type AdminOrdersPageProps = {
   searchParams: Promise<{
@@ -213,7 +217,7 @@ function OrderRow({ order }: { order: AdminOrderListItem }) {
           tone="fulfillment"
         />
         <small>
-          {order.paymentMethod === "bank_transfer" ? "무통장입금 · " : ""}
+          {paymentMethodLabel(order.paymentMethod)} ·{" "}
           {order.shippingMethod === "pickup" ? "방문수령" : "택배"}
         </small>
       </div>
@@ -271,6 +275,15 @@ function paymentStatusLabel(status: PaymentStatus) {
     refund_pending: "환불 대기",
     refunded: "환불 완료",
     unpaid: "미결제",
+  }[status];
+}
+
+function paymentMethodLabel(status: PaymentMethod) {
+  return {
+    naver_pay: "N pay",
+    portone_card: "카드·간편결제",
+    portone_transfer: "실시간 계좌이체",
+    portone_virtual_account: "무통장입금(가상계좌)",
   }[status];
 }
 

@@ -18,7 +18,7 @@ import type {
   PaymentStatus,
 } from "@/lib/orders/order-model";
 import {
-  updateAdminBankTransferDepositAction,
+  syncAdminPortOnePaymentAction,
   updateAdminOrderFulfillmentAction,
   updateAdminRefundAccountAction,
 } from "../actions";
@@ -142,15 +142,15 @@ export default async function AdminOrderDetailPage({
         </dl>
       </section>
 
-      {order.paymentMethod === "bank_transfer" ? (
-        <BankTransferPanel order={order} />
+      {isPortOnePaymentMethod(order.paymentMethod) ? (
+        <PortOnePaymentPanel order={order} />
       ) : null}
 
       {order.cashReceiptType || order.cashReceipts.length > 0 ? (
         <CashReceiptPanel order={order} records={order.cashReceipts} />
       ) : null}
 
-      {order.paymentMethod === "bank_transfer" ? (
+      {requiresRefundAccountFallback(order.paymentMethod) ? (
         <RefundAccountsPanel
           orderId={order.id}
           records={order.refundAccounts}
@@ -424,14 +424,22 @@ function OrderRecordsPanel({
   );
 }
 
-function BankTransferPanel({ order }: { order: AdminOrderDetail }) {
+function PortOnePaymentPanel({ order }: { order: AdminOrderDetail }) {
   return (
     <section className="admin-panel">
       <div className="admin-panel-head">
-        <h2>무통장입금 확인</h2>
-        <span>{depositReviewStatusLabel(order.depositReviewStatus)}</span>
+        <h2>PortOne 결제</h2>
+        <span>{paymentStatusLabel(order.paymentStatus)}</span>
       </div>
       <dl className="admin-order-info-list">
+        <div>
+          <dt>결제 ID</dt>
+          <dd>{order.portonePaymentId ?? "미발급"}</dd>
+        </div>
+        <div>
+          <dt>거래 ID</dt>
+          <dd>{order.portoneTransactionId ?? "미확인"}</dd>
+        </div>
         <div>
           <dt>입금 기한</dt>
           <dd>{formatOptionalDateTime(order.depositDueAt)}</dd>
@@ -449,64 +457,34 @@ function BankTransferPanel({ order }: { order: AdminOrderDetail }) {
           </dd>
         </div>
         <div>
+          <dt>가상계좌 발급</dt>
+          <dd>{formatOptionalDateTime(order.virtualAccountIssuedAt)}</dd>
+        </div>
+        <div>
+          <dt>은행</dt>
+          <dd>{order.virtualAccountBankName ?? "미발급"}</dd>
+        </div>
+        <div>
+          <dt>계좌번호</dt>
+          <dd>{order.virtualAccountAccountNumber ?? "미발급"}</dd>
+        </div>
+        <div>
+          <dt>예금주</dt>
+          <dd>{order.virtualAccountAccountHolder ?? "미발급"}</dd>
+        </div>
+        <div>
           <dt>메모</dt>
           <dd>{order.depositReviewNote ?? "없음"}</dd>
         </div>
       </dl>
-      <form
-        action={updateAdminBankTransferDepositAction}
-        className="admin-form admin-form-section"
-      >
+      <form action={syncAdminPortOnePaymentAction} className="admin-inline-form">
         <input name="orderId" type="hidden" value={order.id} />
-        <div className="admin-form-grid">
-          <label>
-            <span>입금자명</span>
-            <input
-              defaultValue={order.ordererName}
-              name="depositorName"
-              required
-            />
-          </label>
-          <label>
-            <span>입금액</span>
-            <input
-              defaultValue={order.totalKrw}
-              inputMode="numeric"
-              name="depositAmountKrw"
-              required
-            />
-          </label>
-        </div>
-        <div className="admin-form-grid">
-          <label>
-            <span>입금 확인 시각</span>
-            <input
-              defaultValue={formatDateTimeInput(order.depositConfirmedAt)}
-              name="depositConfirmedAt"
-              type="datetime-local"
-            />
-          </label>
-          <label>
-            <span>검토 상태</span>
-            <select defaultValue="matched" name="depositReviewStatus">
-              <option value="matched">일치</option>
-              <option value="underpaid">과소 입금</option>
-              <option value="overpaid">초과 입금</option>
-              <option value="name_mismatch">입금자명 불일치</option>
-              <option value="needs_review">추가 확인 필요</option>
-            </select>
-          </label>
-        </div>
-        <label>
-          <span>처리 메모</span>
-          <textarea
-            defaultValue={order.depositReviewNote ?? ""}
-            name="note"
-            rows={3}
-          />
-        </label>
-        <button className="button-primary" type="submit">
-          입금 확인 및 현금영수증 처리
+        <button
+          className="button-primary"
+          disabled={!order.portonePaymentId}
+          type="submit"
+        >
+          PG 상태 재조회
         </button>
       </form>
     </section>
@@ -561,7 +539,7 @@ function CashReceiptPanel({
         </div>
       ) : (
         <p className="admin-empty-text">
-          입금 확인 버튼을 누르면 발급 대기 기록이 생성됩니다.
+          PG 결제 상태가 갱신되면 현금영수증 기록이 함께 반영됩니다.
         </p>
       )}
     </section>
@@ -813,23 +791,20 @@ function paymentStatusLabel(status: PaymentStatus) {
 
 function paymentMethodLabel(status: PaymentMethod) {
   return {
-    bank_transfer: "무통장입금",
     naver_pay: "N pay",
-    portone: "카드·간편결제",
+    portone_card: "카드·간편결제",
+    portone_transfer: "실시간 계좌이체",
+    portone_virtual_account: "무통장입금(가상계좌)",
   }[status];
 }
 
-function depositReviewStatusLabel(status: string) {
+function isPortOnePaymentMethod(method: PaymentMethod) {
+  return method !== "naver_pay";
+}
+
+function requiresRefundAccountFallback(method: PaymentMethod) {
   return (
-    {
-      matched: "일치",
-      name_mismatch: "입금자명 불일치",
-      needs_review: "추가 확인 필요",
-      not_applicable: "대상 아님",
-      overpaid: "초과 입금",
-      underpaid: "과소 입금",
-      waiting: "입금 대기",
-    }[status] ?? status
+    method === "portone_transfer" || method === "portone_virtual_account"
   );
 }
 
@@ -910,9 +885,6 @@ function shipmentStatusLabel(status: AdminOrderShipment["status"]) {
 
 function eventTypeLabel(eventType: string) {
   return {
-    bank_transfer_deposit_confirmed: "무통장입금 확인",
-    bank_transfer_deposit_expired: "입금기한 만료",
-    bank_transfer_order_created: "입금대기 주문 접수",
     cash_receipt_issue_pending: "현금영수증 발급 대기",
     fulfillment_status_updated: "처리 상태 변경",
     inventory_stock_decremented: "재고 차감",
@@ -923,7 +895,10 @@ function eventTypeLabel(eventType: string) {
     portone_payment_prepared: "결제 요청",
     portone_payment_paid: "결제 완료",
     portone_payment_reverified: "결제 재확인",
+    portone_payment_status_updated: "PG 상태 갱신",
     portone_payment_verification_failed: "결제 검증 실패",
+    portone_virtual_account_expired: "가상계좌 입금기한 만료",
+    portone_virtual_account_issued: "가상계좌 발급",
     refund_account_status_updated: "환불계좌 상태 변경",
     refund_account_submitted: "환불계좌 접수",
   }[eventType] ?? eventType;
@@ -970,20 +945,6 @@ function formatDateTime(value: string) {
 
 function formatOptionalDateTime(value: string | null) {
   return value ? formatDateTime(value) : "미확인";
-}
-
-function formatDateTimeInput(value: string | null) {
-  if (!value) {
-    return "";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  return date.toISOString().slice(0, 16);
 }
 
 function formatPhone(value: string) {

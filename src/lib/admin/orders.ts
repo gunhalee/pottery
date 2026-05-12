@@ -20,7 +20,7 @@ import type {
   RefundAccountStatus,
   ShippingMethod,
 } from "@/lib/orders/order-model";
-import { issueCashReceiptAfterBankTransferConfirmation } from "@/lib/orders/order-store";
+import { syncPortOnePayment } from "@/lib/payments";
 
 export type AdminOrderView =
   | "all"
@@ -130,6 +130,10 @@ export type AdminOrderDetail = {
   subtotalKrw: number;
   totalKrw: number;
   updatedAt: string;
+  virtualAccountAccountHolder: string | null;
+  virtualAccountAccountNumber: string | null;
+  virtualAccountBankName: string | null;
+  virtualAccountIssuedAt: string | null;
 };
 
 export type AdminOrderEvent = {
@@ -221,20 +225,6 @@ export type UpdateAdminOrderFulfillmentInput = {
   trackingUrl: string | null;
 };
 
-export type UpdateAdminBankTransferDepositInput = {
-  depositAmountKrw: number;
-  depositConfirmedAt: string | null;
-  depositReviewStatus:
-    | "matched"
-    | "underpaid"
-    | "overpaid"
-    | "name_mismatch"
-    | "needs_review";
-  depositorName: string;
-  note: string | null;
-  orderId: string;
-};
-
 export type UpdateAdminRefundAccountInput = {
   adminNote: string | null;
   orderId: string;
@@ -286,6 +276,10 @@ type OrderRow = {
   subtotal_krw: number;
   total_krw: number;
   updated_at: string;
+  virtual_account_account_holder: string | null;
+  virtual_account_account_number: string | null;
+  virtual_account_bank_name: string | null;
+  virtual_account_issued_at: string | null;
 };
 
 type OrderItemRow = {
@@ -370,7 +364,7 @@ type EventRow = {
 };
 
 const orderSelect =
-  "id, order_number, order_status, payment_status, payment_method, fulfillment_status, orderer_name, orderer_phone, orderer_phone_last4, orderer_email, is_gift, gift_message, recipient_name, recipient_phone, shipping_postcode, shipping_address1, shipping_address2, shipping_memo, shipping_method, currency, subtotal_krw, shipping_fee_krw, total_krw, portone_payment_id, portone_transaction_id, paid_at, canceled_at, created_at, updated_at, product_option, contains_live_plant, is_made_to_order, made_to_order_due_min_days, made_to_order_due_max_days, deposit_due_at, deposit_confirmed_at, deposit_received_amount_krw, deposit_review_status, deposit_review_note, cash_receipt_type, cash_receipt_identifier_type, cash_receipt_identifier_masked, cash_receipt_status";
+  "id, order_number, order_status, payment_status, payment_method, fulfillment_status, orderer_name, orderer_phone, orderer_phone_last4, orderer_email, is_gift, gift_message, recipient_name, recipient_phone, shipping_postcode, shipping_address1, shipping_address2, shipping_memo, shipping_method, currency, subtotal_krw, shipping_fee_krw, total_krw, portone_payment_id, portone_transaction_id, paid_at, canceled_at, created_at, updated_at, product_option, contains_live_plant, is_made_to_order, made_to_order_due_min_days, made_to_order_due_max_days, deposit_due_at, deposit_confirmed_at, deposit_received_amount_krw, deposit_review_status, deposit_review_note, virtual_account_bank_name, virtual_account_account_number, virtual_account_account_holder, virtual_account_issued_at, cash_receipt_type, cash_receipt_identifier_type, cash_receipt_identifier_masked, cash_receipt_status";
 
 const emptyStats: AdminOrderStats = {
   all: 0,
@@ -552,6 +546,10 @@ export async function getAdminOrderDetail(
     subtotalKrw: order.subtotal_krw,
     totalKrw: order.total_krw,
     updatedAt: order.updated_at,
+    virtualAccountAccountHolder: order.virtual_account_account_holder,
+    virtualAccountAccountNumber: order.virtual_account_account_number,
+    virtualAccountBankName: order.virtual_account_bank_name,
+    virtualAccountIssuedAt: order.virtual_account_issued_at,
   };
 }
 
@@ -665,38 +663,39 @@ export async function updateAdminOrderFulfillment(
   };
 }
 
-export async function updateAdminBankTransferDeposit(
-  input: UpdateAdminBankTransferDepositInput,
-) {
+export async function syncAdminPortOnePayment(orderId: string) {
   if (!isSupabaseConfigured()) {
     throw new Error("주문 저장소가 아직 연결되지 않았습니다.");
   }
 
   const supabase = getSupabaseAdminClient();
-  const { data, error } = await supabase.rpc(
-    "mark_shop_order_bank_transfer_paid",
-    {
-      p_deposit_amount_krw: input.depositAmountKrw,
-      p_deposit_confirmed_at:
-        input.depositConfirmedAt ?? new Date().toISOString(),
-      p_deposit_review_status: input.depositReviewStatus,
-      p_depositor_name: input.depositorName,
-      p_note: input.note,
-      p_order_id: input.orderId,
-    },
-  );
+  const { data, error } = await supabase
+    .from("shop_orders")
+    .select("id, order_number, portone_payment_id")
+    .eq("id", orderId)
+    .maybeSingle();
 
-  if (error) {
-    throw new Error(`입금 확인 저장에 실패했습니다: ${error.message}`);
+  if (error || !data) {
+    throw new Error(`주문 확인에 실패했습니다: ${error?.message ?? "주문 없음"}`);
   }
 
-  await issueCashReceiptAfterBankTransferConfirmation(input.orderId);
+  const order = data as Pick<
+    OrderRow,
+    "id" | "order_number" | "portone_payment_id"
+  >;
 
-  const result = Array.isArray(data) ? data[0] : data;
+  if (!order.portone_payment_id) {
+    throw new Error("PortOne 결제 ID가 아직 발급되지 않았습니다.");
+  }
+
+  await syncPortOnePayment({
+    orderId: order.id,
+    paymentId: order.portone_payment_id,
+    source: "admin",
+  });
 
   return {
-    orderNumber:
-      typeof result?.order_number === "string" ? result.order_number : null,
+    orderNumber: order.order_number,
   };
 }
 
@@ -1243,12 +1242,15 @@ function nextActionLabel(row: OrderRow) {
     return "환불 처리";
   }
 
-  if (row.payment_method === "bank_transfer" && row.payment_status === "pending") {
-    return "입금 확인";
+  if (
+    row.payment_method === "portone_virtual_account" &&
+    row.payment_status === "pending"
+  ) {
+    return "가상계좌 입금 대기";
   }
 
   if (row.payment_status === "pending" || row.payment_status === "unpaid") {
-    return "결제 확인 대기";
+    return "PG 결제 확인 대기";
   }
 
   if (row.shipping_method === "pickup") {
@@ -1295,7 +1297,7 @@ function orderTone(row: OrderRow): AdminOrderTone {
   }
 
   if (
-    row.payment_method === "bank_transfer" &&
+    row.payment_method === "portone_virtual_account" &&
     row.payment_status === "pending"
   ) {
     return "priority";

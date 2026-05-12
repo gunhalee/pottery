@@ -100,11 +100,44 @@ export function CheckoutCompleteClient({
   }, [errorCode, errorMessage, orderId, paymentId]);
 
   if (state.status === "success") {
+    const result = state.result;
+    const isVirtualAccount =
+      result.paymentMethod === "portone_virtual_account" &&
+      result.paymentStatus === "pending";
+
     return (
       <div className="checkout-result">
-        <span>결제 확인</span>
-        <strong>{state.result.orderNumber}</strong>
-        <p>결제 검증이 완료되었습니다. 주문 조회에서 진행 상태를 확인해 주세요.</p>
+        <span>{isVirtualAccount ? "가상계좌 발급" : "결제 확인"}</span>
+        <strong>{result.orderNumber}</strong>
+        {isVirtualAccount ? (
+          <>
+            <p>
+              가상계좌가 발급되었습니다. 입금 확인 후 주문이 확정됩니다.
+            </p>
+            <dl className="checkout-bank-result">
+              <div>
+                <dt>입금 계좌</dt>
+                <dd>
+                  {result.depositAccount
+                    ? `${result.depositAccount.bankName} ${result.depositAccount.accountNumber} / ${result.depositAccount.accountHolder}`
+                    : "주문 조회에서 확인해 주세요."}
+                </dd>
+              </div>
+              <div>
+                <dt>입금 기한</dt>
+                <dd>{formatDateTime(result.depositDueAt)}</dd>
+              </div>
+              <div>
+                <dt>입금 금액</dt>
+                <dd>{formatMoney(result.total)}</dd>
+              </div>
+            </dl>
+          </>
+        ) : (
+          <p>
+            결제 검증이 완료되었습니다. 주문 조회에서 진행 상태를 확인해 주세요.
+          </p>
+        )}
         <Link className="button-primary" href="/order/lookup" prefetch={false}>
           주문 조회하기
         </Link>
@@ -161,4 +194,25 @@ function getInitialCompletionState({
     result: null,
     status: "verifying",
   };
+}
+
+function formatDateTime(value: string | null | undefined) {
+  if (!value) {
+    return "확인 중";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function formatMoney(value: number) {
+  return `${value.toLocaleString("ko-KR")}원`;
 }

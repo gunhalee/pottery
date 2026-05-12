@@ -1,15 +1,43 @@
+update public.shop_orders
+set payment_method = 'portone_card'
+where payment_method = 'portone';
+
+update public.shop_orders
+set payment_method = 'portone_virtual_account'
+where payment_method = 'bank_transfer';
+
+update public.shop_payments
+set payment_method = 'portone_card'
+where payment_method = 'portone';
+
+update public.shop_payments
+set payment_method = 'portone_virtual_account'
+where payment_method = 'bank_transfer';
+
+update public.shop_payments sp
+set provider_payment_id = 'migrated-' || provider_payment_id
+where sp.provider = 'bank_transfer'
+  and exists (
+    select 1
+    from public.shop_payments p2
+    where p2.provider = 'portone'
+      and p2.provider_payment_id = sp.provider_payment_id
+  );
+
+update public.shop_payments
+set provider = 'portone'
+where provider = 'bank_transfer';
+
 alter table public.shop_orders
   drop constraint if exists shop_orders_payment_method_check;
 
 alter table public.shop_orders
   add constraint shop_orders_payment_method_check check (
     payment_method in (
-      'portone',
       'portone_card',
       'portone_transfer',
       'portone_virtual_account',
-      'naver_pay',
-      'bank_transfer'
+      'naver_pay'
     )
   );
 
@@ -19,6 +47,12 @@ alter table public.shop_orders
   add column if not exists virtual_account_account_holder text,
   add column if not exists virtual_account_issued_at timestamptz;
 
+alter table public.shop_payments
+  drop constraint if exists shop_payments_provider_check;
+
+alter table public.shop_payments
+  add constraint shop_payments_provider_check check (provider in ('portone'));
+
 alter table public.shop_cash_receipts
   drop constraint if exists shop_cash_receipts_provider_check;
 
@@ -26,12 +60,16 @@ alter table public.shop_cash_receipts
   add constraint shop_cash_receipts_provider_check check (provider in ('nts', 'portone'));
 
 drop index if exists public.shop_orders_deposit_due_idx;
-create index if not exists shop_orders_deposit_due_idx
+create index if not exists shop_orders_virtual_account_due_idx
 on public.shop_orders (deposit_due_at)
-where payment_method in ('bank_transfer', 'portone_virtual_account')
+where payment_method = 'portone_virtual_account'
   and payment_status = 'pending';
 
-create or replace function public.reserve_stock_for_bank_transfer_order(
+drop function if exists public.reserve_stock_for_bank_transfer_order(uuid);
+drop function if exists public.mark_shop_order_bank_transfer_paid(uuid, text, text, integer, timestamptz, text, text);
+drop function if exists public.cancel_expired_bank_transfer_order(uuid);
+
+create or replace function public.reserve_stock_for_virtual_account_order(
   p_order_id uuid
 )
 returns void
@@ -55,7 +93,7 @@ begin
     raise exception 'order not found';
   end if;
 
-  if v_order.payment_method not in ('bank_transfer', 'portone_virtual_account') then
+  if v_order.payment_method <> 'portone_virtual_account' then
     return;
   end if;
 
@@ -194,15 +232,15 @@ begin
       end,
       portone_transaction_id = p_transaction_id,
       deposit_received_amount_krw = case
-        when payment_method in ('portone_transfer', 'portone_virtual_account', 'bank_transfer') then total_krw
+        when payment_method in ('portone_transfer', 'portone_virtual_account') then total_krw
         else deposit_received_amount_krw
       end,
       deposit_confirmed_at = case
-        when payment_method in ('portone_transfer', 'portone_virtual_account', 'bank_transfer') then now()
+        when payment_method in ('portone_transfer', 'portone_virtual_account') then now()
         else deposit_confirmed_at
       end,
       deposit_review_status = case
-        when payment_method in ('portone_transfer', 'portone_virtual_account', 'bank_transfer') then 'matched'
+        when payment_method in ('portone_transfer', 'portone_virtual_account') then 'matched'
         else deposit_review_status
       end,
       paid_at = now()
@@ -287,7 +325,7 @@ begin
 end;
 $$;
 
-create or replace function public.cancel_expired_bank_transfer_order(
+create or replace function public.cancel_expired_virtual_account_order(
   p_order_id uuid
 )
 returns boolean
@@ -297,14 +335,13 @@ set search_path = public
 as $$
 declare
   v_order public.shop_orders%rowtype;
-  v_provider text;
   v_provider_payment_id text;
 begin
   select *
   into v_order
   from public.shop_orders
   where id = p_order_id
-    and payment_method in ('bank_transfer', 'portone_virtual_account')
+    and payment_method = 'portone_virtual_account'
   for update;
 
   if not found then
@@ -327,17 +364,10 @@ begin
     payment_status = 'expired',
     fulfillment_status = 'canceled',
     canceled_at = now(),
-    deposit_review_status = case
-      when payment_method in ('bank_transfer', 'portone_virtual_account') then 'waiting'
-      else deposit_review_status
-    end,
-    deposit_review_note = coalesce(deposit_review_note, '입금기한 만료로 자동 취소')
+    deposit_review_status = 'waiting',
+    deposit_review_note = coalesce(deposit_review_note, '가상계좌 입금기한 만료로 자동 취소')
   where id = v_order.id;
 
-  v_provider := case
-    when v_order.payment_method = 'bank_transfer' then 'bank_transfer'
-    else 'portone'
-  end;
   v_provider_payment_id := coalesce(
     v_order.portone_payment_id,
     'expired-' || v_order.order_number
@@ -354,12 +384,12 @@ begin
   )
   values (
     v_order.id,
-    v_provider,
+    'portone',
     v_provider_payment_id,
     v_order.payment_method,
     'expired',
     v_order.total_krw,
-    jsonb_build_object('reason', 'deposit_expired')
+    jsonb_build_object('reason', 'virtual_account_expired')
   )
   on conflict (provider, provider_payment_id) do update set
     payment_method = excluded.payment_method,
@@ -375,10 +405,7 @@ begin
   )
   values (
     v_order.id,
-    case
-      when v_order.payment_method = 'portone_virtual_account' then 'portone_virtual_account_expired'
-      else 'bank_transfer_deposit_expired'
-    end,
+    'portone_virtual_account_expired',
     'system',
     jsonb_build_object(
       'depositDueAt', v_order.deposit_due_at,
@@ -391,9 +418,22 @@ begin
 end;
 $$;
 
-grant execute on function public.reserve_stock_for_bank_transfer_order(uuid)
+alter table public.cron_run_logs
+  drop constraint if exists cron_run_logs_job_name_check;
+
+alter table public.cron_run_logs
+  add constraint cron_run_logs_job_name_check check (
+    job_name in (
+      'upload_cleanup',
+      'order_notifications',
+      'virtual_account_expiry',
+      'cafe24_inventory'
+    )
+  );
+
+grant execute on function public.reserve_stock_for_virtual_account_order(uuid)
 to service_role;
 grant execute on function public.mark_shop_order_paid(uuid, text, text, jsonb)
 to service_role;
-grant execute on function public.cancel_expired_bank_transfer_order(uuid)
+grant execute on function public.cancel_expired_virtual_account_order(uuid)
 to service_role;

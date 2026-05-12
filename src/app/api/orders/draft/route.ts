@@ -26,12 +26,10 @@ const orderDraftSchema = z.object({
   ordererPhone: z.string().trim().min(8).max(30),
   paymentMethod: z
     .enum([
-      "portone",
       "portone_card",
       "portone_transfer",
       "portone_virtual_account",
       "naver_pay",
-      "bank_transfer",
     ])
     .optional(),
   productOption: z.enum(["plant_excluded", "plant_included"]).optional(),

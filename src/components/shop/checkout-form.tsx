@@ -4,7 +4,6 @@ import Link from "next/link";
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 import type {
-  BankTransferAccount,
   CashReceiptIdentifierType,
   CashReceiptType,
   CheckoutMode,
@@ -19,7 +18,6 @@ import type {
 } from "@/lib/payments/portone-model";
 
 type CheckoutFormProps = {
-  bankTransferAccount: BankTransferAccount;
   checkoutMode: CheckoutMode;
   containsLivePlant: boolean;
   isMadeToOrder: boolean;
@@ -46,7 +44,12 @@ type SubmitState =
   | {
       error: string | null;
       order: OrderDraftResult;
-      status: "created" | "payment" | "bank_transfer";
+      status: "created" | "payment";
+    }
+  | {
+      error: null;
+      order: PortOnePaymentCompleteResult;
+      status: "virtual_account";
     }
   | {
       error: null;
@@ -55,7 +58,6 @@ type SubmitState =
     };
 
 export function CheckoutForm({
-  bankTransferAccount,
   checkoutMode,
   containsLivePlant,
   isMadeToOrder,
@@ -73,7 +75,7 @@ export function CheckoutForm({
   unitPrice,
 }: CheckoutFormProps) {
   const [paymentMethod, setPaymentMethod] =
-    useState<PaymentMethod>("portone");
+    useState<PaymentMethod>("portone_card");
   const [cashReceiptType, setCashReceiptType] =
     useState<CashReceiptType>("none");
   const [cashReceiptIdentifierType, setCashReceiptIdentifierType] =
@@ -90,12 +92,17 @@ export function CheckoutForm({
   const selectedPaymentMethod: PaymentMethod = isNaverPay
     ? "naver_pay"
     : paymentMethod;
-  const isBankTransfer = selectedPaymentMethod === "bank_transfer";
-  const submitLabel = isBankTransfer
-    ? "입금대기 주문 접수"
-    : isNaverPay
-      ? "N pay 결제하기"
-      : "결제하기";
+  const isVirtualAccount =
+    selectedPaymentMethod === "portone_virtual_account";
+  const isAccountTransfer = selectedPaymentMethod === "portone_transfer";
+  const isCashReceiptPayment = isVirtualAccount || isAccountTransfer;
+  const submitLabel = isVirtualAccount
+    ? "가상계좌 발급하기"
+    : isAccountTransfer
+      ? "계좌이체 결제하기"
+      : isNaverPay
+        ? "N pay 결제하기"
+        : "결제하기";
   const modeLabel = useMemo(() => {
     if (isGift) {
       return "선물하기";
@@ -172,15 +179,6 @@ export function CheckoutForm({
       return;
     }
 
-    if (result.order.paymentMethod === "bank_transfer") {
-      setState({
-        error: null,
-        order: result.order,
-        status: "bank_transfer",
-      });
-      return;
-    }
-
     await requestPayment(result.order);
   }
 
@@ -219,6 +217,11 @@ export function CheckoutForm({
       );
 
       if (!paymentResponse) {
+        setState({
+          error: null,
+          order,
+          status: "created",
+        });
         return;
       }
 
@@ -244,6 +247,18 @@ export function CheckoutForm({
         throw new Error(
           completed.error ?? "결제 검증 중 오류가 발생했습니다.",
         );
+      }
+
+      if (
+        completed.paymentStatus === "pending" &&
+        completed.paymentMethod === "portone_virtual_account"
+      ) {
+        setState({
+          error: null,
+          order: completed,
+          status: "virtual_account",
+        });
+        return;
       }
 
       setState({
@@ -279,23 +294,24 @@ export function CheckoutForm({
     );
   }
 
-  if (state.status === "bank_transfer") {
-    const account = state.order.bankTransferAccount ?? bankTransferAccount;
+  if (state.status === "virtual_account") {
+    const account = state.order.depositAccount;
 
     return (
       <div className="checkout-result checkout-bank-result">
-        <span>입금대기 주문</span>
+        <span>가상계좌 입금대기</span>
         <strong>{state.order.orderNumber}</strong>
         <p>
-          입금 확인 후 주문이 확정됩니다. 입금자명은 주문자명과 동일하게
-          보내 주세요.
+          PortOne을 통해 전용 입금계좌가 발급되었습니다. 입금기한 내 결제가
+          확인되면 주문이 확정되고 배송 준비가 시작됩니다.
         </p>
         <dl>
           <div>
             <dt>입금 계좌</dt>
             <dd>
-              {account.bankName} {account.accountNumber} /{" "}
-              {account.accountHolder}
+              {account
+                ? `${account.bankName} ${account.accountNumber} / ${account.accountHolder}`
+                : "주문 조회에서 확인해 주세요"}
             </dd>
           </div>
           <div>
@@ -423,35 +439,52 @@ export function CheckoutForm({
             <div className="checkout-choice-row">
               <label>
                 <input
-                  checked={paymentMethod === "portone"}
+                  checked={paymentMethod === "portone_card"}
                   name="paymentMethod"
-                  onChange={() => setPaymentMethod("portone")}
+                  onChange={() => setPaymentMethod("portone_card")}
                   type="radio"
-                  value="portone"
+                  value="portone_card"
                 />
                 <span>카드·간편결제</span>
               </label>
               <label>
                 <input
-                  checked={paymentMethod === "bank_transfer"}
+                  checked={paymentMethod === "portone_transfer"}
                   name="paymentMethod"
-                  onChange={() => setPaymentMethod("bank_transfer")}
+                  onChange={() => setPaymentMethod("portone_transfer")}
                   type="radio"
-                  value="bank_transfer"
+                  value="portone_transfer"
                 />
-                <span>무통장입금</span>
+                <span>계좌이체</span>
+              </label>
+              <label>
+                <input
+                  checked={paymentMethod === "portone_virtual_account"}
+                  name="paymentMethod"
+                  onChange={() => setPaymentMethod("portone_virtual_account")}
+                  type="radio"
+                  value="portone_virtual_account"
+                />
+                <span>무통장입금(가상계좌)</span>
               </label>
             </div>
-            {isBankTransfer ? (
+            {isVirtualAccount ? (
               <p className="checkout-note">
-                무통장입금은 주문 완료 후 24시간 내 입금이 확인되어야 주문이
-                확정됩니다.
+                PortOne 결제창에서 주문별 전용 입금계좌가 발급됩니다. 입금
+                확인은 PG사를 통해 자동 반영되며, 발급 후 24시간 내 미입금 시
+                주문이 자동 취소될 수 있습니다.
+              </p>
+            ) : null}
+            {isAccountTransfer ? (
+              <p className="checkout-note">
+                계좌이체는 PortOne 결제창에서 즉시 결제와 현금영수증 신청이
+                함께 진행됩니다.
               </p>
             ) : null}
           </fieldset>
         ) : null}
 
-        {isBankTransfer ? (
+        {isCashReceiptPayment ? (
           <fieldset>
             <legend>현금영수증</legend>
             <div className="checkout-choice-row">
@@ -528,6 +561,10 @@ export function CheckoutForm({
                 </label>
               </>
             ) : null}
+            <p className="checkout-note">
+              입력한 발급 정보는 PortOne 결제 요청에 전달되며, 발급 상태는
+              결제대행사 처리 결과를 기준으로 반영됩니다.
+            </p>
           </fieldset>
         ) : null}
 

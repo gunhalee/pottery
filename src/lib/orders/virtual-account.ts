@@ -7,7 +7,7 @@ import {
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
 
-type ExpirableBankTransferOrderRow = {
+type ExpirableVirtualAccountOrderRow = {
   deposit_due_at: string | null;
   id: string;
   order_number: string;
@@ -23,7 +23,7 @@ export function getDepositDueAt(now = new Date()) {
   );
 }
 
-export async function cancelExpiredBankTransferOrders(limit = 50) {
+export async function cancelExpiredVirtualAccountOrders(limit = 50) {
   const summary = {
     canceled: 0,
     checked: 0,
@@ -40,22 +40,24 @@ export async function cancelExpiredBankTransferOrders(limit = 50) {
     .select(
       "id, order_number, orderer_email, orderer_phone, total_krw, deposit_due_at",
     )
-    .in("payment_method", ["bank_transfer", "portone_virtual_account"])
+    .eq("payment_method", "portone_virtual_account")
     .eq("payment_status", "pending")
     .lte("deposit_due_at", new Date().toISOString())
     .order("deposit_due_at", { ascending: true })
     .limit(limit);
 
   if (error) {
-    throw new Error(`Expired bank-transfer orders could not be read: ${error.message}`);
+    throw new Error(
+      `Expired virtual-account orders could not be read: ${error.message}`,
+    );
   }
 
-  const orders = (data ?? []) as ExpirableBankTransferOrderRow[];
+  const orders = (data ?? []) as ExpirableVirtualAccountOrderRow[];
   summary.checked = orders.length;
 
   for (const order of orders) {
     const { data: canceled, error: cancelError } = await supabase.rpc(
-      "cancel_expired_bank_transfer_order",
+      "cancel_expired_virtual_account_order",
       {
         p_order_id: order.id,
       },

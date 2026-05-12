@@ -374,10 +374,10 @@ function healthStatusLabel(status: "danger" | "neutral" | "warning") {
 
 function cronJobLabel(jobName: CronRunLogJobName) {
   return {
-    bank_transfer_expiry: "입금기한 자동취소",
     cafe24_inventory: "Cafe24 재고 동기화",
     order_notifications: "주문 알림",
     upload_cleanup: "업로드 cleanup",
+    virtual_account_expiry: "가상계좌 만료 자동취소",
   }[jobName];
 }
 

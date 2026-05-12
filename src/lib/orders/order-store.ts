@@ -3,7 +3,6 @@ import "server-only";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { commerceConfig } from "@/lib/config/commerce";
 import { enqueueOrderNotificationJobs } from "@/lib/notifications/order-notifications";
-import { requestCashReceiptIssueForOrder } from "@/lib/payments/cash-receipt";
 import {
   getSupabaseAdminClient,
   isSupabaseConfigured,
@@ -14,7 +13,7 @@ import {
   maskAccountNumber,
   maskCashReceiptIdentifier,
 } from "@/lib/security/sensitive-data";
-import { getDepositDueAt } from "./bank-transfer";
+import { getDepositDueAt } from "./virtual-account";
 import type {
   CashReceiptStatus,
   CashReceiptType,
@@ -342,9 +341,9 @@ export async function createOrderDraft(
     throw new OrderDraftError(`주문 상품 저장 실패: ${itemError.message}`, 500);
   }
 
-  if (paymentMethod === "bank_transfer" && !isMadeToOrder) {
+  if (paymentMethod === "portone_virtual_account" && !isMadeToOrder) {
     const { error: reserveError } = await supabase.rpc(
-      "reserve_stock_for_bank_transfer_order",
+      "reserve_stock_for_virtual_account_order",
       {
         p_order_id: order.id,
       },
@@ -353,7 +352,7 @@ export async function createOrderDraft(
     if (reserveError) {
       await supabase.from("shop_orders").delete().eq("id", order.id);
       throw new OrderDraftError(
-        `입금대기 재고 확보 실패: ${reserveError.message}`,
+        `가상계좌 재고 확보 실패: ${reserveError.message}`,
         409,
       );
     }
@@ -361,10 +360,7 @@ export async function createOrderDraft(
 
   await supabase.from("shop_order_events").insert({
     actor: "customer",
-    event_type:
-      paymentMethod === "bank_transfer"
-        ? "bank_transfer_order_created"
-        : "order_draft_created",
+    event_type: "order_draft_created",
     order_id: order.id,
     payload: {
       checkoutMode: input.checkoutMode,
@@ -391,23 +387,6 @@ export async function createOrderDraft(
     },
     template: "order_received",
   });
-
-  if (paymentMethod === "bank_transfer") {
-    await enqueueOrderNotificationJobs({
-      orderId: order.id,
-      orderNumber: order.order_number,
-      payload: {
-        depositDueAt,
-        depositorName: input.ordererName.trim(),
-        total: amounts.totalKrw,
-      },
-      recipient: {
-        email: input.ordererEmail.trim(),
-        phone: ordererPhone,
-      },
-      template: "deposit_guide",
-    });
-  }
 
   return {
     depositDueAt,
@@ -690,12 +669,6 @@ function prepareCashReceipt(
   };
 }
 
-export async function issueCashReceiptAfterBankTransferConfirmation(
-  orderId: string,
-) {
-  return requestCashReceiptIssueForOrder(orderId);
-}
-
 function normalizePaymentMethod(
   checkoutMode: OrderDraftInput["checkoutMode"],
   paymentMethod: PaymentMethod | undefined,
@@ -708,25 +681,21 @@ function normalizePaymentMethod(
     return "portone_transfer";
   }
 
-  if (paymentMethod === "portone_virtual_account" || paymentMethod === "bank_transfer") {
+  if (paymentMethod === "portone_virtual_account") {
     return "portone_virtual_account";
   }
 
-  return paymentMethod === "portone" ? "portone" : "portone_card";
+  return "portone_card";
 }
 
 function isVirtualAccountPaymentMethod(paymentMethod: PaymentMethod) {
-  return (
-    paymentMethod === "portone_virtual_account" ||
-    paymentMethod === "bank_transfer"
-  );
+  return paymentMethod === "portone_virtual_account";
 }
 
 function isCashReceiptPaymentMethod(paymentMethod: PaymentMethod) {
   return (
     paymentMethod === "portone_transfer" ||
-    paymentMethod === "portone_virtual_account" ||
-    paymentMethod === "bank_transfer"
+    paymentMethod === "portone_virtual_account"
   );
 }
 

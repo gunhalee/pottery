@@ -2,6 +2,7 @@ export {
   completePortOnePayment,
   preparePortOnePayment,
   PortOnePaymentError,
+  syncPortOnePayment,
 } from "./portone";
 export type {
   PortOnePaymentCompleteResult,

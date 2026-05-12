@@ -225,15 +225,15 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
         </div>
       </dl>
 
-      {result.paymentMethod === "bank_transfer" ? (
+      {result.paymentMethod === "portone_virtual_account" ? (
         <div className="order-lookup-bank">
-          <strong>무통장입금 안내</strong>
+          <strong>가상계좌 입금 안내</strong>
           <dl>
             <div>
               <dt>입금 계좌</dt>
               <dd>
-                {result.bankTransferAccount
-                  ? `${result.bankTransferAccount.bankName} ${result.bankTransferAccount.accountNumber} / ${result.bankTransferAccount.accountHolder}`
+                {result.depositAccount
+                  ? `${result.depositAccount.bankName} ${result.depositAccount.accountNumber} / ${result.depositAccount.accountHolder}`
                   : "확인 중"}
               </dd>
             </div>
@@ -316,7 +316,7 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
         </div>
       </div>
 
-      {result.paymentMethod === "bank_transfer" ? (
+      {requiresRefundAccountFallback(result.paymentMethod) ? (
         <form action={submitRefundAccount} className="order-refund-form">
           <strong>환불계좌 등록</strong>
           <label>
@@ -426,10 +426,17 @@ function paymentStatusLabel(status: OrderLookupResult["paymentStatus"]) {
 
 function paymentMethodLabel(status: OrderLookupResult["paymentMethod"]) {
   return {
-    bank_transfer: "무통장입금",
     naver_pay: "N pay",
-    portone: "카드·간편결제",
+    portone_card: "카드·간편결제",
+    portone_transfer: "실시간 계좌이체",
+    portone_virtual_account: "무통장입금(가상계좌)",
   }[status];
+}
+
+function requiresRefundAccountFallback(
+  status: OrderLookupResult["paymentMethod"],
+) {
+  return status === "portone_transfer" || status === "portone_virtual_account";
 }
 
 function cashReceiptStatusLabel(status: OrderLookupResult["cashReceiptStatus"]) {

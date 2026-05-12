@@ -7,9 +7,9 @@ import {
 } from "@/lib/supabase/server";
 
 export type CronJobName =
-  | "bank_transfer_expiry"
   | "order_notifications"
-  | "upload_cleanup";
+  | "upload_cleanup"
+  | "virtual_account_expiry";
 export type CronRunLogJobName = CronJobName | "cafe24_inventory";
 export type CronRunStatus = "failed" | "running" | "success";
 

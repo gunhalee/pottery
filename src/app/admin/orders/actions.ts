@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { assertAdmin } from "@/lib/admin/auth";
 import {
-  updateAdminBankTransferDeposit,
+  syncAdminPortOnePayment,
   updateAdminOrderFulfillment,
   updateAdminRefundAccount,
 } from "@/lib/admin/orders";
@@ -29,18 +29,7 @@ const fulfillmentUpdateSchema = z.object({
   trackingUrl: z.url().max(240).optional().or(z.literal("")),
 });
 
-const bankTransferDepositSchema = z.object({
-  depositAmountKrw: z.number().int().min(0),
-  depositConfirmedAt: z.string().trim().max(40).optional(),
-  depositReviewStatus: z.enum([
-    "matched",
-    "underpaid",
-    "overpaid",
-    "name_mismatch",
-    "needs_review",
-  ]),
-  depositorName: z.string().trim().min(1).max(60),
-  note: z.string().trim().max(240).optional(),
+const portOnePaymentSyncSchema = z.object({
   orderId: z.uuid(),
 });
 
@@ -84,37 +73,23 @@ export async function updateAdminOrderFulfillmentAction(formData: FormData) {
   redirect(`/admin/orders/${parsed.orderId}?saved=1`);
 }
 
-export async function updateAdminBankTransferDepositAction(formData: FormData) {
+export async function syncAdminPortOnePaymentAction(formData: FormData) {
   await assertAdmin();
 
-  const parsed = bankTransferDepositSchema.parse({
-    depositAmountKrw: numericFormValue(formData.get("depositAmountKrw")),
-    depositConfirmedAt: optionalFormString(formData.get("depositConfirmedAt")),
-    depositReviewStatus: formData.get("depositReviewStatus"),
-    depositorName: formData.get("depositorName"),
-    note: optionalFormString(formData.get("note")),
+  const parsed = portOnePaymentSyncSchema.parse({
     orderId: formData.get("orderId"),
   });
 
   try {
-    await updateAdminBankTransferDeposit({
-      depositAmountKrw: parsed.depositAmountKrw,
-      depositConfirmedAt: parsed.depositConfirmedAt
-        ? new Date(parsed.depositConfirmedAt).toISOString()
-        : null,
-      depositReviewStatus: parsed.depositReviewStatus,
-      depositorName: parsed.depositorName,
-      note: nullableString(parsed.note),
-      orderId: parsed.orderId,
-    });
+    await syncAdminPortOnePayment(parsed.orderId);
   } catch (error) {
     console.error(error);
-    redirect(`/admin/orders/${parsed.orderId}?error=deposit`);
+    redirect(`/admin/orders/${parsed.orderId}?error=payment-sync`);
   }
 
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${parsed.orderId}`);
-  redirect(`/admin/orders/${parsed.orderId}?saved=deposit`);
+  redirect(`/admin/orders/${parsed.orderId}?saved=payment-sync`);
 }
 
 export async function updateAdminRefundAccountAction(formData: FormData) {
@@ -151,11 +126,4 @@ function nullableString(value: string | undefined) {
 
 function optionalFormString(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value : undefined;
-}
-
-function numericFormValue(value: FormDataEntryValue | null) {
-  const normalized = String(value ?? "").replace(/\D/g, "");
-  const parsed = Number(normalized);
-
-  return Number.isFinite(parsed) ? parsed : 0;
 }

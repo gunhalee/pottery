@@ -36,12 +36,10 @@ export type ShippingMethod = "parcel" | "pickup";
 export type CheckoutMode = "standard" | "gift" | "naver_pay";
 
 export type PaymentMethod =
-  | "portone"
   | "portone_card"
   | "portone_transfer"
   | "portone_virtual_account"
-  | "naver_pay"
-  | "bank_transfer";
+  | "naver_pay";
 
 export type ProductOption = "plant_excluded" | "plant_included";
 
@@ -67,13 +65,11 @@ export type RefundAccountStatus =
   | "rejected"
   | "refunded";
 
-export type BankTransferAccount = {
+export type DepositAccount = {
   accountHolder: string;
   accountNumber: string;
   bankName: string;
 };
-
-export type DepositAccount = BankTransferAccount;
 
 export type OrderDraftInput = {
   cashReceiptIdentifier?: string;
@@ -101,7 +97,6 @@ export type OrderDraftInput = {
 };
 
 export type OrderDraftResult = {
-  bankTransferAccount?: BankTransferAccount;
   depositAccount?: DepositAccount;
   depositDueAt?: string | null;
   orderId: string;
@@ -144,7 +139,6 @@ export type OrderLookupShipment = {
 };
 
 export type OrderLookupResult = {
-  bankTransferAccount?: BankTransferAccount;
   cashReceiptStatus: CashReceiptStatus;
   containsLivePlant: boolean;
   createdAt: string;
