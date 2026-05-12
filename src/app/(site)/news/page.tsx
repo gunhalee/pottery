@@ -9,7 +9,7 @@ export default async function NewsPage() {
 
   return (
     <>
-      <PageShell className="listing-page-shell">
+      <PageShell className="listing-page-shell listing-page-shell-with-subscribe">
         <h1 className="sr-only">소식</h1>
         <div className="news-layout">
           <div>

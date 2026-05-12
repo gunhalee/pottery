@@ -18,6 +18,7 @@ export function ProductCard({
   product: ProductListItem;
 }) {
   const primaryImage = getProductListImage(product);
+  const badges = getProductBadges(product);
 
   return (
     <article className="product-card">
@@ -53,19 +54,23 @@ export function ProductCard({
         productTitle={product.titleKo}
       />
       <div className="product-card-body">
-        <h2 className="product-card-title">
-          <SiteLink href={`/shop/${product.slug}`}>
-            {product.titleKo}
-          </SiteLink>
-        </h2>
-        <div className="product-card-secondary">
-          <div className="product-badge-row">
-            {getProductBadges(product).map((badge) => (
-              <ProductBadge key={badge} kind={badge} />
-            ))}
+        <div className="product-card-heading">
+          <div className="product-card-title-line">
+            <h2 className="product-card-title">
+              <SiteLink href={`/shop/${product.slug}`}>
+                {product.titleKo}
+              </SiteLink>
+            </h2>
+            <div className="product-badge-row">
+              {badges.map((badge) => (
+                <ProductBadge key={badge} kind={badge} />
+              ))}
+            </div>
           </div>
-          <p className="product-card-description">{product.shortDescription}</p>
           <div className="product-card-price">{formatProductPrice(product)}</div>
+        </div>
+        <div className="product-card-secondary">
+          <p className="product-card-description">{product.shortDescription}</p>
           <SiteLink
             className="product-card-link link-arrow"
             href={`/shop/${product.slug}`}
