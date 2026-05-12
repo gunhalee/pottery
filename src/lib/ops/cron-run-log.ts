@@ -10,6 +10,7 @@ export type CronJobName =
   | "bank_transfer_expiry"
   | "order_notifications"
   | "upload_cleanup";
+export type CronRunLogJobName = CronJobName | "cafe24_inventory";
 export type CronRunStatus = "failed" | "running" | "success";
 
 export type CronRunLog = {
@@ -17,7 +18,7 @@ export type CronRunLog = {
   errorMessage: string | null;
   finishedAt: string | null;
   id: string;
-  jobName: CronJobName;
+  jobName: CronRunLogJobName;
   startedAt: string;
   status: CronRunStatus;
   summary: Record<string, unknown>;
@@ -29,7 +30,7 @@ type CronRunRow = {
   error_message: string | null;
   finished_at: string | null;
   id: string;
-  job_name: CronJobName;
+  job_name: CronRunLogJobName;
   started_at: string;
   status: CronRunStatus;
   summary: Record<string, unknown> | null;

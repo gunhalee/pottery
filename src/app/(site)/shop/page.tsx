@@ -12,6 +12,14 @@ export default async function ShopPage() {
       <PageIntro
         subtitle={
           <span className="shop-intro-links">
+            <SiteLink href="/shop/wishlist">찜 목록</SiteLink>
+            <span aria-hidden="true" className="shop-intro-links-divider">
+              |
+            </span>
+            <SiteLink href="/shop/cart">장바구니</SiteLink>
+            <span aria-hidden="true" className="shop-intro-links-divider">
+              |
+            </span>
             <SiteLink href="/order/lookup">주문 조회</SiteLink>
             <span aria-hidden="true" className="shop-intro-links-divider">
               |

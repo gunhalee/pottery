@@ -1,63 +1,64 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-
-type FloatingActionMessage = {
-  id: number;
-  text: string;
-};
+import {
+  cartChangedEventName,
+  cartStorageKey,
+  getCartItemCount,
+  readCartSnapshot,
+} from "@/lib/shop/cart-storage";
 
 export function ScrollToTopButton() {
   const pathname = usePathname();
-  const [message, setMessage] = useState<FloatingActionMessage | null>(null);
+  const [cartItemCount, setCartItemCount] = useState(0);
   const showShopActions = pathname === "/shop" || pathname.startsWith("/shop/");
 
   useEffect(() => {
-    if (!message) {
-      return;
+    function syncCartCount() {
+      setCartItemCount(getCartItemCount(readCartSnapshot()));
     }
 
-    const timer = window.setTimeout(() => {
-      setMessage(null);
-    }, 2200);
+    function syncCartCountFromStorage(event: StorageEvent) {
+      if (event.key === cartStorageKey) {
+        syncCartCount();
+      }
+    }
+
+    syncCartCount();
+    window.addEventListener(cartChangedEventName, syncCartCount);
+    window.addEventListener("storage", syncCartCountFromStorage);
 
     return () => {
-      window.clearTimeout(timer);
+      window.removeEventListener(cartChangedEventName, syncCartCount);
+      window.removeEventListener("storage", syncCartCountFromStorage);
     };
-  }, [message]);
-
-  function showPlaceholderMessage(text: string) {
-    setMessage({
-      id: Date.now(),
-      text,
-    });
-  }
+  }, []);
 
   return (
     <div className="floating-quick-actions" aria-label="빠른 이동">
       {showShopActions ? (
         <>
-          <button
+          <Link
             aria-label="찜 보기"
             className="floating-action-button"
-            onClick={() =>
-              showPlaceholderMessage("찜 목록 기능은 준비 중입니다.")
-            }
-            type="button"
+            href="/shop/wishlist"
+            prefetch={false}
           >
             <HeartIcon />
-          </button>
-          <button
+          </Link>
+          <Link
             aria-label="장바구니 보기"
-            className="floating-action-button"
-            onClick={() =>
-              showPlaceholderMessage("장바구니 기능은 준비 중입니다.")
-            }
-            type="button"
+            className="floating-action-button floating-cart-button"
+            href="/shop/cart"
+            prefetch={false}
           >
             <CartIcon />
-          </button>
+            {cartItemCount > 0 ? (
+              <span className="floating-action-count">{cartItemCount}</span>
+            ) : null}
+          </Link>
         </>
       ) : null}
       <a
@@ -67,15 +68,6 @@ export function ScrollToTopButton() {
       >
         <span aria-hidden="true">↑</span>
       </a>
-      {message ? (
-        <p
-          className="floating-action-message"
-          aria-live="polite"
-          key={message.id}
-        >
-          {message.text}
-        </p>
-      ) : null}
     </div>
   );
 }

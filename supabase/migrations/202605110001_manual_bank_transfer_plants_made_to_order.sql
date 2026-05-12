@@ -764,5 +764,5 @@ alter table public.cron_run_logs
 
 alter table public.cron_run_logs
   add constraint cron_run_logs_job_name_check check (
-    job_name in ('upload_cleanup', 'order_notifications', 'bank_transfer_expiry')
+    job_name in ('upload_cleanup', 'order_notifications', 'bank_transfer_expiry', 'cafe24_inventory')
   );

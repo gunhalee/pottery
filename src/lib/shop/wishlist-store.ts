@@ -9,6 +9,33 @@ export type WishlistItemState = {
   wished: boolean;
 };
 
+export async function getWishlistProductIds(
+  wishlistId: string,
+): Promise<string[]> {
+  if (!isSupabaseConfigured()) {
+    return [];
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("shop_wishlist_items")
+    .select("product_id")
+    .eq("wishlist_id", wishlistId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    if (isMissingWishlistStorageError(error)) {
+      return [];
+    }
+
+    throw new Error(`Supabase wishlist list query failed: ${error.message}`);
+  }
+
+  return ((data ?? []) as Array<{ product_id: string }>).map(
+    (item) => item.product_id,
+  );
+}
+
 export async function getWishlistItemState(
   wishlistId: string,
   productId: string,

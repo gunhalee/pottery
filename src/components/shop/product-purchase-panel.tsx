@@ -14,6 +14,8 @@ import {
   ORDER_FREE_SHIPPING_THRESHOLD_KRW,
   ORDER_SHIPPING_FEE_KRW,
 } from "@/lib/orders/pricing";
+import { addCartItem } from "@/lib/shop/cart-storage";
+import { dispatchWishlistChanged } from "@/lib/shop/wishlist-events";
 
 type ProductPurchasePanelProps = {
   availabilityLabel: string;
@@ -70,6 +72,7 @@ export function ProductPurchasePanel({
     useState<ProductOption>("plant_excluded");
   const [isFavorite, setIsFavorite] = useState(false);
   const [isFavoriteSaving, setIsFavoriteSaving] = useState(false);
+  const [isCartSaving, setIsCartSaving] = useState(false);
   const [message, setMessage] = useState<ActionMessage | null>(null);
   const [shippingMethod, setShippingMethod] =
     useState<ShippingMethod>("parcel");
@@ -209,6 +212,34 @@ export function ProductPurchasePanel({
     router.push(`/checkout?${params.toString()}`);
   }
 
+  function addCurrentSelectionToCart() {
+    if (!isPurchasable || price === null || effectiveUnitPrice === null) {
+      showPlaceholder("장바구니");
+      return;
+    }
+
+    setIsCartSaving(true);
+
+    try {
+      addCartItem(
+        {
+          madeToOrder: Boolean(madeToOrder?.enabled),
+          productOption,
+          productSlug,
+          quantity: clampedQuantity,
+          shippingMethod,
+        },
+        effectiveMaxQuantity,
+      );
+      setMessage({
+        id: Date.now(),
+        text: "장바구니에 담았습니다.",
+      });
+    } finally {
+      setIsCartSaving(false);
+    }
+  }
+
   function selectShippingMethod(value: ShippingMethod) {
     setShippingMethod(value);
     setIsShippingMenuOpen(false);
@@ -287,6 +318,7 @@ export function ProductPurchasePanel({
 
       const wished = Boolean(result.wished);
       setIsFavorite(wished);
+      dispatchWishlistChanged({ productSlug, wished });
       setMessage({
         id: Date.now(),
         text: wished ? "찜에 저장했습니다." : "찜에서 해제했습니다.",
@@ -527,10 +559,11 @@ export function ProductPurchasePanel({
         </button>
         <button
           className="product-secondary-button"
-          onClick={() => showPlaceholder("장바구니")}
+          disabled={isCartSaving}
+          onClick={addCurrentSelectionToCart}
           type="button"
         >
-          장바구니
+          {isCartSaving ? "담는 중" : "장바구니"}
         </button>
       </div>
 

@@ -8,8 +8,15 @@ import {
   type ProductListItem,
 } from "@/lib/shop";
 import { ProductBadge } from "./product-badge";
+import { ProductWishlistButton } from "./product-wishlist-button";
 
-export function ProductCard({ product }: { product: ProductListItem }) {
+export function ProductCard({
+  initialWished,
+  product,
+}: {
+  initialWished?: boolean;
+  product: ProductListItem;
+}) {
   const primaryImage = getProductListImage(product);
 
   return (
@@ -39,6 +46,12 @@ export function ProductCard({ product }: { product: ProductListItem }) {
           />
         )}
       </SiteLink>
+      <ProductWishlistButton
+        className="product-card-wish-button"
+        initialWished={initialWished}
+        productSlug={product.slug}
+        productTitle={product.titleKo}
+      />
       <div className="product-card-body">
         <h2 className="product-card-title">
           <SiteLink href={`/shop/${product.slug}`}>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import { ShopBackButton } from "@/components/navigation/shop-back-button";
 import { PageShell } from "@/components/site/primitives";
 import { RichTextRenderer } from "@/components/content/rich-text-renderer";
 import { ProductBadge } from "@/components/shop/product-badge";
@@ -87,10 +88,7 @@ export default async function ShopDetailPage({
   return (
     <PageShell className="product-detail-shell">
       <nav className="product-detail-backbar" aria-label="상품 상세 탐색">
-        <Link className="product-detail-backlink" href="/shop" prefetch={false}>
-          <ArrowLeftIcon />
-          목록으로
-        </Link>
+        <ShopBackButton fallbackHref="/shop" />
       </nav>
 
       <div className="product-detail-layout">
@@ -277,12 +275,4 @@ function getGalleryImages({
   }
 
   return galleryImages;
-}
-
-function ArrowLeftIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
-      <path d="M15 18l-6-6 6-6" />
-    </svg>
-  );
 }

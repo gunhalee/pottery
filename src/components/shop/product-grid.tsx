@@ -1,11 +1,25 @@
 import type { ProductListItem } from "@/lib/shop";
 import { ProductCard } from "./product-card";
 
-export function ProductGrid({ products }: { products: ProductListItem[] }) {
+export function ProductGrid({
+  products,
+  wishedProductIds,
+}: {
+  products: ProductListItem[];
+  wishedProductIds?: readonly string[];
+}) {
+  const wishedProductIdSet = wishedProductIds
+    ? new Set(wishedProductIds)
+    : null;
+
   return (
     <div className="product-grid">
       {products.map((product) => (
-        <ProductCard key={product.id} product={product} />
+        <ProductCard
+          initialWished={wishedProductIdSet?.has(product.id)}
+          key={product.id}
+          product={product}
+        />
       ))}
     </div>
   );
