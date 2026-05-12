@@ -110,6 +110,19 @@ export async function GET(request: Request) {
     "timestamp",
     "username",
   ].join(",");
+
+  const instagramLoginMediaResult = await fetchInstagramLoginMedia({
+    accessToken,
+    apiVersion,
+    fields,
+    limit,
+    userId,
+  });
+
+  if (instagramLoginMediaResult.ok) {
+    return createMediaResponse(instagramLoginMediaResult.payload);
+  }
+
   const mediaResult = await fetchInstagramMedia({
     accessToken,
     apiVersion,
@@ -149,6 +162,30 @@ export async function GET(request: Request) {
   }
 
   return createErrorResponse(mediaResult.payload);
+}
+
+async function fetchInstagramLoginMedia({
+  accessToken,
+  apiVersion,
+  fields,
+  limit,
+  userId,
+}: {
+  accessToken: string;
+  apiVersion: string;
+  fields: string;
+  limit: number;
+  userId: string;
+}) {
+  const graphUrl = new URL(
+    `https://graph.instagram.com/${apiVersion}/${encodeURIComponent(userId)}/media`,
+  );
+
+  graphUrl.searchParams.set("access_token", accessToken);
+  graphUrl.searchParams.set("fields", fields);
+  graphUrl.searchParams.set("limit", String(limit));
+
+  return fetchGraphJson<InstagramMediaResponse>(graphUrl);
 }
 
 async function resolveInstagramBusinessUser({
