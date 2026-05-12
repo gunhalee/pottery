@@ -3,19 +3,12 @@ import type { SocialIconLinkData } from "@/lib/config/social-links";
 
 type SocialIconLinkProps = {
   link: SocialIconLinkData;
-  variant: "footer" | "page-title";
 };
 
-export function SocialIconLink({ link, variant }: SocialIconLinkProps) {
-  const className =
-    variant === "footer"
-      ? "footer-social-link"
-      : `page-title-social-link page-title-social-link-${link.key}`;
-  const icon = variant === "footer" ? (link.footerIcon ?? link.icon) : link.icon;
-  const imageClassName =
-    variant === "footer"
-      ? `footer-social-image footer-social-image-${link.key}`
-      : `page-title-social-image page-title-social-image-${link.key}`;
+export function SocialIconLink({ link }: SocialIconLinkProps) {
+  const icon = link.footerIcon ?? link.icon;
+  const className = "footer-social-link";
+  const imageClassName = `footer-social-image footer-social-image-${link.key}`;
   const image = (
     <Image
       alt=""
@@ -48,7 +41,6 @@ export function SocialIconLink({ link, variant }: SocialIconLinkProps) {
       target="_blank"
     >
       {image}
-      {variant === "page-title" ? <span>{link.label}</span> : null}
     </a>
   );
 }

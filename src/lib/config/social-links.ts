@@ -73,16 +73,16 @@ export const socialLinks = {
   },
 } as const satisfies Record<SocialIconName, SocialLinkDefinition>;
 
-export const pageSocialLinks = {
-  gallery: [socialLinks.instagram, socialLinks.youtube],
-  news: [socialLinks.instagram, socialLinks.naverblog],
-} as const satisfies Record<string, readonly SocialLinkDefinition[]>;
-
 export const homeSubscribeLinks = [
   socialLinks.instagram,
   socialLinks.youtube,
   socialLinks.naverblog,
   socialLinks.kakao,
+] as const satisfies readonly SocialLinkDefinition[];
+
+export const artworkSubscribeLinks = [
+  socialLinks.instagram,
+  socialLinks.youtube,
 ] as const satisfies readonly SocialLinkDefinition[];
 
 export const footerSocialLinks = [

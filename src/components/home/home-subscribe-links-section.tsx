@@ -1,32 +1,53 @@
 import Image from "next/image";
 import { Section } from "@/components/site/primitives";
-import { homeSubscribeLinks } from "@/lib/config/social-links";
+import {
+  homeSubscribeLinks,
+  type SocialIconLinkData,
+} from "@/lib/config/social-links";
 
-export function HomeSubscribeLinksSection() {
+type HomeSubscribeLinksSectionProps = {
+  ariaLabel?: string;
+  className?: string;
+  links?: readonly SocialIconLinkData[];
+  title?: string;
+};
+
+export function HomeSubscribeLinksSection({
+  ariaLabel = "소식 구독 링크",
+  className,
+  links = homeSubscribeLinks,
+  title = "소식을 구독하고 싶다면",
+}: HomeSubscribeLinksSectionProps) {
   return (
-    <Section className="home-subscribe-section">
+    <Section
+      className={["home-subscribe-section", className]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <div className="home-subscribe-panel">
-        <p className="home-subscribe-title">소식을 구독하고 싶다면</p>
-        <div className="home-subscribe-links" aria-label="소식 구독 링크">
-          {homeSubscribeLinks.map((link) => (
-            <a
-              aria-label={link.label}
-              className={`home-subscribe-link home-subscribe-link-${link.key}`}
-              href={link.href}
-              key={link.key}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              <Image
-                alt=""
-                aria-hidden="true"
-                className={`home-subscribe-icon home-subscribe-icon-${link.key}`}
-                height={link.icon.height}
-                src={link.icon.src}
-                width={link.icon.width}
-              />
-            </a>
-          ))}
+        <p className="home-subscribe-title">{title}</p>
+        <div className="home-subscribe-links" aria-label={ariaLabel}>
+          {links.map((link) =>
+            link.href ? (
+              <a
+                aria-label={link.label}
+                className={`home-subscribe-link home-subscribe-link-${link.key}`}
+                href={link.href}
+                key={link.key}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                <Image
+                  alt=""
+                  aria-hidden="true"
+                  className={`home-subscribe-icon home-subscribe-icon-${link.key}`}
+                  height={link.icon.height}
+                  src={link.icon.src}
+                  width={link.icon.width}
+                />
+              </a>
+            ) : null,
+          )}
         </div>
       </div>
     </Section>

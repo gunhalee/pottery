@@ -1,5 +1,5 @@
 import { ClassCardGrid } from "@/components/site/class-card-grid";
-import { PageIntro, PageShell } from "@/components/site/primitives";
+import { PageShell } from "@/components/site/primitives";
 import { PageBottomCtaSection } from "@/components/site/page-bottom-cta-section";
 import { pageBottomCtas } from "@/lib/content/page-ctas";
 import { classItems, classReviews } from "@/lib/content/site-content";
@@ -8,12 +8,8 @@ import { siteConfig } from "@/lib/config/site";
 export default function ClassPage() {
   return (
     <>
-      <PageShell>
-        <PageIntro
-          subtitle="흙을 만지고 형태를 만드는 시간을 예약하세요."
-          title="함께하기"
-          variant="listing"
-        />
+      <PageShell className="listing-page-shell">
+        <h1 className="sr-only">함께하기</h1>
 
         <ClassCardGrid
           actionHref={siteConfig.kakaoChannelUrl}

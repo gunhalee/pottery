@@ -126,19 +126,16 @@ export function Section({
 }
 
 export function PageIntro({
-  actions,
   subtitle,
   title,
   titleEmphasis,
   variant = "editorial",
 }: {
-  actions?: ReactNode;
   subtitle?: ReactNode;
   title: string;
   titleEmphasis?: string;
-  variant?: "compact" | "editorial" | "listing";
+  variant?: "compact" | "editorial";
 }) {
-  const hasActions = Boolean(actions);
   const hasSubtitle = Boolean(subtitle);
 
   return (
@@ -146,7 +143,6 @@ export function PageIntro({
       className={cx(
         "page-intro",
         `page-intro-${variant}`,
-        hasActions && "page-intro-with-actions",
         hasSubtitle && "page-intro-has-subtitle",
       )}
     >
@@ -162,7 +158,6 @@ export function PageIntro({
         </h1>
         {subtitle ? <p className="page-subtitle">{subtitle}</p> : null}
       </div>
-      {actions ? <div className="page-intro-actions">{actions}</div> : null}
     </div>
   );
 }

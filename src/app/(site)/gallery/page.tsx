@@ -1,9 +1,9 @@
 import Link from "next/link";
+import { HomeSubscribeLinksSection } from "@/components/home/home-subscribe-links-section";
 import { ArtworkImage } from "@/components/media/artwork-image";
 import { PageBottomCtaSection } from "@/components/site/page-bottom-cta-section";
-import { PageSocialIntro } from "@/components/site/page-social-intro";
 import { PageShell } from "@/components/site/primitives";
-import { pageSocialLinks } from "@/lib/config/social-links";
+import { artworkSubscribeLinks } from "@/lib/config/social-links";
 import { pageBottomCtas } from "@/lib/content/page-ctas";
 import { getContentListImage } from "@/lib/content-manager/content-images";
 import { getPublishedContentListEntries } from "@/lib/content-manager/content-store";
@@ -14,12 +14,8 @@ export default async function GalleryPage() {
 
   return (
     <>
-      <PageShell>
-        <PageSocialIntro
-          socials={pageSocialLinks.gallery}
-          subtitle="완성작과 작업 과정의 기록입니다."
-          title="작업물"
-        />
+      <PageShell className="listing-page-shell">
+        <h1 className="sr-only">작업물</h1>
         <div className="gallery-grid gallery-content-grid">
           {galleryItems.length > 0 ? (
             galleryItems.map((item) => {
@@ -57,6 +53,12 @@ export default async function GalleryPage() {
       <PageBottomCtaSection
         className="gallery-cta-section"
         ctas={pageBottomCtas.gallery}
+      />
+      <HomeSubscribeLinksSection
+        ariaLabel="작업물 구독 링크"
+        className="page-subscribe-section"
+        links={artworkSubscribeLinks}
+        title="작업 과정과 결과를 구독하고 싶다면"
       />
     </>
   );

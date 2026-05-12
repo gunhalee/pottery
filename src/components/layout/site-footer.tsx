@@ -23,11 +23,7 @@ export function SiteFooter() {
             <div className="footer-logo">{siteConfig.name}</div>
             <div className="footer-social-links" aria-label="외부 연결">
               {footerSocialLinks.map((link) => (
-                <SocialIconLink
-                  key={link.key}
-                  link={link}
-                  variant="footer"
-                />
+                <SocialIconLink key={link.key} link={link} />
               ))}
             </div>
           </div>
