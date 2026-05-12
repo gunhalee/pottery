@@ -1,3 +1,6 @@
+alter table public.shop_orders
+  drop constraint if exists shop_orders_payment_method_check;
+
 update public.shop_orders
 set payment_method = 'portone_card'
 where payment_method = 'portone';
@@ -27,9 +30,6 @@ where sp.provider = 'bank_transfer'
 update public.shop_payments
 set provider = 'portone'
 where provider = 'bank_transfer';
-
-alter table public.shop_orders
-  drop constraint if exists shop_orders_payment_method_check;
 
 alter table public.shop_orders
   add constraint shop_orders_payment_method_check check (

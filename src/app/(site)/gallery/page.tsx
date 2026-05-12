@@ -58,7 +58,7 @@ export default async function GalleryPage() {
         ariaLabel="작업물 구독 링크"
         className="page-subscribe-section"
         links={artworkSubscribeLinks}
-        title="작업 과정과 결과를 구독하고 싶다면"
+        title="제작 과정이 궁금하다면"
       />
     </>
   );
