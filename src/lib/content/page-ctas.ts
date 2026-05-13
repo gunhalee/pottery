@@ -24,7 +24,7 @@ export const pageBottomCtas = {
       label: "카카오채널 추가하기",
     },
     {
-      body: "클래스 예약 가능 시간을 확인하고 싶다면",
+      body: "클래스를 신청하고 싶다면",
       href: siteConfig.naverReservationUrl,
       kind: "external",
       label: "네이버예약으로 이동",

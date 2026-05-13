@@ -819,7 +819,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 .page-subscribe-section {
   width: min(100% - 112px, 1052px);
   padding-top: 12px;
-  padding-bottom: 0;
+  padding-bottom: 72px;
 }
 
 .home-subscribe-panel {
@@ -5115,7 +5115,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 }
 
 .gallery-cta-section {
-  padding-bottom: 0;
+  padding-bottom: 72px;
   border-bottom: 0;
 }
 
@@ -5542,7 +5542,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 
   .gallery-cta-section,
   .page-subscribe-section {
-    padding-bottom: 0;
+    padding-bottom: 56px;
   }
 
   .page-subscribe-section {
@@ -5815,7 +5815,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   .page-subscribe-section {
     width: calc(100% - 48px);
     padding-top: 12px;
-    padding-bottom: 0;
+    padding-bottom: 56px;
   }
 
   .home-subscribe-panel {
