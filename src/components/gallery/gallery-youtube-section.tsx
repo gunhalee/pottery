@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { createPortal } from "react-dom";
 import {
   type MouseEvent,
   useEffect,
@@ -28,7 +29,8 @@ type YouTubeFeedPayload = {
   ok?: boolean;
 };
 
-const feedLimit = 3;
+const fetchLimit = 12;
+const pageSize = 1;
 
 export function GalleryYoutubeSection({
   channelUrl,
@@ -37,19 +39,29 @@ export function GalleryYoutubeSection({
 }) {
   const [items, setItems] = useState<YouTubeFeedItem[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [startIndex, setStartIndex] = useState(0);
   const [selectedItem, setSelectedItem] = useState<YouTubeFeedItem | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const visibleItems = useMemo(
-    () => items.filter((item) => Boolean(item.thumbnail?.url)).slice(0, feedLimit),
+  const feedItems = useMemo(
+    () => items.filter((item) => Boolean(item.thumbnail?.url)),
     [items],
   );
+  const lastPageStart = getLastPageStart(feedItems.length);
+  const currentStartIndex = Math.min(startIndex, lastPageStart);
+  const visibleItems = useMemo(
+    () => feedItems.slice(currentStartIndex, currentStartIndex + pageSize),
+    [currentStartIndex, feedItems],
+  );
+  const hasPrevious = currentStartIndex > 0;
+  const hasNext = currentStartIndex + pageSize < feedItems.length;
+  const canPaginate = feedItems.length > pageSize;
 
   useEffect(() => {
     const controller = new AbortController();
 
     async function loadFeed() {
       try {
-        const response = await fetch(`/api/youtube?limit=${feedLimit}`, {
+        const response = await fetch(`/api/youtube?limit=${fetchLimit}`, {
           headers: {
             Accept: "application/json",
           },
@@ -106,8 +118,20 @@ export function GalleryYoutubeSection({
     };
   }, [selectedItem]);
 
-  if (!loaded || visibleItems.length === 0) {
+  if (!loaded || feedItems.length === 0) {
     return null;
+  }
+
+  function goPrevious() {
+    setStartIndex((current) =>
+      Math.max(0, Math.min(current, lastPageStart) - pageSize),
+    );
+  }
+
+  function goNext() {
+    setStartIndex((current) =>
+      Math.min(Math.min(current, lastPageStart) + pageSize, lastPageStart),
+    );
   }
 
   function closeVideo() {
@@ -120,95 +144,131 @@ export function GalleryYoutubeSection({
     }
   }
 
-  return (
-    <section
-      aria-labelledby="gallery-youtube-title"
-      className="gallery-youtube-section"
+  const videoOverlay = selectedItem ? (
+    <div
+      className="gallery-youtube-overlay"
+      onMouseDown={handleOverlayMouseDown}
+      role="presentation"
     >
-      <div className="gallery-youtube-head">
-        <h2 id="gallery-youtube-title">공방 스케치</h2>
-        <a href={channelUrl} rel="noopener noreferrer" target="_blank">
-          @consepot
-        </a>
-      </div>
-      <div className="gallery-youtube-grid">
-        {visibleItems.map((item) => (
-          <button
-            aria-label={`사이트 안에서 YouTube 영상 재생: ${item.title}`}
-            className="gallery-youtube-card"
-            key={item.id}
-            onClick={() => {
-              setSelectedItem(item);
-            }}
-            type="button"
-          >
-            {item.thumbnail ? (
-              <span className="gallery-youtube-thumb">
-                <Image
-                  alt=""
-                  aria-hidden="true"
-                  fill
-                  loading="lazy"
-                  sizes="(max-width: 720px) 86vw, (max-width: 1080px) 28vw, 360px"
-                  src={item.thumbnail.url}
-                />
-                <span className="gallery-youtube-play" aria-hidden="true" />
-              </span>
-            ) : null}
-            <span className="gallery-youtube-body">
-              <strong>{item.title}</strong>
-              {item.publishedAt ? (
-                <time dateTime={item.publishedAt}>
-                  {formatDate(item.publishedAt)}
-                </time>
-              ) : null}
-            </span>
-          </button>
-        ))}
-      </div>
-      {selectedItem ? (
-        <div
-          className="gallery-youtube-overlay"
-          onMouseDown={handleOverlayMouseDown}
-          role="presentation"
+      <div
+        aria-labelledby="gallery-youtube-modal-title"
+        aria-modal="true"
+        className="gallery-youtube-dialog"
+        role="dialog"
+      >
+        <button
+          aria-label="영상 닫기"
+          className="gallery-youtube-close"
+          onClick={closeVideo}
+          ref={closeButtonRef}
+          type="button"
         >
-          <div
-            aria-labelledby="gallery-youtube-modal-title"
-            aria-modal="true"
-            className="gallery-youtube-dialog"
-            role="dialog"
-          >
-            <button
-              aria-label="영상 닫기"
-              className="gallery-youtube-close"
-              onClick={closeVideo}
-              ref={closeButtonRef}
-              type="button"
-            >
-              닫기
-            </button>
-            <div className="gallery-youtube-player">
-              <iframe
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                referrerPolicy="strict-origin-when-cross-origin"
-                src={getEmbedUrl(selectedItem.videoId)}
-                title={selectedItem.title}
-              />
-            </div>
-            <div className="gallery-youtube-modal-meta">
-              <h3 id="gallery-youtube-modal-title">{selectedItem.title}</h3>
-              {selectedItem.publishedAt ? (
-                <time dateTime={selectedItem.publishedAt}>
-                  {formatDate(selectedItem.publishedAt)}
-                </time>
-              ) : null}
-            </div>
+          닫기
+        </button>
+        <div className="gallery-youtube-player">
+          <iframe
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+            src={getEmbedUrl(selectedItem.videoId)}
+            title={selectedItem.title}
+          />
+        </div>
+        <div className="gallery-youtube-modal-meta">
+          <h3 id="gallery-youtube-modal-title">{selectedItem.title}</h3>
+          {selectedItem.publishedAt ? (
+            <time dateTime={selectedItem.publishedAt}>
+              {formatDate(selectedItem.publishedAt)}
+            </time>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  return (
+    <>
+      <section
+        aria-labelledby="gallery-youtube-title"
+        className="gallery-youtube-section"
+      >
+        <div className="gallery-youtube-head">
+          <h2 id="gallery-youtube-title">공방 스케치</h2>
+          <div className="gallery-feed-actions">
+            <a href={channelUrl} rel="noopener noreferrer" target="_blank">
+              @consepot
+            </a>
+            {canPaginate ? (
+              <div className="gallery-feed-pager" aria-label="공방 스케치 더 보기">
+                <button
+                  aria-label="이전 공방 스케치 보기"
+                  className="gallery-feed-arrow"
+                  disabled={!hasPrevious}
+                  onClick={goPrevious}
+                  type="button"
+                >
+                  <span aria-hidden="true">‹</span>
+                </button>
+                <button
+                  aria-label="다음 공방 스케치 1개 보기"
+                  className="gallery-feed-arrow"
+                  disabled={!hasNext}
+                  onClick={goNext}
+                  type="button"
+                >
+                  <span aria-hidden="true">›</span>
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
-      ) : null}
-    </section>
+        <div className="gallery-youtube-grid">
+          {visibleItems.map((item) => (
+            <button
+              aria-label={`사이트 안에서 YouTube 영상 재생: ${item.title}`}
+              className="gallery-youtube-card"
+              key={item.id}
+              onClick={() => {
+                setSelectedItem(item);
+              }}
+              type="button"
+            >
+              {item.thumbnail ? (
+                <span className="gallery-youtube-thumb">
+                  <Image
+                    alt=""
+                    aria-hidden="true"
+                    fill
+                    loading="lazy"
+                    sizes="(max-width: 720px) 86vw, (max-width: 1080px) 28vw, 360px"
+                    src={item.thumbnail.url}
+                  />
+                  <span className="gallery-youtube-play" aria-hidden="true" />
+                </span>
+              ) : null}
+              <span className="gallery-youtube-body">
+                <strong>{item.title}</strong>
+                {item.publishedAt ? (
+                  <time dateTime={item.publishedAt}>
+                    {formatDate(item.publishedAt)}
+                  </time>
+                ) : null}
+              </span>
+            </button>
+          ))}
+        </div>
+      </section>
+      {videoOverlay ? createPortal(videoOverlay, document.body) : null}
+    </>
   );
+}
+
+function getLastPageStart(total: number) {
+  if (total <= pageSize) {
+    return 0;
+  }
+
+  return Math.floor((total - 1) / pageSize) * pageSize;
 }
 
 function getEmbedUrl(videoId: string) {

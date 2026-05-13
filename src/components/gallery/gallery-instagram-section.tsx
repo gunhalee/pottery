@@ -20,7 +20,8 @@ type InstagramFeedPayload = {
   ok?: boolean;
 };
 
-const feedLimit = 6;
+const fetchLimit = 24;
+const pageSize = 3;
 
 export function GalleryInstagramSection({
   profileUrl,
@@ -29,20 +30,28 @@ export function GalleryInstagramSection({
 }) {
   const [items, setItems] = useState<InstagramFeedItem[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const visibleItems = useMemo(
+  const [startIndex, setStartIndex] = useState(0);
+  const feedItems = useMemo(
     () =>
-      items
-        .filter((item) => Boolean(item.thumbnailUrl ?? item.mediaUrl))
-        .slice(0, feedLimit),
+      items.filter((item) => Boolean(item.thumbnailUrl ?? item.mediaUrl)),
     [items],
   );
+  const lastPageStart = getLastPageStart(feedItems.length);
+  const currentStartIndex = Math.min(startIndex, lastPageStart);
+  const visibleItems = useMemo(
+    () => feedItems.slice(currentStartIndex, currentStartIndex + pageSize),
+    [currentStartIndex, feedItems],
+  );
+  const hasPrevious = currentStartIndex > 0;
+  const hasNext = currentStartIndex + pageSize < feedItems.length;
+  const canPaginate = feedItems.length > pageSize;
 
   useEffect(() => {
     const controller = new AbortController();
 
     async function loadFeed() {
       try {
-        const response = await fetch(`/api/instagram?limit=${feedLimit}`, {
+        const response = await fetch(`/api/instagram?limit=${fetchLimit}`, {
           headers: {
             Accept: "application/json",
           },
@@ -75,8 +84,20 @@ export function GalleryInstagramSection({
     };
   }, []);
 
-  if (!loaded || visibleItems.length === 0) {
+  if (!loaded || feedItems.length === 0) {
     return null;
+  }
+
+  function goPrevious() {
+    setStartIndex((current) =>
+      Math.max(0, Math.min(current, lastPageStart) - pageSize),
+    );
+  }
+
+  function goNext() {
+    setStartIndex((current) =>
+      Math.min(Math.min(current, lastPageStart) + pageSize, lastPageStart),
+    );
   }
 
   return (
@@ -86,9 +107,33 @@ export function GalleryInstagramSection({
     >
       <div className="gallery-instagram-head">
         <h2 id="gallery-instagram-title">공방 한컷</h2>
-        <a href={profileUrl} rel="noopener noreferrer" target="_blank">
-          @pottery_conse
-        </a>
+        <div className="gallery-feed-actions">
+          <a href={profileUrl} rel="noopener noreferrer" target="_blank">
+            @pottery_conse
+          </a>
+          {canPaginate ? (
+            <div className="gallery-feed-pager" aria-label="공방 한컷 더 보기">
+              <button
+                aria-label="이전 공방 한컷 보기"
+                className="gallery-feed-arrow"
+                disabled={!hasPrevious}
+                onClick={goPrevious}
+                type="button"
+              >
+                <span aria-hidden="true">‹</span>
+              </button>
+              <button
+                aria-label="다음 공방 한컷 3개 보기"
+                className="gallery-feed-arrow"
+                disabled={!hasNext}
+                onClick={goNext}
+                type="button"
+              >
+                <span aria-hidden="true">›</span>
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
       <div className="gallery-instagram-grid">
         {visibleItems.map((item) => {
@@ -121,6 +166,14 @@ export function GalleryInstagramSection({
       </div>
     </section>
   );
+}
+
+function getLastPageStart(total: number) {
+  if (total <= pageSize) {
+    return 0;
+  }
+
+  return Math.floor((total - 1) / pageSize) * pageSize;
 }
 
 function getItemLabel(item: InstagramFeedItem) {
