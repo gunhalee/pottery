@@ -1,13 +1,13 @@
 import { SiteLink } from "@/components/navigation/site-link";
 import { SocialIconLink } from "@/components/site/social-icon-link";
-import { siteConfig } from "@/lib/config/site";
+import { siteConfig, studioLocation } from "@/lib/config/site";
 import { footerSocialLinks } from "@/lib/config/social-links";
 
 const footerInfoGroups = [
   [
     ["상호명", siteConfig.businessName],
     ["대표자 · 개인정보보호책임자", siteConfig.privacyOfficer],
-    ["사업장 주소", "12772 1층 경기도 광주시 수레실길 25-10 (능평동)"],
+    ["사업장 주소", studioLocation.address],
     ["사업자 등록번호", "129-37-99678"],
     ["통신판매업 신고번호", "신고 완료 후 기재 예정"],
   ],

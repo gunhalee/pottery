@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/.chrome-capture-policy-latest/
+/screenshots/
 
 # next.js
 /.next/

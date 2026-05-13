@@ -9,8 +9,10 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    ".chrome-capture-policy-latest/**",
     "out/**",
     "build/**",
+    "screenshots/**",
     "next-env.d.ts",
   ]),
 ]);

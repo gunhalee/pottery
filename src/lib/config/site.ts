@@ -26,3 +26,15 @@ export const siteConfig = {
     { href: "/shop", label: "소장하기" },
   ],
 } as const;
+
+export const studioLocation = {
+  address: "12772 경기도 광주시 수레실길 25-10 1층 (능평동)",
+  latitude: 37.350127611411,
+  longitude: 127.16304443232,
+  mapClientId: process.env.NEXT_PUBLIC_NAVER_MAPS_CLIENT_ID || "",
+  name: siteConfig.name,
+  naverMapUrl:
+    process.env.NEXT_PUBLIC_NAVER_MAP_URL ||
+    "https://map.naver.com/p/entry/place/1574826004?c=15.00,0,0,0,dh",
+  phone: siteConfig.phone,
+} as const;
