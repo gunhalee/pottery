@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { GalleryInstagramSection } from "@/components/gallery/gallery-instagram-section";
 import { GalleryYoutubeSection } from "@/components/gallery/gallery-youtube-section";
-import { HomeSubscribeLinksSection } from "@/components/home/home-subscribe-links-section";
 import { ArtworkImage } from "@/components/media/artwork-image";
 import { PageBottomCtaSection } from "@/components/site/page-bottom-cta-section";
 import { PageShell } from "@/components/site/primitives";
 import { siteConfig } from "@/lib/config/site";
-import { artworkSubscribeLinks } from "@/lib/config/social-links";
 import { pageBottomCtas } from "@/lib/content/page-ctas";
 import { getContentListImage } from "@/lib/content-manager/content-images";
 import { getPublishedContentListEntries } from "@/lib/content-manager/content-store";
@@ -58,12 +56,6 @@ export default async function GalleryPage() {
       <PageBottomCtaSection
         className="gallery-cta-section"
         ctas={pageBottomCtas.gallery}
-      />
-      <HomeSubscribeLinksSection
-        ariaLabel="작업물 구독 링크"
-        className="page-subscribe-section"
-        links={artworkSubscribeLinks}
-        title="제작 과정이 궁금하다면"
       />
     </>
   );
