@@ -4359,6 +4359,17 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   object-fit: cover;
 }
 
+.naver-place-map-empty {
+  display: grid;
+  min-height: 440px;
+  place-items: center;
+  padding: 24px;
+  color: var(--tx3);
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: center;
+}
+
 .naver-place-map-caption {
   position: absolute;
   left: 18px;
@@ -5794,6 +5805,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   }
 
   .naver-place-map,
+  .naver-place-map-empty,
   .naver-place-map-image,
   .naver-place-map-link {
     min-height: 360px;
@@ -6029,6 +6041,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   }
 
   .naver-place-map,
+  .naver-place-map-empty,
   .naver-place-map-image,
   .naver-place-map-link {
     min-height: 320px;

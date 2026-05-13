@@ -24,6 +24,11 @@ const nextConfig: NextConfig = {
         pathname: "/vi/**",
         protocol: "https",
       },
+      {
+        hostname: "maps.apigw.ntruss.com",
+        pathname: "/map-static/v2/raster-cors",
+        protocol: "https",
+      },
     ],
   },
   poweredByHeader: false,
