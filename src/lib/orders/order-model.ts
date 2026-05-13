@@ -92,13 +92,13 @@ export type OrderDraftInput = {
   checkoutMode: CheckoutMode;
   giftMessage?: string;
   lookupPassword: string;
-  livePlantAcknowledged?: boolean;
   madeToOrder?: boolean;
   madeToOrderAcknowledged?: boolean;
+  notifyByEmail?: boolean;
+  notifyByKakao?: boolean;
   ordererEmail: string;
   ordererName: string;
   ordererPhone: string;
-  orderSummaryAcknowledged?: boolean;
   paymentMethod?: PaymentMethod;
   privacyAgreed?: boolean;
   productOption?: ProductOption;

@@ -61,6 +61,7 @@ type OrderRow = {
   payment_method: PaymentMethod;
   payment_status: PaymentStatus;
   recipient_name: string | null;
+  shipping_address1: string | null;
   shipping_fee_krw: number;
   shipping_method: ShippingMethod;
   subtotal_krw: number;
@@ -185,16 +186,8 @@ export async function createOrderDraft(
     throw new OrderDraftError("이 상품은 식물 포함 옵션을 선택할 수 없습니다.");
   }
 
-  if (
-    !input.orderSummaryAcknowledged ||
-    !input.termsAgreed ||
-    !input.privacyAgreed
-  ) {
+  if (!input.termsAgreed || !input.privacyAgreed) {
     throw new OrderDraftError("필수 확인 및 약관 동의 항목을 확인해 주세요.");
-  }
-
-  if (containsLivePlant && !input.livePlantAcknowledged) {
-    throw new OrderDraftError("생화·식물 포함 상품 안내를 확인해 주세요.");
   }
 
   if (isMadeToOrder) {
@@ -274,6 +267,8 @@ export async function createOrderDraft(
   }
 
   const cashReceipt = prepareCashReceipt(input, paymentMethod);
+  const notifyByEmail = input.notifyByEmail !== false;
+  const notifyByKakao = input.notifyByKakao !== false;
   const lookupPasswordHash = hashOrderLookupPassword(input.lookupPassword);
   const depositDueAt = isVirtualAccountPaymentMethod(paymentMethod)
     ? getDepositDueAt().toISOString()
@@ -307,6 +302,8 @@ export async function createOrderDraft(
     made_to_order_due_min_days: isMadeToOrder
       ? product.madeToOrder.daysMin
       : null,
+    notification_email_enabled: notifyByEmail,
+    notification_kakao_enabled: notifyByKakao,
     order_status: "pending_payment",
     orderer_email: input.ordererEmail.trim(),
     orderer_name: input.ordererName.trim(),
@@ -403,12 +400,14 @@ export async function createOrderDraft(
     orderNumber: order.order_number,
     payload: {
       checkoutMode: input.checkoutMode,
+      notifyByEmail,
+      notifyByKakao,
       paymentMethod,
       total: amounts.totalKrw,
     },
     recipient: {
-      email: input.ordererEmail.trim(),
-      phone: ordererPhone,
+      email: notifyByEmail ? input.ordererEmail.trim() : null,
+      phone: notifyByKakao ? ordererPhone : null,
     },
     template: "order_received",
   });
@@ -443,7 +442,12 @@ export async function lookupOrder(
     readOrderShipments(orderRow.id),
     readRefundAccountStatus(orderRow.id),
     orderRow.is_gift
-      ? readGiftAddressStatus(orderRow.id)
+      ? orderRow.shipping_address1
+        ? Promise.resolve({
+            expiresAt: null,
+            status: "submitted" as const,
+          })
+        : readGiftAddressStatus(orderRow.id)
       : Promise.resolve({
           expiresAt: null,
           status: "not_applicable" as const,
@@ -554,6 +558,7 @@ async function readVerifiedOrder(input: OrderLookupInput): Promise<OrderRow> {
         "fulfillment_status",
         "is_gift",
         "recipient_name",
+        "shipping_address1",
         "shipping_method",
         "subtotal_krw",
         "shipping_fee_krw",

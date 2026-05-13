@@ -46,6 +46,7 @@ type OrderPaymentRow = {
   portone_payment_id: string | null;
   recipient_name: string | null;
   recipient_phone: string | null;
+  shipping_address1: string | null;
   total_krw: number;
   virtual_account_account_holder: string | null;
   virtual_account_account_number: string | null;
@@ -349,19 +350,21 @@ export async function syncPortOnePayment({
         });
       }
 
-      await ensureGiftRecipientAddressRequest({
-        order: {
-          contains_live_plant: order.contains_live_plant,
-          id: order.id,
-          is_gift: order.is_gift,
-          order_number: result.orderNumber,
-          orderer_email: order.orderer_email,
-          orderer_phone: order.orderer_phone,
-          recipient_name: order.recipient_name,
-          recipient_phone: order.recipient_phone,
-        },
-        paidAt: new Date(readPaymentPaidAt(payment) ?? Date.now()),
-      });
+      if (!order.shipping_address1) {
+        await ensureGiftRecipientAddressRequest({
+          order: {
+            contains_live_plant: order.contains_live_plant,
+            id: order.id,
+            is_gift: order.is_gift,
+            order_number: result.orderNumber,
+            orderer_email: order.orderer_email,
+            orderer_phone: order.orderer_phone,
+            recipient_name: order.recipient_name,
+            recipient_phone: order.recipient_phone,
+          },
+          paidAt: new Date(readPaymentPaidAt(payment) ?? Date.now()),
+        });
+      }
     }
 
     return {
@@ -469,6 +472,7 @@ const paymentOrderSelect = [
   "is_made_to_order",
   "recipient_name",
   "recipient_phone",
+  "shipping_address1",
   "deposit_due_at",
   "virtual_account_bank_name",
   "virtual_account_account_number",

@@ -1,17 +1,30 @@
 import "server-only";
 
-import { createHash, randomBytes } from "node:crypto";
+import {
+  createHash,
+  randomBytes,
+  scryptSync,
+  timingSafeEqual,
+} from "node:crypto";
 import {
   enqueueAdminNotificationJob,
   enqueueOrderNotificationJobs,
 } from "@/lib/notifications/order-notifications";
 import {
+  decryptSensitiveText,
+  encryptSensitiveText,
+} from "@/lib/security/sensitive-data";
+import {
   getSupabaseAdminClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
+import type { OrderLookupInput } from "./order-model";
+import { OrderLookupVerificationError } from "./order-model";
 
 const defaultGiftAddressHours = 7 * 24;
 const livePlantGiftAddressHours = 24;
+const passwordHashPrefix = "scrypt";
+const passwordKeyLength = 32;
 
 type GiftLinkOrder = {
   contains_live_plant: boolean;
@@ -25,6 +38,7 @@ type GiftLinkOrder = {
 };
 
 type GiftRecipientLinkRow = {
+  action_url_encrypted: string | null;
   expires_at: string;
   id: string;
   sent_at: string | null;
@@ -40,6 +54,10 @@ export type GiftRecipientAddressInput = {
   shippingMemo?: string;
   shippingPostcode: string;
   token: string;
+};
+
+export type GiftAddressResendInput = OrderLookupInput & {
+  recipientPhoneLast4: string;
 };
 
 export type GiftRecipientAddressState =
@@ -87,7 +105,10 @@ export async function ensureGiftRecipientAddressRequest({
 
     await supabase
       .from("shop_gift_recipient_links")
-      .update({ token_hash: tokenHash })
+      .update({
+        action_url_encrypted: encryptSensitiveText(actionUrl),
+        token_hash: tokenHash,
+      })
       .eq("id", existing.id);
 
     await notifyGiftRecipient({ actionUrl, linkId: existing.id, order });
@@ -111,6 +132,7 @@ export async function ensureGiftRecipientAddressRequest({
   const { data, error } = await supabase
     .from("shop_gift_recipient_links")
     .insert({
+      action_url_encrypted: encryptSensitiveText(buildGiftAddressUrl(token)),
       expires_at: expiresAt,
       order_id: order.id,
       recipient_name: order.recipient_name,
@@ -307,6 +329,77 @@ export async function readGiftAddressStatus(orderId: string) {
   };
 }
 
+export async function resendGiftRecipientAddressRequest(
+  input: GiftAddressResendInput,
+) {
+  if (!isSupabaseConfigured()) {
+    throw new Error("선물 배송 정보 알림 저장소가 설정되지 않았습니다.");
+  }
+
+  const order = await readVerifiedGiftOrder(input);
+
+  if (!order.is_gift) {
+    throw new Error("선물하기 주문이 아닙니다.");
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("shop_gift_recipient_links")
+    .select("id, status, expires_at, action_url_encrypted, recipient_phone")
+    .eq("order_id", order.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) {
+    throw new Error("재발송할 선물 배송 정보 링크를 찾지 못했습니다.");
+  }
+
+  const link = data as GiftRecipientLinkRow & {
+    recipient_phone: string | null;
+  };
+
+  if (
+    normalizePhoneLast4(link.recipient_phone ?? "") !==
+    normalizePhoneLast4(input.recipientPhoneLast4)
+  ) {
+    throw new Error("수령인 연락처 뒤 4자리를 확인해 주세요.");
+  }
+
+  if (link.status !== "pending" || new Date(link.expires_at) <= new Date()) {
+    await markGiftLinkExpired(link.id);
+    throw new Error("배송 정보 입력 기한이 만료되어 기존 링크를 재발송할 수 없습니다.");
+  }
+
+  const actionUrl = decryptSensitiveText(link.action_url_encrypted);
+
+  if (!actionUrl) {
+    throw new Error("기존 링크 정보가 없어 재발송할 수 없습니다.");
+  }
+
+  await enqueueOrderNotificationJobs({
+    orderId: order.id,
+    orderNumber: order.order_number,
+    payload: {
+      actionUrl,
+      recipientName: order.recipient_name,
+    },
+    recipient: {
+      phone: order.recipient_phone,
+    },
+    template: "gift_address_request",
+  });
+
+  await supabase
+    .from("shop_gift_recipient_links")
+    .update({ sent_at: new Date().toISOString() })
+    .eq("id", link.id);
+
+  return {
+    expiresAt: link.expires_at,
+  };
+}
+
 async function notifyGiftRecipient({
   actionUrl,
   linkId,
@@ -341,7 +434,7 @@ async function readExistingPendingLink(orderId: string) {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("shop_gift_recipient_links")
-    .select("id, token_hash, status, expires_at, sent_at")
+    .select("id, action_url_encrypted, token_hash, status, expires_at, sent_at")
     .eq("order_id", orderId)
     .in("status", ["pending", "submitted"])
     .order("created_at", { ascending: false })
@@ -353,6 +446,51 @@ async function readExistingPendingLink(orderId: string) {
   }
 
   return data as GiftRecipientLinkRow;
+}
+
+async function readVerifiedGiftOrder(input: OrderLookupInput) {
+  const orderNumber = input.orderNumber.trim().toUpperCase();
+  const phoneLast4 = normalizePhoneLast4(input.phoneLast4);
+
+  if (!orderNumber || !/^[0-9]{4}$/.test(phoneLast4)) {
+    throw new OrderLookupVerificationError();
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("shop_orders")
+    .select(
+      [
+        "id",
+        "order_number",
+        "lookup_password_hash",
+        "is_gift",
+        "recipient_name",
+        "recipient_phone",
+      ].join(", "),
+    )
+    .eq("order_number", orderNumber)
+    .eq("orderer_phone_last4", phoneLast4)
+    .maybeSingle();
+
+  if (error || !data) {
+    throw new OrderLookupVerificationError();
+  }
+
+  const order = data as unknown as {
+    id: string;
+    is_gift: boolean;
+    lookup_password_hash: string;
+    order_number: string;
+    recipient_name: string | null;
+    recipient_phone: string | null;
+  };
+
+  if (!verifyLookupPassword(input.password, order.lookup_password_hash)) {
+    throw new OrderLookupVerificationError();
+  }
+
+  return order;
 }
 
 async function readGiftLinkByToken(token: string) {
@@ -422,6 +560,32 @@ function hashGiftToken(token: string) {
 
 function normalizePhone(phone: string) {
   return phone.replace(/\D/g, "");
+}
+
+function normalizePhoneLast4(phone: string) {
+  return normalizePhone(phone).slice(-4);
+}
+
+function verifyLookupPassword(password: string, storedHash: string) {
+  const normalized = password.trim();
+
+  if (!/^[0-9]{4}$/.test(normalized)) {
+    return false;
+  }
+
+  const [prefix, salt, expectedHash] = storedHash.split("$");
+
+  if (prefix !== passwordHashPrefix || !salt || !expectedHash) {
+    return false;
+  }
+
+  const actual = Buffer.from(
+    scryptSync(normalized, salt, passwordKeyLength).toString("hex"),
+    "hex",
+  );
+  const expected = Buffer.from(expectedHash, "hex");
+
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
 export function giftAddressDeadlineLabel(containsLivePlant: boolean) {

@@ -11,14 +11,6 @@ import {
   ProductImageGallery,
   type ProductGalleryImage,
 } from "@/components/shop/product-image-gallery";
-import {
-  HandmadeCeramicNotice,
-  LivePlantNotice,
-  PickupNotice,
-  ReturnNotice,
-  ShippingNotice,
-  UsageNotice,
-} from "@/components/shop/policy-notices";
 import { ProductPurchasePanel } from "@/components/shop/product-purchase-panel";
 import { ProductSpecList } from "@/components/shop/product-spec-list";
 import { ProductTitleActions } from "@/components/shop/product-title-actions";
@@ -163,17 +155,6 @@ export default async function ShopDetailPage({
         </div>
       </section>
 
-      <section className="product-policy-section" aria-label="구매 전 안내">
-        {product.plantOption.enabled ? (
-          <LivePlantNotice returnNotice={product.plantOption.returnNotice} />
-        ) : null}
-        <ShippingNotice />
-        <ReturnNotice />
-        <HandmadeCeramicNotice />
-        <UsageNotice />
-        <PickupNotice />
-      </section>
-
       {relatedGalleryEntries.length > 0 ? (
         <section className="product-linked-content">
           <div>
@@ -202,7 +183,7 @@ export default async function ShopDetailPage({
           { label: "크기", value: product.size },
           { label: "소재", value: product.material },
           { label: "유약", value: product.glaze },
-          { label: "안내", value: product.usageNote },
+          { label: "안내", value: buildProductNotice(product.usageNote) },
           { label: "배송", value: product.shippingNote },
           {
             label: "식물 옵션",
@@ -244,6 +225,13 @@ export default async function ShopDetailPage({
       ) : null}
     </PageShell>
   );
+}
+
+const handmadeCeramicDefaultNotice =
+  "수작업 도자기 특성상 유약 흐름, 철점, 작은 기포, 색감 차이, 형태 차이, 굽 자국, 표면 질감 차이가 있을 수 있습니다.";
+
+function buildProductNotice(usageNote: string | undefined) {
+  return [usageNote, handmadeCeramicDefaultNotice].filter(Boolean).join("\n");
 }
 
 function getGalleryImages({

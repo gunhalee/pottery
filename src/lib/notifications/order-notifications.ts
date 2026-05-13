@@ -9,12 +9,14 @@ export type OrderNotificationChannel = "email" | "kakao";
 
 export type OrderNotificationTemplate =
   | "admin_class_review_consent_received"
+  | "admin_class_review_received"
   | "admin_feedback_received"
   | "admin_fulfillment_shipped"
   | "admin_gift_address_submitted"
   | "admin_order_received"
   | "admin_payment_paid"
   | "admin_return_request_received"
+  | "admin_return_request_received_kakao"
   | "deposit_expired"
   | "deposit_guide"
   | "deposit_reminder"
@@ -31,7 +33,8 @@ export type OrderNotificationTemplate =
   | "payment_paid"
   | "picked_up"
   | "pickup_ready"
-  | "return_request_confirmation";
+  | "return_request_confirmation"
+  | "return_request_confirmation_kakao";
 
 export type OrderNotificationRecipient = {
   email?: string | null;
@@ -52,12 +55,14 @@ export type AdminNotificationJobInput = {
   payload?: Record<string, unknown>;
   template: Extract<
     OrderNotificationTemplate,
+    | "admin_class_review_received"
     | "admin_feedback_received"
     | "admin_fulfillment_shipped"
     | "admin_gift_address_submitted"
     | "admin_order_received"
     | "admin_payment_paid"
     | "admin_return_request_received"
+    | "admin_return_request_received_kakao"
     | "admin_class_review_consent_received"
   >;
 };
@@ -128,6 +133,33 @@ export async function enqueueAdminNotificationJob(
   await insertNotificationRows([
     {
       channel: "email",
+      order_id: input.orderId ?? null,
+      payload: {
+        orderNumber: input.orderNumber ?? null,
+        ...(input.payload ?? {}),
+      },
+      recipient,
+      template: input.template,
+    },
+  ]);
+}
+
+export async function enqueueAdminKakaoNotificationJob(
+  input: AdminNotificationJobInput,
+) {
+  if (!isSupabaseConfigured()) {
+    return;
+  }
+
+  const recipient = process.env.ADMIN_NOTIFICATION_PHONE?.trim();
+
+  if (!recipient) {
+    return;
+  }
+
+  await insertNotificationRows([
+    {
+      channel: "kakao",
       order_id: input.orderId ?? null,
       payload: {
         orderNumber: input.orderNumber ?? null,
@@ -472,6 +504,9 @@ function buildNotificationContent(job: PendingNotificationJob) {
     stringPayload(job.payload.productTitle)
       ? `상품: ${stringPayload(job.payload.productTitle)}`
       : null,
+    stringPayload(job.payload.reviewBody)
+      ? `후기: ${stringPayload(job.payload.reviewBody)}`
+      : null,
     stringPayload(job.payload.authorName)
       ? `작성자: ${stringPayload(job.payload.authorName)}`
       : null,
@@ -527,12 +562,14 @@ function buildNotificationContent(job: PendingNotificationJob) {
 function titleForTemplate(template: OrderNotificationTemplate, orderNumber: string) {
   return {
     admin_class_review_consent_received: "[관리자] 클래스 후기/사진 동의가 접수되었습니다",
+    admin_class_review_received: "[관리자] 새 클래스 후기가 접수되었습니다",
     admin_feedback_received: "[관리자] 새 구매평이 접수되었습니다",
     admin_fulfillment_shipped: `[관리자] 배송 시작 알림 ${orderNumber}`,
     admin_gift_address_submitted: `[관리자] 선물 배송지가 입력되었습니다 ${orderNumber}`,
     admin_order_received: `[관리자] 새 주문 접수 ${orderNumber}`,
     admin_payment_paid: `[관리자] 결제 확인 ${orderNumber}`,
     admin_return_request_received: `[관리자] 교환·반품 문의가 접수되었습니다 ${orderNumber}`,
+    admin_return_request_received_kakao: `[관리자] 교환·반품 문의가 접수되었습니다 ${orderNumber}`,
     deposit_expired: `입금 기한이 만료되었습니다 ${orderNumber}`,
     deposit_guide: `가상계좌가 발급되었습니다 ${orderNumber}`,
     deposit_reminder: `입금 기한을 확인해 주세요 ${orderNumber}`,
@@ -550,6 +587,7 @@ function titleForTemplate(template: OrderNotificationTemplate, orderNumber: stri
     picked_up: `수령이 완료되었습니다 ${orderNumber}`,
     pickup_ready: `방문 수령 준비가 완료되었습니다 ${orderNumber}`,
     return_request_confirmation: `교환·반품 문의가 접수되었습니다 ${orderNumber}`,
+    return_request_confirmation_kakao: `교환·반품 문의가 접수되었습니다 ${orderNumber}`,
   }[template];
 }
 

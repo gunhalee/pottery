@@ -5,10 +5,12 @@ alter table public.shop_notification_jobs
   add constraint shop_notification_jobs_template_check check (
     template in (
       'admin_class_review_consent_received',
+      'admin_class_review_received',
       'admin_feedback_received',
       'admin_fulfillment_shipped',
       'admin_gift_address_submitted',
       'admin_order_received',
+      'admin_return_request_received_kakao',
       'admin_payment_paid',
       'admin_return_request_received',
       'deposit_expired',
@@ -27,7 +29,8 @@ alter table public.shop_notification_jobs
       'payment_paid',
       'picked_up',
       'pickup_ready',
-      'return_request_confirmation'
+      'return_request_confirmation',
+      'return_request_confirmation_kakao'
     )
   );
 
@@ -35,6 +38,10 @@ alter table public.shop_product_feedback
   add column if not exists marketing_consent boolean not null default false,
   add column if not exists marketing_consent_at timestamptz,
   add column if not exists marketing_consent_scope text;
+
+alter table public.shop_orders
+  add column if not exists notification_email_enabled boolean not null default true,
+  add column if not exists notification_kakao_enabled boolean not null default true;
 
 create table if not exists public.shop_review_marketing_consents (
   id uuid primary key default gen_random_uuid(),
@@ -60,6 +67,7 @@ on public.shop_review_marketing_consents (feedback_id);
 create table if not exists public.shop_gift_recipient_links (
   id uuid primary key default gen_random_uuid(),
   order_id uuid not null references public.shop_orders (id) on delete cascade,
+  action_url_encrypted text,
   token_hash text not null unique,
   status text not null default 'pending' check (
     status in ('pending', 'submitted', 'expired', 'canceled')
@@ -134,6 +142,7 @@ on public.shop_return_request_images (return_request_id, sort_order);
 
 create table if not exists public.class_review_consents (
   id uuid primary key default gen_random_uuid(),
+  class_review_id uuid,
   participant_name text not null check (char_length(participant_name) between 1 and 40),
   contact text check (contact is null or char_length(contact) <= 120),
   class_title text check (class_title is null or char_length(class_title) <= 80),
@@ -157,8 +166,63 @@ execute function public.set_updated_at();
 create index if not exists class_review_consents_created_idx
 on public.class_review_consents (created_at desc);
 
+create table if not exists public.class_reviews (
+  id uuid primary key default gen_random_uuid(),
+  participant_name text not null check (char_length(participant_name) between 1 and 40),
+  contact text check (contact is null or char_length(contact) <= 120),
+  class_title text check (class_title is null or char_length(class_title) <= 80),
+  display_name text check (display_name is null or char_length(display_name) <= 40),
+  body text not null check (char_length(body) between 5 and 1200),
+  status text not null default 'pending' check (
+    status in ('hidden', 'pending', 'published')
+  ),
+  marketing_consent boolean not null default false,
+  marketing_consent_at timestamptz,
+  marketing_consent_scope text,
+  consent_text text,
+  revoked_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+drop trigger if exists class_reviews_set_updated_at
+on public.class_reviews;
+create trigger class_reviews_set_updated_at
+before update on public.class_reviews
+for each row
+execute function public.set_updated_at();
+
+create index if not exists class_reviews_status_created_idx
+on public.class_reviews (status, created_at desc);
+
+alter table public.class_review_consents
+  drop constraint if exists class_review_consents_class_review_id_fkey;
+alter table public.class_review_consents
+  add constraint class_review_consents_class_review_id_fkey
+  foreign key (class_review_id) references public.class_reviews (id) on delete cascade;
+
+create index if not exists class_review_consents_review_idx
+on public.class_review_consents (class_review_id);
+
+create table if not exists public.class_review_images (
+  id uuid primary key default gen_random_uuid(),
+  class_review_id uuid not null references public.class_reviews (id) on delete cascade,
+  media_asset_id uuid not null references public.media_assets (id) on delete restrict,
+  sort_order integer not null default 0 check (sort_order >= 0),
+  created_at timestamptz not null default now(),
+  unique (class_review_id, media_asset_id)
+);
+
+create index if not exists class_review_images_review_sort_idx
+on public.class_review_images (class_review_id, sort_order);
+
+create index if not exists class_review_images_asset_idx
+on public.class_review_images (media_asset_id);
+
 alter table public.shop_gift_recipient_links enable row level security;
 alter table public.shop_review_marketing_consents enable row level security;
 alter table public.shop_return_requests enable row level security;
 alter table public.shop_return_request_images enable row level security;
 alter table public.class_review_consents enable row level security;
+alter table public.class_reviews enable row level security;
+alter table public.class_review_images enable row level security;

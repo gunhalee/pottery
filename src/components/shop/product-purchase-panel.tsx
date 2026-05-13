@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FocusEvent, KeyboardEvent } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
@@ -101,6 +102,10 @@ export function ProductPurchasePanel({
   const selectedShippingOption =
     shippingOptions.find((option) => option.value === shippingMethod) ??
     shippingOptions[0];
+  const shippingPeriodNotice = getShippingPeriodNotice({
+    madeToOrder,
+    shippingMethod,
+  });
 
   const formatted = useMemo(
     () => ({
@@ -431,7 +436,9 @@ export function ProductPurchasePanel({
             {shippingMethod === "pickup" ? (
               <>
                 <span>방문수령 · 별도 배송비 없음</span>
-                <strong>방문 가능 일정은 주문 후 안내드립니다.</strong>
+                <strong>
+                  방문수령은 결제 완료 후 15일 이내 수령을 원칙으로 합니다.
+                </strong>
               </>
             ) : (
               <>
@@ -439,11 +446,19 @@ export function ProductPurchasePanel({
                   택배 · 배송비 {formatted.shipping} ·{" "}
                   {formatted.freeShippingThreshold} 이상 무료배송
                 </span>
+                <strong>{shippingPeriodNotice}</strong>
                 <strong>
                   {containsLivePlant
                     ? "식물 포함 상품은 제주·도서산간 배송이 제한됩니다."
                     : "도서산간 배송비는 주문 전 별도 안내드립니다."}
                 </strong>
+                <Link
+                  className="product-shipping-policy-link"
+                  href="/shipping-returns"
+                  prefetch={false}
+                >
+                  배송·교환·환불 안내 보기
+                </Link>
               </>
             )}
           </dd>
@@ -464,11 +479,10 @@ export function ProductPurchasePanel({
       {containsLivePlant ? (
         <div className="product-commerce-notice">
           <strong>식물 포함 상품 안내</strong>
-          {plantOption?.careNotice ? <p>{plantOption.careNotice}</p> : null}
-          {plantOption?.shippingRestrictionNotice ? (
-            <p>{plantOption.shippingRestrictionNotice}</p>
-          ) : null}
-          {plantOption?.returnNotice ? <p>{plantOption.returnNotice}</p> : null}
+          <p>
+            식물 포함 선택 시 수령 지연이나 관리 상태에 따라 교환·반품 조건이
+            달라질 수 있습니다. 자세한 안내는 체크아웃에서 확인해 주세요.
+          </p>
         </div>
       ) : null}
 
@@ -650,6 +664,24 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat("ko-KR", {
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function getShippingPeriodNotice({
+  madeToOrder,
+  shippingMethod,
+}: {
+  madeToOrder: ProductPurchasePanelProps["madeToOrder"];
+  shippingMethod: ShippingMethod;
+}) {
+  if (shippingMethod === "pickup") {
+    return "방문수령은 결제 완료 후 15일 이내 수령을 원칙으로 합니다.";
+  }
+
+  if (madeToOrder?.enabled) {
+    return `제작 상품은 결제 또는 입금 확인 후 ${madeToOrder.daysMin}~${madeToOrder.daysMax}일의 제작 기간이 필요하며, 제작 완료 후 발송됩니다.`;
+  }
+
+  return "결제 또는 입금 확인 후 2~5영업일 이내 발송을 원칙으로 합니다.";
 }
 
 function HeartIcon({ filled }: { filled: boolean }) {

@@ -11,7 +11,7 @@ export default function OrderLookupPage() {
   return (
     <PageShell>
       <PageIntro
-        subtitle="주문번호, 연락처 끝 4자리, 주문 비밀번호가 일치할 때만 조회됩니다."
+        subtitle="주문조회를 위해 정보를 입력해 주세요."
         title="주문 조회"
         variant="compact"
       />

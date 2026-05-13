@@ -2,6 +2,7 @@ import "server-only";
 
 import type { MediaAsset } from "@/lib/media/media-model";
 import {
+  enqueueAdminKakaoNotificationJob,
   enqueueAdminNotificationJob,
   enqueueOrderNotificationJobs,
 } from "@/lib/notifications/order-notifications";
@@ -105,9 +106,20 @@ export async function createReturnRequest(input: ReturnRequestInput) {
     },
     recipient: {
       email: order.orderer_email,
-      phone: order.orderer_phone,
     },
     template: "return_request_confirmation",
+  });
+  await enqueueOrderNotificationJobs({
+    orderId: order.id,
+    orderNumber: order.order_number,
+    payload: {
+      reason,
+      requestType: returnRequestTypeLabel(input.requestType),
+    },
+    recipient: {
+      phone: order.orderer_phone,
+    },
+    template: "return_request_confirmation_kakao",
   });
   await enqueueAdminNotificationJob({
     orderId: order.id,
@@ -118,6 +130,16 @@ export async function createReturnRequest(input: ReturnRequestInput) {
       requestType: returnRequestTypeLabel(input.requestType),
     },
     template: "admin_return_request_received",
+  });
+  await enqueueAdminKakaoNotificationJob({
+    orderId: order.id,
+    orderNumber: order.order_number,
+    payload: {
+      customerContact,
+      reason,
+      requestType: returnRequestTypeLabel(input.requestType),
+    },
+    template: "admin_return_request_received_kakao",
   });
 
   return {

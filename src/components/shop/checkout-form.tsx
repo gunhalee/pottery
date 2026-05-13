@@ -80,6 +80,9 @@ export function CheckoutForm({
     useState<CashReceiptType>("none");
   const [cashReceiptIdentifierType, setCashReceiptIdentifierType] =
     useState<CashReceiptIdentifierType>("phone");
+  const [giftAddressMode, setGiftAddressMode] = useState<
+    "recipient" | "sender"
+  >("recipient");
   const [state, setState] = useState<SubmitState>({
     error: null,
     order: null,
@@ -114,6 +117,12 @@ export function CheckoutForm({
 
     return "일반 구매";
   }, [isGift, isNaverPay]);
+  const shippingPeriodNotice = getShippingPeriodNotice({
+    isMadeToOrder,
+    madeToOrderDaysMax,
+    madeToOrderDaysMin,
+    shippingMethod,
+  });
 
   async function submitOrder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -144,13 +153,11 @@ export function CheckoutForm({
         madeToOrderAcknowledged: Boolean(
           formData.get("madeToOrderAcknowledged"),
         ),
-        livePlantAcknowledged: Boolean(formData.get("livePlantAcknowledged")),
+        notifyByEmail: Boolean(formData.get("notifyByEmail")),
+        notifyByKakao: Boolean(formData.get("notifyByKakao")),
         ordererEmail: String(formData.get("ordererEmail") ?? ""),
         ordererName: String(formData.get("ordererName") ?? ""),
         ordererPhone: String(formData.get("ordererPhone") ?? ""),
-        orderSummaryAcknowledged: Boolean(
-          formData.get("orderSummaryAcknowledged"),
-        ),
         paymentMethod: selectedPaymentMethod,
         privacyAgreed: Boolean(formData.get("privacyAgreed")),
         productOption,
@@ -396,6 +403,7 @@ export function CheckoutForm({
         <p>
           상품 {formatCurrency(subtotal)} · 배송비 {formatCurrency(shippingFee)}
         </p>
+        <p>{shippingPeriodNotice}</p>
         {containsLivePlant ? (
           <p>
             식물 포함 상품은 제주 및 도서산간 택배 발송이 제한되며,
@@ -608,6 +616,28 @@ export function CheckoutForm({
                 입력 안내가 발송됩니다.
               </p>
             ) : null}
+            <div className="checkout-choice-row">
+              <label>
+                <input
+                  checked={giftAddressMode === "recipient"}
+                  name="giftAddressMode"
+                  onChange={() => setGiftAddressMode("recipient")}
+                  type="radio"
+                  value="recipient"
+                />
+                <span>수령인이 배송지 입력</span>
+              </label>
+              <label>
+                <input
+                  checked={giftAddressMode === "sender"}
+                  name="giftAddressMode"
+                  onChange={() => setGiftAddressMode("sender")}
+                  type="radio"
+                  value="sender"
+                />
+                <span>주문자가 배송지 입력</span>
+              </label>
+            </div>
             <label>
               <span>수령인 이름</span>
               <input name="recipientName" required />
@@ -616,13 +646,32 @@ export function CheckoutForm({
               <span>수령인 연락처</span>
               <input inputMode="tel" name="recipientPhone" required />
             </label>
+            {giftAddressMode === "sender" ? (
+              <>
+                <label>
+                  <span>우편번호</span>
+                  <input name="shippingPostcode" required />
+                </label>
+                <label className="checkout-field-wide">
+                  <span>주소</span>
+                  <input name="shippingAddress1" required />
+                </label>
+                <label className="checkout-field-wide">
+                  <span>상세 주소</span>
+                  <input name="shippingAddress2" />
+                </label>
+                <label className="checkout-field-wide">
+                  <span>배송 메모</span>
+                  <input name="shippingMemo" />
+                </label>
+              </>
+            ) : null}
             <label className="checkout-field-wide">
               <span>선물 메모</span>
               <textarea maxLength={200} name="giftMessage" />
             </label>
             <p className="checkout-note">
-              식물 포함 상품은 수령인 배송정보 입력 기한이 24시간으로 적용될
-              수 있습니다.
+              식물 포함 상품은 수령인 배송정보 입력 기한이 24시간으로 적용됩니다.
             </p>
           </fieldset>
         ) : null}
@@ -659,9 +708,8 @@ export function CheckoutForm({
 
         {!isGift && !isParcel ? (
           <p className="checkout-note">
-            방문수령 장소는 경기도 광주시 수레실길 25-10 1층입니다. 일정은
-            주문 접수 후 카카오채널로 조율하며, 수령 가능일 안내 후 15일 이내
-            수령을 원칙으로 합니다.
+            방문수령 장소는 경기도 광주시 수레실길 25-10 1층입니다.
+            방문수령은 결제 완료 후 15일 이내 수령을 원칙으로 합니다.
           </p>
         ) : null}
 
@@ -672,21 +720,23 @@ export function CheckoutForm({
           </p>
         ) : null}
 
+        {containsLivePlant ? (
+          <fieldset>
+            <legend>생화·식물 포함 상품</legend>
+            <p className="checkout-note">
+              식물은 생물 특성상 계절, 생육 상태, 배송 환경, 수령 지연, 관리
+              상태에 따라 상태가 달라질 수 있습니다.
+            </p>
+            <p className="checkout-note">
+              수령 후 가능한 빠르게 개봉하고 상품별 안내에 따라 통풍, 물주기,
+              햇빛 조건을 확인해 주세요. 수령 지연·개봉 후 관리 부주의·생육
+              변화에 따른 교환·반품은 제한될 수 있습니다.
+            </p>
+          </fieldset>
+        ) : null}
+
         <fieldset>
           <legend>필수 확인</legend>
-          <label className="checkout-checkbox">
-            <input name="orderSummaryAcknowledged" required type="checkbox" />
-            <span>주문 상품, 가격, 배송비, 배송방법, 교환·환불 조건을 확인했습니다.</span>
-          </label>
-          {containsLivePlant ? (
-            <label className="checkout-checkbox">
-              <input name="livePlantAcknowledged" required type="checkbox" />
-              <span>
-                생화·식물 포함 상품의 수령·관리·교환/반품 제한 안내를
-                확인했습니다.
-              </span>
-            </label>
-          ) : null}
           <label className="checkout-checkbox">
             <input name="termsAgreed" required type="checkbox" />
             <span>
@@ -705,11 +755,18 @@ export function CheckoutForm({
               에 동의합니다.
             </span>
           </label>
-          <p className="checkout-note">
-            주문·배송·결제 처리를 위해 주문자명, 연락처, 이메일, 수령인 정보,
-            배송지, 결제 정보를 수집합니다. 주문, 입금, 배송, 교환·환불 안내는
-            이메일과 카카오 알림톡으로 발송될 수 있습니다.
-          </p>
+        </fieldset>
+
+        <fieldset>
+          <legend>알림 옵션</legend>
+          <label className="checkout-checkbox">
+            <input defaultChecked name="notifyByKakao" type="checkbox" />
+            <span>카카오 알림톡으로 받기</span>
+          </label>
+          <label className="checkout-checkbox">
+            <input defaultChecked name="notifyByEmail" type="checkbox" />
+            <span>이메일로 받기</span>
+          </label>
         </fieldset>
 
         <div className="checkout-actions">
@@ -748,6 +805,28 @@ function formatDate(value: string | null | undefined) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+function getShippingPeriodNotice({
+  isMadeToOrder,
+  madeToOrderDaysMax,
+  madeToOrderDaysMin,
+  shippingMethod,
+}: {
+  isMadeToOrder: boolean;
+  madeToOrderDaysMax: number | null;
+  madeToOrderDaysMin: number | null;
+  shippingMethod: ShippingMethod;
+}) {
+  if (shippingMethod === "pickup") {
+    return "방문수령은 결제 완료 후 15일 이내 수령을 원칙으로 합니다.";
+  }
+
+  if (isMadeToOrder) {
+    return `제작 상품은 결제 또는 입금 확인 후 ${madeToOrderDaysMin ?? 30}~${madeToOrderDaysMax ?? 45}일의 제작 기간이 필요하며, 제작 완료 후 발송됩니다.`;
+  }
+
+  return "결제 또는 입금 확인 후 2~5영업일 이내 발송을 원칙으로 합니다.";
 }
 
 function productOptionLabel(option: ProductOption) {

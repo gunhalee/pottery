@@ -26,6 +26,7 @@ type RefundState =
   | { kind: "error"; message: string };
 
 type ReturnRequestState = RefundState;
+type GiftResendState = RefundState;
 
 export function OrderLookupForm() {
   const [state, setState] = useState<LookupState>({ kind: "idle" });
@@ -126,15 +127,16 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
     useState<ReturnRequestState>({
       kind: "idle",
     });
+  const [giftResendState, setGiftResendState] = useState<GiftResendState>({
+    kind: "idle",
+  });
+  const [isReturnRequestOpen, setIsReturnRequestOpen] = useState(false);
+  const [isRefundAccountActive, setIsRefundAccountActive] = useState(false);
 
   if (state.kind === "idle") {
     return (
       <aside className="order-lookup-empty">
-        <strong>
-          주문번호, 연락처 뒤 4자리, 주문 비밀번호가 일치할 때만 결과가
-          표시됩니다.
-        </strong>
-        <p>결제 상태와 배송 상태는 자체 주문 기록을 기준으로 확인합니다.</p>
+        <strong>주문조회를 위해 정보를 입력해 주세요.</strong>
       </aside>
     );
   }
@@ -241,6 +243,50 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
     }
   }
 
+  async function resendGiftAddress(formData: FormData) {
+    setGiftResendState({ kind: "submitting" });
+
+    try {
+      const response = await fetch("/api/gift-recipient/resend", {
+        body: JSON.stringify({
+          ...credentials,
+          recipientPhoneLast4: String(
+            formData.get("recipientPhoneLast4") ?? "",
+          ),
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          typeof payload?.error === "string"
+            ? payload.error
+            : "선물 배송지 입력 링크 재발송 중 오류가 발생했습니다.",
+        );
+      }
+
+      setGiftResendState({
+        kind: "success",
+        message:
+          typeof payload?.message === "string"
+            ? payload.message
+            : "기존 선물 배송지 입력 링크를 다시 보냈습니다.",
+      });
+    } catch (error) {
+      setGiftResendState({
+        kind: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "선물 배송지 입력 링크 재발송 중 오류가 발생했습니다.",
+      });
+    }
+  }
+
   return (
     <aside className="order-lookup-result">
       <div className="order-lookup-result-head">
@@ -284,6 +330,38 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
         개인정보 보호를 위해 주문 조회 화면에는 일부 주문자·수령인 정보만
         표시됩니다.
       </p>
+
+      {result.isGift && result.giftAddressStatus === "pending" ? (
+        <form action={resendGiftAddress} className="order-resend-form">
+          <strong>선물 배송지 입력 링크 재발송</strong>
+          <p>
+            수령인 연락처 끝 4자리를 확인한 뒤 기존 링크를 다시 보냅니다.
+            입력 기한은 상태 영역에 표시된 기한을 따릅니다.
+          </p>
+          <label>
+            <span>수령인 연락처 끝 4자리</span>
+            <input
+              inputMode="numeric"
+              maxLength={4}
+              name="recipientPhoneLast4"
+              pattern="[0-9]{4}"
+              required
+            />
+          </label>
+          <button
+            className="button-quiet"
+            disabled={giftResendState.kind === "submitting"}
+          >
+            {giftResendState.kind === "submitting" ? "재발송 중" : "재발송"}
+          </button>
+          {giftResendState.kind === "success" ||
+          giftResendState.kind === "error" ? (
+            <p className={giftResendState.kind === "error" ? "checkout-error" : ""}>
+              {giftResendState.message}
+            </p>
+          ) : null}
+        </form>
+      ) : null}
 
       {result.paymentMethod === "portone_virtual_account" ? (
         <div className="order-lookup-bank">
@@ -376,119 +454,142 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
         </div>
       </div>
 
-      <form action={submitReturnRequest} className="order-return-request-form">
-        <strong>교환·반품 문의하기</strong>
-        <p>
-          상품 수령 후 7일 이내 교환·반품을 요청할 수 있습니다. 단순 변심으로
-          인한 전체 반품 시 왕복 배송비 6,000원이 환불금에서 차감됩니다.
-        </p>
-        {result.containsLivePlant ? (
-          <p>
-            생화·식물 포함 상품은 시간 경과, 수령 지연, 개봉 후 관리 상태에
-            따라 교환·반품이 제한될 수 있습니다.
-          </p>
-        ) : null}
-        <label>
-          <span>문의 유형</span>
-          <select name="requestType" required defaultValue="return">
-            <option value="exchange">교환 문의</option>
-            <option value="return">반품 문의</option>
-            <option value="refund">환불 문의</option>
-            <option value="damage">파손·하자 문의</option>
-            <option value="other">기타 문의</option>
-          </select>
-        </label>
-        <label>
-          <span>이름</span>
-          <input name="customerName" required maxLength={40} />
-        </label>
-        <label>
-          <span>연락처 또는 이메일</span>
-          <input name="customerContact" required maxLength={120} />
-        </label>
-        <label>
-          <span>사유</span>
-          <input name="reason" required maxLength={80} />
-        </label>
-        <label className="order-refund-field-wide">
-          <span>상세 내용</span>
-          <textarea
-            maxLength={1200}
-            minLength={5}
-            name="detail"
-            required
-          />
-        </label>
-        <label className="order-refund-field-wide">
-          <span>사진</span>
-          <input
-            accept="image/jpeg,image/png,image/webp"
-            multiple
-            name="photos"
-            type="file"
-          />
-        </label>
-        <p>
-          고객이 직접 선불 발송하는 경우 최초 배송 시와 같은 수준의 완충 포장을
-          해주세요. 부적절한 포장 또는 임의 발송 과정에서 발생한 파손은 고객
-          책임으로 처리될 수 있습니다.
-        </p>
+      <div className="order-lookup-action-panel">
         <button
-          className="button-primary"
-          disabled={returnRequestState.kind === "submitting"}
+          className="button-quiet"
+          onClick={() => setIsReturnRequestOpen((open) => !open)}
+          type="button"
         >
-          {returnRequestState.kind === "submitting" ? "접수 중" : "문의 접수"}
+          교환·반품 문의하기
         </button>
-        {returnRequestState.kind === "success" ||
-        returnRequestState.kind === "error" ? (
-          <p
-            className={
-              returnRequestState.kind === "error" ? "checkout-error" : ""
-            }
-          >
-            {returnRequestState.message}
-          </p>
+        {isReturnRequestOpen ? (
+          <form action={submitReturnRequest} className="order-return-request-form">
+            <strong>교환·반품 문의 접수</strong>
+            <p>
+              상품 수령 후 7일 이내 교환·반품을 요청할 수 있습니다. 단순 변심으로
+              인한 전체 반품 시 왕복 배송비 6,000원이 환불금에서 차감됩니다.
+            </p>
+            {result.containsLivePlant ? (
+              <p>
+                생화·식물 포함 상품은 시간 경과, 수령 지연, 개봉 후 관리 상태에
+                따라 교환·반품이 제한될 수 있습니다.
+              </p>
+            ) : null}
+            <label>
+              <span>문의 유형</span>
+              <select name="requestType" required defaultValue="return">
+                <option value="exchange">교환 문의</option>
+                <option value="return">반품 문의</option>
+                <option value="refund">환불 문의</option>
+                <option value="damage">파손·하자 문의</option>
+                <option value="other">기타 문의</option>
+              </select>
+            </label>
+            <label>
+              <span>이름</span>
+              <input name="customerName" required maxLength={40} />
+            </label>
+            <label>
+              <span>연락처 또는 이메일</span>
+              <input name="customerContact" required maxLength={120} />
+            </label>
+            <label>
+              <span>사유</span>
+              <input name="reason" required maxLength={80} />
+            </label>
+            <label className="order-refund-field-wide">
+              <span>상세 내용</span>
+              <textarea
+                maxLength={1200}
+                minLength={5}
+                name="detail"
+                required
+              />
+            </label>
+            <label className="order-refund-field-wide">
+              <span>사진</span>
+              <input
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                name="photos"
+                type="file"
+              />
+            </label>
+            <p>
+              고객이 직접 선불 발송하는 경우 최초 배송 시와 같은 수준의 완충 포장을
+              해주세요. 부적절한 포장 또는 임의 발송 과정에서 발생한 파손은 고객
+              책임으로 처리될 수 있습니다.
+            </p>
+            <button
+              className="button-primary"
+              disabled={returnRequestState.kind === "submitting"}
+            >
+              {returnRequestState.kind === "submitting" ? "접수 중" : "문의 접수"}
+            </button>
+            {returnRequestState.kind === "success" ||
+            returnRequestState.kind === "error" ? (
+              <p
+                className={
+                  returnRequestState.kind === "error" ? "checkout-error" : ""
+                }
+              >
+                {returnRequestState.message}
+              </p>
+            ) : null}
+          </form>
         ) : null}
-      </form>
+      </div>
 
       {requiresRefundAccountFallback(result.paymentMethod) ? (
         <form action={submitRefundAccount} className="order-refund-form">
-          <strong>환불계좌 등록</strong>
-          <label>
-            <span>은행명</span>
-            <input name="bankName" required />
-          </label>
-          <label>
-            <span>계좌번호</span>
-            <input inputMode="numeric" name="accountNumber" required />
-          </label>
-          <label>
-            <span>예금주명</span>
-            <input name="accountHolder" required />
-          </label>
-          <label>
-            <span>입금자명</span>
-            <input name="depositorName" />
-          </label>
-          <label>
-            <span>환불 요청 금액</span>
-            <input inputMode="numeric" name="refundAmount" />
-          </label>
-          <label className="order-refund-field-wide">
-            <span>환불 사유</span>
-            <textarea maxLength={300} name="refundReason" />
-          </label>
-          <p>
-            다른 명의 계좌도 접수할 수 있으나, 운영자가 추가 확인한 뒤
-            환불합니다. 현재 상태:{" "}
-            {refundAccountStatusLabel(result.refundAccountStatus)}
-          </p>
-          <button
-            className="button-primary"
-            disabled={refundState.kind === "submitting"}
+          <div className="order-refund-form-head">
+            <strong>환불계좌 등록</strong>
+            <button
+              className="button-quiet"
+              disabled={isRefundAccountActive}
+              onClick={() => setIsRefundAccountActive(true)}
+              type="button"
+            >
+              환불계좌 등록
+            </button>
+          </div>
+          <fieldset
+            className="order-refund-fieldset"
+            disabled={!isRefundAccountActive || refundState.kind === "submitting"}
           >
-            {refundState.kind === "submitting" ? "접수 중" : "환불계좌 접수"}
-          </button>
+            <label>
+              <span>은행명</span>
+              <input name="bankName" required />
+            </label>
+            <label>
+              <span>계좌번호</span>
+              <input inputMode="numeric" name="accountNumber" required />
+            </label>
+            <label>
+              <span>예금주명</span>
+              <input name="accountHolder" required />
+            </label>
+            <label>
+              <span>입금자명</span>
+              <input name="depositorName" />
+            </label>
+            <label>
+              <span>환불 요청 금액</span>
+              <input inputMode="numeric" name="refundAmount" />
+            </label>
+            <label className="order-refund-field-wide">
+              <span>환불 사유</span>
+              <textarea maxLength={300} name="refundReason" />
+            </label>
+            <p>
+              환불계좌는 주문자 또는 결제자 명의 계좌를 원칙으로 합니다. 다른
+              명의 계좌는 운영자 추가 확인 후 처리될 수 있습니다. 현재 상태:{" "}
+              {refundAccountStatusLabel(result.refundAccountStatus)}
+            </p>
+            <button className="button-primary">
+              {refundState.kind === "submitting" ? "접수 중" : "환불계좌 접수"}
+            </button>
+          </fieldset>
           {refundState.kind === "success" || refundState.kind === "error" ? (
             <p className={refundState.kind === "error" ? "checkout-error" : ""}>
               {refundState.message}
