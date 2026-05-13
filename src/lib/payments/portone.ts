@@ -3,10 +3,8 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { commerceConfig } from "@/lib/config/commerce";
 import type {
-  CashReceiptIdentifierType,
   CashReceiptType,
   DepositAccount,
-  OrderStatus,
   PaymentMethod,
   PaymentStatus,
 } from "@/lib/orders/order-model";
@@ -25,43 +23,12 @@ import type {
   PortOnePaymentRequest,
   PortOnePayMethod,
 } from "./portone-model";
-
-type OrderPaymentRow = {
-  cash_receipt_identifier_encrypted: string | null;
-  cash_receipt_identifier_masked: string | null;
-  cash_receipt_identifier_type: CashReceiptIdentifierType | null;
-  cash_receipt_requested: boolean;
-  cash_receipt_status: string;
-  cash_receipt_type: Exclude<CashReceiptType, "none"> | null;
-  contains_live_plant: boolean;
-  deposit_due_at: string | null;
-  id: string;
-  is_gift: boolean;
-  is_made_to_order: boolean;
-  order_number: string;
-  order_status: OrderStatus;
-  orderer_email: string;
-  orderer_name: string;
-  orderer_phone: string;
-  payment_method: PaymentMethod;
-  payment_status: PaymentStatus;
-  portone_payment_id: string | null;
-  recipient_name: string | null;
-  recipient_phone: string | null;
-  shipping_address1: string | null;
-  total_krw: number;
-  virtual_account_account_holder: string | null;
-  virtual_account_account_number: string | null;
-  virtual_account_bank_name: string | null;
-};
-
-type OrderPaymentItemRow = {
-  product_title: string;
-  quantity: number;
-  snapshot: {
-    checkoutMode?: string;
-  } | null;
-};
+import {
+  parseOrderPaymentItems,
+  parseOrderPaymentRow,
+  paymentOrderSelect,
+  type OrderPaymentRow,
+} from "./portone-order-rows";
 
 type PortOnePaymentMethodPayload = {
   [key: string]: unknown;
@@ -443,7 +410,7 @@ async function readPaymentOrder(orderId: string): Promise<OrderPaymentRow> {
     throw new PortOnePaymentError("주문을 찾지 못했습니다.", 404);
   }
 
-  return data as unknown as OrderPaymentRow;
+  return parseOrderPaymentRow(data);
 }
 
 async function readPaymentOrderByPaymentId(
@@ -460,37 +427,8 @@ async function readPaymentOrderByPaymentId(
     throw new PortOnePaymentError("결제 ID에 해당하는 주문을 찾지 못했습니다.", 404);
   }
 
-  return data as unknown as OrderPaymentRow;
+  return parseOrderPaymentRow(data);
 }
-
-const paymentOrderSelect = [
-  "id",
-  "order_number",
-  "order_status",
-  "payment_status",
-  "payment_method",
-  "orderer_name",
-  "orderer_phone",
-  "orderer_email",
-  "total_krw",
-  "portone_payment_id",
-  "contains_live_plant",
-  "is_gift",
-  "is_made_to_order",
-  "recipient_name",
-  "recipient_phone",
-  "shipping_address1",
-  "deposit_due_at",
-  "virtual_account_bank_name",
-  "virtual_account_account_number",
-  "virtual_account_account_holder",
-  "cash_receipt_requested",
-  "cash_receipt_type",
-  "cash_receipt_identifier_type",
-  "cash_receipt_identifier_encrypted",
-  "cash_receipt_identifier_masked",
-  "cash_receipt_status",
-].join(", ");
 
 async function buildOrderPaymentInfo(orderId: string) {
   const supabase = getSupabaseAdminClient();
@@ -504,7 +442,7 @@ async function buildOrderPaymentInfo(orderId: string) {
     throw new PortOnePaymentError(`주문 상품 조회 실패: ${error.message}`, 500);
   }
 
-  const items = (data ?? []) as OrderPaymentItemRow[];
+  const items = parseOrderPaymentItems(data);
   const firstItem = items[0];
 
   if (!firstItem) {

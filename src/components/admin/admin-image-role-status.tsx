@@ -10,11 +10,11 @@ type AdminImageRoleStatusProps = {
 };
 
 export function AdminImageRoleStatus({
-  issuePrefix = "諛쒗뻾 李⑤떒:",
-  issueSeparator = " 쨌 ",
-  requiredEmptyText = "諛쒗뻾 ?꾩닔 variant ?놁쓬",
-  requiredPrefix = "?꾩슂:",
-  roleLabel = "?몄텧 ?꾩튂",
+  issuePrefix = "발행 차단:",
+  issueSeparator = " · ",
+  requiredEmptyText = "필수 variant 없음",
+  requiredPrefix = "필수:",
+  roleLabel = "노출 위치",
   status,
 }: AdminImageRoleStatusProps) {
   return (

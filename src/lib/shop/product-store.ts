@@ -17,6 +17,13 @@ import {
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
 import { getSupabasePublicReadClient } from "@/lib/supabase/read-client";
+import {
+  parseProductListRows,
+  parseProductRows,
+  parseProductSlugRows,
+  type ProductListRow,
+  type ProductSelectRow,
+} from "./product-store-rows";
 import type {
   AvailabilityStatus,
   ConsepotProduct,
@@ -39,80 +46,6 @@ const emptyProductStoryBody = {
     version: 1,
   },
 };
-
-type ProductRow = {
-  id: string;
-  slug: string;
-  title_ko: string;
-  short_description: string;
-  story: string | null;
-  story_json?: unknown;
-  story_text?: string | null;
-  category: string;
-  kind: ProductKind;
-  is_limited: boolean;
-  limited_type: LimitedType;
-  is_archived: boolean;
-  restock_cta_type: RestockCtaType;
-  availability_status: AvailabilityStatus;
-  price_krw: number | null;
-  stock_quantity: number | null;
-  currency: "KRW";
-  made_to_order_available?: boolean;
-  made_to_order_days_max?: number;
-  made_to_order_days_min?: number;
-  made_to_order_notice?: string | null;
-  material: string | null;
-  glaze: string | null;
-  plant_care_notice?: string | null;
-  plant_option_enabled?: boolean;
-  plant_option_price_delta_krw?: number;
-  plant_return_notice?: string | null;
-  plant_shipping_restriction_notice?: string | null;
-  plant_species?: string | null;
-  size: string | null;
-  usage_note: string | null;
-  care_note: string | null;
-  shipping_note: string | null;
-  published: boolean;
-  published_at: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-type ProductListRow = Pick<
-  ProductRow,
-  | "availability_status"
-  | "category"
-  | "created_at"
-  | "currency"
-  | "id"
-  | "is_archived"
-  | "is_limited"
-  | "kind"
-  | "limited_type"
-  | "made_to_order_available"
-  | "made_to_order_days_max"
-  | "made_to_order_days_min"
-  | "made_to_order_notice"
-  | "plant_care_notice"
-  | "plant_option_enabled"
-  | "plant_option_price_delta_krw"
-  | "plant_return_notice"
-  | "plant_shipping_restriction_notice"
-  | "plant_species"
-  | "price_krw"
-  | "published"
-  | "published_at"
-  | "restock_cta_type"
-  | "short_description"
-  | "slug"
-  | "stock_quantity"
-  | "title_ko"
-  | "updated_at"
->;
-
-type ProductSelectRow = ProductRow;
 
 type ProductQueryOptions = {
   id?: string;
@@ -479,7 +412,7 @@ async function readProductsFromSupabaseQuery(
     throw new Error(`Supabase 상품 조회 실패: ${error.message}`);
   }
 
-  const rows = (data ?? []) as ProductSelectRow[];
+  const rows = parseProductRows(data);
   const usageMap = await readMediaUsagesByOwner(
     "product",
     rows.map((row) => row.id),
@@ -514,7 +447,7 @@ async function readProductListItemsFromSupabaseQuery(
     throw new Error(`Supabase 상품 목록 조회 실패: ${error.message}`);
   }
 
-  const rows = (data ?? []) as unknown as ProductListRow[];
+  const rows = parseProductListRows(data);
   const usageMap = await readMediaUsagesByOwner(
     "product",
     rows.map((row) => row.id),
@@ -608,7 +541,7 @@ async function readPublishedProductSlugsFromSupabase(client?: SupabaseClient) {
     throw new Error(`Supabase 상품 slug 조회 실패: ${error.message}`);
   }
 
-  return ((data ?? []) as Array<{ slug: string }>).map((row) => row.slug);
+  return parseProductSlugRows(data).map((row) => row.slug);
 }
 
 async function writeProductsToSupabase(products: ConsepotProduct[]) {

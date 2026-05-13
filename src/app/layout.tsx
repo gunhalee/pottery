@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Gothic_A1 } from "next/font/google";
-import { SiteTelemetry } from "@/components/layout/site-telemetry";
 import { siteConfig } from "@/lib/config/site";
 import "./globals.css";
 
@@ -16,7 +15,7 @@ export const metadata: Metadata = {
     default: siteConfig.name,
     template: `%s | ${siteConfig.name}`,
   },
-  description: siteConfig.description
+  description: siteConfig.description,
 };
 
 export default function RootLayout({
@@ -28,7 +27,6 @@ export default function RootLayout({
     <html lang="ko" className={`${gothicA1.variable} h-full`}>
       <body className="min-h-full">
         {children}
-        <SiteTelemetry />
       </body>
     </html>
   );

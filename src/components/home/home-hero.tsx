@@ -1,5 +1,5 @@
 import Image from "next/image";
-import heroPoster from "../../../public/asset/hero-image.jpg";
+import heroPoster from "../../../public/asset/hero-poster.webp";
 import type { HomeHeroTagline } from "@/lib/content/site-content";
 import { mediaImageSizes } from "@/lib/media/media-image-sizes";
 
@@ -32,7 +32,7 @@ export function HomeHero({
             loop
             muted
             playsInline
-            poster="/asset/hero-image.jpg"
+            poster="/asset/hero-poster.webp"
             preload="metadata"
           >
             <source src={videoSrc} type="video/mp4" />

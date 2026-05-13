@@ -1,8 +1,8 @@
 export const artworkPlaceholderImage = {
-  height: 1783,
+  height: 1085,
   id: "placeholder-product-image",
-  src: "/asset/hero-image.jpg",
-  width: 3156,
+  src: "/asset/hero-poster.webp",
+  width: 1920,
 } as const;
 
 export function getArtworkPlaceholderAlt(title?: string) {

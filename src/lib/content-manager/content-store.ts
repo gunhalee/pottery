@@ -17,6 +17,13 @@ import {
 } from "@/lib/supabase/server";
 import { getSupabasePublicReadClient } from "@/lib/supabase/read-client";
 import {
+  parseContentEntryListRows,
+  parseContentEntryRows,
+  parseContentSlugRows,
+  type ContentEntryListRow,
+  type ContentEntryRow,
+} from "./content-store-rows";
+import {
   createParagraphBody,
   normalizeRichTextBody,
 } from "./rich-text-defaults";
@@ -30,22 +37,6 @@ import type {
   ContentKind,
 } from "./content-model";
 import { createContentImagesFromMediaUsages } from "./content-images";
-
-type ContentEntryRow = {
-  body_json: unknown;
-  body_text: string;
-  created_at: string;
-  display_date: string | null;
-  id: string;
-  kind: ContentKind;
-  published_at: string | null;
-  related_product_slug: string | null;
-  slug: string;
-  status: "draft" | "published";
-  summary: string;
-  title: string;
-  updated_at: string;
-};
 
 type ContentEntryQueryOptions = {
   id?: string;
@@ -398,7 +389,7 @@ async function readEntriesFromSupabase(
     throw new Error(`Supabase 콘텐츠 조회 실패: ${error.message}`);
   }
 
-  const rows = (data ?? []) as ContentEntryRow[];
+  const rows = parseContentEntryRows(data);
   const usageMap = await readMediaUsagesByOwner(
     "content_entry",
     rows.map((row) => row.id),
@@ -465,7 +456,7 @@ async function readEntryListItemsFromSupabase(
     throw new Error(`Supabase 콘텐츠 목록 조회 실패: ${error.message}`);
   }
 
-  const rows = (data ?? []) as Omit<ContentEntryRow, "body_json">[];
+  const rows = parseContentEntryListRows(data);
   const usageMap = await readMediaUsagesByOwner(
     "content_entry",
     rows.map((row) => row.id),
@@ -495,7 +486,7 @@ async function readPublishedContentSlugsFromSupabase(
     throw new Error(`Supabase 콘텐츠 slug 조회 실패: ${error.message}`);
   }
 
-  return ((data ?? []) as Array<{ slug: string }>).map((row) => row.slug);
+  return parseContentSlugRows(data).map((row) => row.slug);
 }
 
 async function createEntryInSupabase(entry: ContentEntry) {
@@ -714,7 +705,7 @@ function fromSupabaseEntryRow(
 }
 
 function fromSupabaseEntryListRow(
-  row: Omit<ContentEntryRow, "body_json">,
+  row: ContentEntryListRow,
   usages: MediaUsage[],
 ): ContentEntryListItem {
   return entryListItemSchema.parse({

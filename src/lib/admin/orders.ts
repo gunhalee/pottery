@@ -1,6 +1,13 @@
 import "server-only";
 
 import {
+  buildAdminOrderStats,
+  emptyAdminOrderStats,
+  filterAdminOrders,
+  normalizeAdminOrderSearchQuery,
+  normalizeAdminOrderView,
+} from "@/lib/admin/order-dashboard-filters";
+import {
   getSupabaseAdminClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
@@ -371,20 +378,6 @@ type EventRow = {
 const orderSelect =
   "id, order_number, order_status, payment_status, payment_method, fulfillment_status, orderer_name, orderer_phone, orderer_phone_last4, orderer_email, is_gift, gift_message, recipient_name, recipient_phone, shipping_postcode, shipping_address1, shipping_address2, shipping_memo, shipping_method, currency, subtotal_krw, shipping_fee_krw, total_krw, portone_payment_id, portone_transaction_id, paid_at, canceled_at, created_at, updated_at, product_option, contains_live_plant, is_made_to_order, made_to_order_due_min_days, made_to_order_due_max_days, deposit_due_at, deposit_confirmed_at, deposit_received_amount_krw, deposit_review_status, deposit_review_note, virtual_account_bank_name, virtual_account_account_number, virtual_account_account_holder, virtual_account_issued_at, cash_receipt_type, cash_receipt_identifier_type, cash_receipt_identifier_masked, cash_receipt_status";
 
-const emptyStats: AdminOrderStats = {
-  all: 0,
-  done: 0,
-  issues: 0,
-  needsAction: 0,
-  payment: 0,
-  pickup: 0,
-  shipped: 0,
-};
-
-export function normalizeAdminOrderView(value: string | undefined) {
-  return isAdminOrderView(value) ? value : "all";
-}
-
 export async function getAdminOrderDashboard({
   query,
   view,
@@ -393,14 +386,14 @@ export async function getAdminOrderDashboard({
   view?: string;
 } = {}): Promise<AdminOrderDashboard> {
   const activeView = normalizeAdminOrderView(view);
-  const normalizedQuery = normalizeSearchQuery(query);
+  const normalizedQuery = normalizeAdminOrderSearchQuery(query);
 
   if (!isSupabaseConfigured()) {
     return {
       activeView,
       orders: [],
       query: normalizedQuery,
-      stats: emptyStats,
+      stats: emptyAdminOrderStats,
       storageReady: false,
     };
   }
@@ -418,7 +411,7 @@ export async function getAdminOrderDashboard({
         activeView,
         orders: [],
         query: normalizedQuery,
-        stats: emptyStats,
+        stats: emptyAdminOrderStats,
         storageReady: false,
       };
     }
@@ -439,11 +432,12 @@ export async function getAdminOrderDashboard({
       latestShipmentsByOrderId.get(row.id) ?? null,
     ),
   );
-  const stats = buildStats(allOrders);
-  const filtered = allOrders
-    .filter((order) => matchesOrderView(order, activeView))
-    .filter((order) => matchesOrderSearch(order, normalizedQuery))
-    .sort(compareAdminOrders);
+  const stats = buildAdminOrderStats(allOrders);
+  const filtered = filterAdminOrders({
+    orders: allOrders,
+    query: normalizedQuery,
+    view: activeView,
+  });
 
   return {
     activeView,
@@ -1134,120 +1128,6 @@ function toAdminOrderShipment(row: ShipmentRow): AdminOrderShipment {
   };
 }
 
-function buildStats(orders: AdminOrderListItem[]): AdminOrderStats {
-  return {
-    all: orders.length,
-    done: orders.filter((order) => matchesOrderView(order, "done")).length,
-    issues: orders.filter((order) => matchesOrderView(order, "issues")).length,
-    needsAction: orders.filter((order) =>
-      matchesOrderView(order, "needs_action"),
-    ).length,
-    payment: orders.filter((order) => matchesOrderView(order, "payment")).length,
-    pickup: orders.filter((order) => matchesOrderView(order, "pickup")).length,
-    shipped: orders.filter((order) => matchesOrderView(order, "shipped")).length,
-  };
-}
-
-function matchesOrderView(order: AdminOrderListItem, view: AdminOrderView) {
-  if (view === "all") {
-    return true;
-  }
-
-  if (view === "payment") {
-    return (
-      order.paymentStatus === "pending" ||
-      order.paymentStatus === "unpaid" ||
-      order.paymentStatus === "expired"
-    );
-  }
-
-  if (view === "pickup") {
-    return (
-      order.shippingMethod === "pickup" &&
-      ["unfulfilled", "preparing", "pickup_ready"].includes(
-        order.fulfillmentStatus,
-      )
-    );
-  }
-
-  if (view === "shipped") {
-    return order.fulfillmentStatus === "shipped";
-  }
-
-  if (view === "done") {
-    return ["delivered", "picked_up"].includes(order.fulfillmentStatus);
-  }
-
-  if (view === "issues") {
-    return (
-      ["failed", "canceled", "partial_refunded", "refunded"].includes(
-        order.paymentStatus,
-      ) ||
-      order.paymentStatus === "expired" ||
-      ["canceled", "returned"].includes(order.fulfillmentStatus) ||
-      ["canceled", "deposit_expired", "refunded"].includes(order.orderStatus)
-    );
-  }
-
-  return (
-    order.paymentStatus === "paid" &&
-    ((order.shippingMethod === "parcel" &&
-      ["unfulfilled", "preparing"].includes(order.fulfillmentStatus)) ||
-      (order.shippingMethod === "pickup" &&
-        ["unfulfilled", "preparing", "pickup_ready"].includes(
-          order.fulfillmentStatus,
-        )))
-  );
-}
-
-function matchesOrderSearch(order: AdminOrderListItem, query: string) {
-  if (!query) {
-    return true;
-  }
-
-  const haystack = [
-    order.orderNumber,
-    order.ordererName,
-    order.ordererEmail,
-    order.ordererPhoneLast4,
-    order.recipientName,
-    order.itemSummary,
-    order.latestShipment?.carrier,
-    order.latestShipment?.trackingNumber,
-  ]
-    .filter((value): value is string => Boolean(value))
-    .join(" ")
-    .toLowerCase();
-
-  return haystack.includes(query.toLowerCase());
-}
-
-function compareAdminOrders(a: AdminOrderListItem, b: AdminOrderListItem) {
-  const priorityDiff = priorityWeight(b) - priorityWeight(a);
-
-  if (priorityDiff !== 0) {
-    return priorityDiff;
-  }
-
-  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-}
-
-function priorityWeight(order: AdminOrderListItem) {
-  if (order.tone === "danger") {
-    return 4;
-  }
-
-  if (order.tone === "priority") {
-    return 3;
-  }
-
-  if (order.tone === "warning") {
-    return 2;
-  }
-
-  return order.tone === "neutral" ? 1 : 0;
-}
-
 function nextActionLabel(row: OrderRow) {
   if (row.payment_status === "failed") {
     return "결제 실패 확인";
@@ -1351,18 +1231,6 @@ function shipmentStatusFromFulfillment(
   return null;
 }
 
-function isAdminOrderView(value: string | undefined): value is AdminOrderView {
-  return (
-    value === "all" ||
-    value === "needs_action" ||
-    value === "payment" ||
-    value === "pickup" ||
-    value === "shipped" ||
-    value === "done" ||
-    value === "issues"
-  );
-}
-
 function isOrderStorageMissingError(error: { code?: string; message?: string }) {
   const message = error.message ?? "";
 
@@ -1399,10 +1267,6 @@ function isOptionalCommerceTableMissingError(
     (message.includes(tableName) &&
       (message.includes("schema cache") || message.includes("does not exist")))
   );
-}
-
-function normalizeSearchQuery(query: string | undefined) {
-  return (query ?? "").trim().slice(0, 80);
 }
 
 function formatAgeLabel(value: string) {
