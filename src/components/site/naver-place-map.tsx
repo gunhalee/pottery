@@ -1,11 +1,7 @@
 import Image from "next/image";
 
-const staticMapEndpoint =
-  "https://maps.apigw.ntruss.com/map-static/v2/raster-cors";
-
 type NaverPlaceMapProps = {
   address: string;
-  apiKeyId?: string;
   className?: string;
   height?: number;
   latitude: number;
@@ -17,7 +13,6 @@ type NaverPlaceMapProps = {
 
 export function NaverPlaceMap({
   address,
-  apiKeyId,
   className,
   height = 520,
   latitude,
@@ -26,16 +21,12 @@ export function NaverPlaceMap({
   placeUrl,
   width = 900,
 }: NaverPlaceMapProps) {
-  const keyId = apiKeyId?.trim();
-  const mapImageUrl = keyId
-    ? createStaticMapUrl({
-        height,
-        keyId,
-        latitude,
-        longitude,
-        width,
-      })
-    : "";
+  const mapImageUrl = new URLSearchParams({
+    h: String(height),
+    lat: String(latitude),
+    lng: String(longitude),
+    w: String(width),
+  });
 
   return (
     <figure className={["naver-place-map", className].filter(Boolean).join(" ")}>
@@ -45,20 +36,14 @@ export function NaverPlaceMap({
         rel="noopener noreferrer"
         target="_blank"
       >
-        {mapImageUrl ? (
-          <Image
-            alt={`${name} 위치 지도. 주소: ${address}`}
-            className="naver-place-map-image"
-            height={height}
-            src={mapImageUrl}
-            unoptimized
-            width={width}
-          />
-        ) : (
-          <div className="naver-place-map-empty">
-            네이버 Static Map API Key ID 설정이 필요합니다
-          </div>
-        )}
+        <Image
+          alt={`${name} 위치 지도. 주소: ${address}`}
+          className="naver-place-map-image"
+          height={height}
+          src={`/api/studio-map?${mapImageUrl.toString()}`}
+          unoptimized
+          width={width}
+        />
       </a>
       <figcaption className="naver-place-map-caption">
         <strong>{name}</strong>
@@ -66,34 +51,4 @@ export function NaverPlaceMap({
       </figcaption>
     </figure>
   );
-}
-
-function createStaticMapUrl({
-  height,
-  keyId,
-  latitude,
-  longitude,
-  width,
-}: {
-  height: number;
-  keyId: string;
-  latitude: number;
-  longitude: number;
-  width: number;
-}) {
-  const url = new URL(staticMapEndpoint);
-
-  url.searchParams.set("w", String(width));
-  url.searchParams.set("h", String(height));
-  url.searchParams.set("center", `${longitude},${latitude}`);
-  url.searchParams.set("level", "16");
-  url.searchParams.set("format", "png");
-  url.searchParams.set("scale", "2");
-  url.searchParams.set(
-    "markers",
-    `type:d|size:mid|color:Default|pos:${longitude} ${latitude}`,
-  );
-  url.searchParams.set("X-NCP-APIGW-API-KEY-ID", keyId);
-
-  return url.toString();
 }
