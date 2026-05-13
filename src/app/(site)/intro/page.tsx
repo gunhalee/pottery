@@ -75,7 +75,6 @@ export default function IntroPage() {
         </div>
         <NaverPlaceMap
           address={studioLocation.address}
-          clientId={studioLocation.mapClientId}
           latitude={studioLocation.latitude}
           longitude={studioLocation.longitude}
           name={studioLocation.name}

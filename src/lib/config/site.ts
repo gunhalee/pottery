@@ -31,7 +31,6 @@ export const studioLocation = {
   address: "12772 경기도 광주시 수레실길 25-10 1층 (능평동)",
   latitude: 37.350127611411,
   longitude: 127.16304443232,
-  mapClientId: process.env.NEXT_PUBLIC_NAVER_MAPS_CLIENT_ID || "",
   name: siteConfig.name,
   naverMapUrl:
     process.env.NEXT_PUBLIC_NAVER_MAP_URL ||

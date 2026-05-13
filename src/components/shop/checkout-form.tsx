@@ -709,7 +709,7 @@ export function CheckoutForm({
         {!isGift && !isParcel ? (
           <p className="checkout-note">
             방문수령 장소는 경기도 광주시 수레실길 25-10 1층입니다.
-            방문수령은 결제 완료 후 15일 이내 수령을 원칙으로 합니다.
+            방문수령은 결제 후 15일 이내 수령을 원칙으로 합니다.
           </p>
         ) : null}
 
@@ -819,14 +819,14 @@ function getShippingPeriodNotice({
   shippingMethod: ShippingMethod;
 }) {
   if (shippingMethod === "pickup") {
-    return "방문수령은 결제 완료 후 15일 이내 수령을 원칙으로 합니다.";
+    return "방문수령은 결제 후 15일 이내 수령을 원칙으로 합니다.";
   }
 
   if (isMadeToOrder) {
-    return `제작 상품은 결제 또는 입금 확인 후 ${madeToOrderDaysMin ?? 30}~${madeToOrderDaysMax ?? 45}일의 제작 기간이 필요하며, 제작 완료 후 발송됩니다.`;
+    return `제작 상품은 결제 후 ${madeToOrderDaysMin ?? 30}~${madeToOrderDaysMax ?? 45}일의 제작 기간이 필요하며, 제작 완료 후 발송됩니다.`;
   }
 
-  return "결제 또는 입금 확인 후 2~5영업일 이내 발송을 원칙으로 합니다.";
+  return "결제 후 2~5영업일 이내 발송을 원칙으로 합니다.";
 }
 
 function productOptionLabel(option: ProductOption) {

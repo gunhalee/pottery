@@ -437,7 +437,7 @@ export function ProductPurchasePanel({
               <>
                 <span>방문수령 · 별도 배송비 없음</span>
                 <strong>
-                  방문수령은 결제 완료 후 15일 이내 수령을 원칙으로 합니다.
+                  방문수령은 결제 후 15일 이내 수령을 원칙으로 합니다.
                 </strong>
               </>
             ) : (
@@ -447,11 +447,11 @@ export function ProductPurchasePanel({
                   {formatted.freeShippingThreshold} 이상 무료배송
                 </span>
                 <strong>{shippingPeriodNotice}</strong>
-                <strong>
+                <span>
                   {containsLivePlant
                     ? "식물 포함 상품은 제주·도서산간 배송이 제한됩니다."
                     : "도서산간 배송비는 주문 전 별도 안내드립니다."}
-                </strong>
+                </span>
                 <Link
                   className="product-shipping-policy-link"
                   href="/shipping-returns"
@@ -674,14 +674,14 @@ function getShippingPeriodNotice({
   shippingMethod: ShippingMethod;
 }) {
   if (shippingMethod === "pickup") {
-    return "방문수령은 결제 완료 후 15일 이내 수령을 원칙으로 합니다.";
+    return "방문수령은 결제 후 15일 이내 수령을 원칙으로 합니다.";
   }
 
   if (madeToOrder?.enabled) {
-    return `제작 상품은 결제 또는 입금 확인 후 ${madeToOrder.daysMin}~${madeToOrder.daysMax}일의 제작 기간이 필요하며, 제작 완료 후 발송됩니다.`;
+    return `제작 상품은 결제 후 ${madeToOrder.daysMin}~${madeToOrder.daysMax}일의 제작 기간이 필요하며, 제작 완료 후 발송됩니다.`;
   }
 
-  return "결제 또는 입금 확인 후 2~5영업일 이내 발송을 원칙으로 합니다.";
+  return "결제 후 2~5영업일 이내 발송을 원칙으로 합니다.";
 }
 
 function HeartIcon({ filled }: { filled: boolean }) {
