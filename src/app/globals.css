@@ -4707,21 +4707,27 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 }
 
 .gallery-youtube-overlay {
+  --gallery-youtube-overlay-padding: 42px;
+  --gallery-youtube-dialog-max-height: calc(100svh - 84px);
+
   position: fixed;
   inset: 0;
   z-index: 1200;
   display: grid;
   place-items: center;
-  padding: 42px;
+  padding: var(--gallery-youtube-overlay-padding);
   background: rgba(11, 10, 9, 0.86);
+  overflow-y: auto;
 }
 
 .gallery-youtube-dialog {
   position: relative;
   display: grid;
-  width: min(100%, 1120px);
+  width: min(100%, 1120px, calc(100svh + 100px));
+  max-height: var(--gallery-youtube-dialog-max-height);
   gap: 18px;
   color: #fbfbfa;
+  overflow: auto;
 }
 
 .gallery-youtube-close {
@@ -5881,13 +5887,14 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   }
 
   .gallery-youtube-overlay {
-    padding: 18px;
+    --gallery-youtube-overlay-padding: 18px;
+    --gallery-youtube-dialog-max-height: calc(100svh - 36px);
+
+    padding: var(--gallery-youtube-overlay-padding);
   }
 
   .gallery-youtube-dialog {
-    max-height: calc(100svh - 36px);
     gap: 12px;
-    overflow: auto;
   }
 
   .gallery-youtube-close {
