@@ -1,7 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import {
+  type MouseEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 type YouTubeFeedItem = {
   description: string | null;
@@ -31,6 +37,8 @@ export function GalleryYoutubeSection({
 }) {
   const [items, setItems] = useState<YouTubeFeedItem[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<YouTubeFeedItem | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const visibleItems = useMemo(
     () => items.filter((item) => Boolean(item.thumbnail?.url)).slice(0, feedLimit),
     [items],
@@ -74,8 +82,42 @@ export function GalleryYoutubeSection({
     };
   }, []);
 
+  useEffect(() => {
+    if (!selectedItem) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setSelectedItem(null);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedItem]);
+
   if (!loaded || visibleItems.length === 0) {
     return null;
+  }
+
+  function closeVideo() {
+    setSelectedItem(null);
+  }
+
+  function handleOverlayMouseDown(event: MouseEvent<HTMLDivElement>) {
+    if (event.target === event.currentTarget) {
+      closeVideo();
+    }
   }
 
   return (
@@ -91,13 +133,14 @@ export function GalleryYoutubeSection({
       </div>
       <div className="gallery-youtube-grid">
         {visibleItems.map((item) => (
-          <a
-            aria-label={`YouTube 영상 보기: ${item.title}`}
+          <button
+            aria-label={`사이트 안에서 YouTube 영상 재생: ${item.title}`}
             className="gallery-youtube-card"
-            href={item.url}
             key={item.id}
-            rel="noopener noreferrer"
-            target="_blank"
+            onClick={() => {
+              setSelectedItem(item);
+            }}
+            type="button"
           >
             {item.thumbnail ? (
               <span className="gallery-youtube-thumb">
@@ -120,11 +163,65 @@ export function GalleryYoutubeSection({
                 </time>
               ) : null}
             </span>
-          </a>
+          </button>
         ))}
       </div>
+      {selectedItem ? (
+        <div
+          className="gallery-youtube-overlay"
+          onMouseDown={handleOverlayMouseDown}
+          role="presentation"
+        >
+          <div
+            aria-labelledby="gallery-youtube-modal-title"
+            aria-modal="true"
+            className="gallery-youtube-dialog"
+            role="dialog"
+          >
+            <button
+              aria-label="영상 닫기"
+              className="gallery-youtube-close"
+              onClick={closeVideo}
+              ref={closeButtonRef}
+              type="button"
+            >
+              닫기
+            </button>
+            <div className="gallery-youtube-player">
+              <iframe
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+                src={getEmbedUrl(selectedItem.videoId)}
+                title={selectedItem.title}
+              />
+            </div>
+            <div className="gallery-youtube-modal-meta">
+              <h3 id="gallery-youtube-modal-title">{selectedItem.title}</h3>
+              {selectedItem.publishedAt ? (
+                <time dateTime={selectedItem.publishedAt}>
+                  {formatDate(selectedItem.publishedAt)}
+                </time>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
+}
+
+function getEmbedUrl(videoId: string) {
+  const params = new URLSearchParams({
+    autoplay: "1",
+    modestbranding: "1",
+    playsinline: "1",
+    rel: "0",
+  });
+
+  return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(
+    videoId,
+  )}?${params.toString()}`;
 }
 
 function formatDate(value: string) {
