@@ -70,7 +70,7 @@ type ResolveUploadsPlaylistResult =
     };
 
 const defaultLimit = 3;
-const maxLimit = 12;
+const maxLimit = 36;
 const defaultRequestReferer = "https://consepot.com/";
 const youtubeApiBaseUrl = "https://www.googleapis.com/youtube/v3";
 

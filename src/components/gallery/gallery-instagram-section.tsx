@@ -4,6 +4,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { useGalleryFeedColumns } from "./use-gallery-feed-columns";
+
 type InstagramFeedItem = {
   caption: string | null;
   id: string;
@@ -20,8 +22,9 @@ type InstagramFeedPayload = {
   ok?: boolean;
 };
 
-const fetchLimit = 24;
-const pageSize = 3;
+const fetchLimit = 36;
+const initialVisibleRows = 2;
+const rowsPerLoad = 2;
 
 export function GalleryInstagramSection({
   profileUrl,
@@ -30,21 +33,19 @@ export function GalleryInstagramSection({
 }) {
   const [items, setItems] = useState<InstagramFeedItem[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [startIndex, setStartIndex] = useState(0);
+  const [visibleRows, setVisibleRows] = useState(initialVisibleRows);
+  const columns = useGalleryFeedColumns();
   const feedItems = useMemo(
     () =>
       items.filter((item) => Boolean(item.thumbnailUrl ?? item.mediaUrl)),
     [items],
   );
-  const lastPageStart = getLastPageStart(feedItems.length);
-  const currentStartIndex = Math.min(startIndex, lastPageStart);
+  const visibleCount = visibleRows * columns;
   const visibleItems = useMemo(
-    () => feedItems.slice(currentStartIndex, currentStartIndex + pageSize),
-    [currentStartIndex, feedItems],
+    () => feedItems.slice(0, visibleCount),
+    [feedItems, visibleCount],
   );
-  const hasPrevious = currentStartIndex > 0;
-  const hasNext = currentStartIndex + pageSize < feedItems.length;
-  const canPaginate = feedItems.length > pageSize;
+  const canLoadMore = visibleCount < feedItems.length;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -88,16 +89,8 @@ export function GalleryInstagramSection({
     return null;
   }
 
-  function goPrevious() {
-    setStartIndex((current) =>
-      Math.max(0, Math.min(current, lastPageStart) - pageSize),
-    );
-  }
-
-  function goNext() {
-    setStartIndex((current) =>
-      Math.min(Math.min(current, lastPageStart) + pageSize, lastPageStart),
-    );
+  function showMore() {
+    setVisibleRows((current) => current + rowsPerLoad);
   }
 
   return (
@@ -111,28 +104,6 @@ export function GalleryInstagramSection({
           <a href={profileUrl} rel="noopener noreferrer" target="_blank">
             @pottery_conse
           </a>
-          {canPaginate ? (
-            <div className="gallery-feed-pager" aria-label="공방 한컷 더 보기">
-              <button
-                aria-label="이전 공방 한컷 보기"
-                className="gallery-feed-arrow"
-                disabled={!hasPrevious}
-                onClick={goPrevious}
-                type="button"
-              >
-                <span aria-hidden="true">‹</span>
-              </button>
-              <button
-                aria-label="다음 공방 한컷 3개 보기"
-                className="gallery-feed-arrow"
-                disabled={!hasNext}
-                onClick={goNext}
-                type="button"
-              >
-                <span aria-hidden="true">›</span>
-              </button>
-            </div>
-          ) : null}
         </div>
       </div>
       <div className="gallery-instagram-grid">
@@ -164,16 +135,20 @@ export function GalleryInstagramSection({
           );
         })}
       </div>
+      {canLoadMore ? (
+        <div className="gallery-feed-more">
+          <button
+            aria-label="공방 한컷 2행 더 보기"
+            className="gallery-feed-more-button"
+            onClick={showMore}
+            type="button"
+          >
+            더보기
+          </button>
+        </div>
+      ) : null}
     </section>
   );
-}
-
-function getLastPageStart(total: number) {
-  if (total <= pageSize) {
-    return 0;
-  }
-
-  return Math.floor((total - 1) / pageSize) * pageSize;
 }
 
 function getItemLabel(item: InstagramFeedItem) {

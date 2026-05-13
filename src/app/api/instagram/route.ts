@@ -72,7 +72,7 @@ type ResolveInstagramUserResult =
     };
 
 const defaultLimit = 9;
-const maxLimit = 24;
+const maxLimit = 36;
 
 export async function GET(request: Request) {
   const accessToken = process.env.INSTAGRAM_ACCESS_TOKEN?.trim();

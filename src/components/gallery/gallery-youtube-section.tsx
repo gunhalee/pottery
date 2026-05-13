@@ -10,6 +10,8 @@ import {
   useState,
 } from "react";
 
+import { useGalleryFeedColumns } from "./use-gallery-feed-columns";
+
 type YouTubeFeedItem = {
   description: string | null;
   id: string;
@@ -29,8 +31,9 @@ type YouTubeFeedPayload = {
   ok?: boolean;
 };
 
-const fetchLimit = 12;
-const pageSize = 1;
+const fetchLimit = 36;
+const initialVisibleRows = 2;
+const rowsPerLoad = 2;
 
 export function GalleryYoutubeSection({
   channelUrl,
@@ -39,22 +42,20 @@ export function GalleryYoutubeSection({
 }) {
   const [items, setItems] = useState<YouTubeFeedItem[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [startIndex, setStartIndex] = useState(0);
+  const [visibleRows, setVisibleRows] = useState(initialVisibleRows);
   const [selectedItem, setSelectedItem] = useState<YouTubeFeedItem | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const columns = useGalleryFeedColumns();
   const feedItems = useMemo(
     () => items.filter((item) => Boolean(item.thumbnail?.url)),
     [items],
   );
-  const lastPageStart = getLastPageStart(feedItems.length);
-  const currentStartIndex = Math.min(startIndex, lastPageStart);
+  const visibleCount = visibleRows * columns;
   const visibleItems = useMemo(
-    () => feedItems.slice(currentStartIndex, currentStartIndex + pageSize),
-    [currentStartIndex, feedItems],
+    () => feedItems.slice(0, visibleCount),
+    [feedItems, visibleCount],
   );
-  const hasPrevious = currentStartIndex > 0;
-  const hasNext = currentStartIndex + pageSize < feedItems.length;
-  const canPaginate = feedItems.length > pageSize;
+  const canLoadMore = visibleCount < feedItems.length;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -122,16 +123,8 @@ export function GalleryYoutubeSection({
     return null;
   }
 
-  function goPrevious() {
-    setStartIndex((current) =>
-      Math.max(0, Math.min(current, lastPageStart) - pageSize),
-    );
-  }
-
-  function goNext() {
-    setStartIndex((current) =>
-      Math.min(Math.min(current, lastPageStart) + pageSize, lastPageStart),
-    );
+  function showMore() {
+    setVisibleRows((current) => current + rowsPerLoad);
   }
 
   function closeVideo() {
@@ -198,28 +191,6 @@ export function GalleryYoutubeSection({
             <a href={channelUrl} rel="noopener noreferrer" target="_blank">
               @consepot
             </a>
-            {canPaginate ? (
-              <div className="gallery-feed-pager" aria-label="공방 스케치 더 보기">
-                <button
-                  aria-label="이전 공방 스케치 보기"
-                  className="gallery-feed-arrow"
-                  disabled={!hasPrevious}
-                  onClick={goPrevious}
-                  type="button"
-                >
-                  <span aria-hidden="true">‹</span>
-                </button>
-                <button
-                  aria-label="다음 공방 스케치 1개 보기"
-                  className="gallery-feed-arrow"
-                  disabled={!hasNext}
-                  onClick={goNext}
-                  type="button"
-                >
-                  <span aria-hidden="true">›</span>
-                </button>
-              </div>
-            ) : null}
           </div>
         </div>
         <div className="gallery-youtube-grid">
@@ -240,7 +211,7 @@ export function GalleryYoutubeSection({
                     aria-hidden="true"
                     fill
                     loading="lazy"
-                    sizes="(max-width: 720px) 86vw, (max-width: 1080px) 28vw, 360px"
+                    sizes="(max-width: 640px) 28vw, (max-width: 1180px) 15vw, 180px"
                     src={item.thumbnail.url}
                   />
                   <span className="gallery-youtube-play" aria-hidden="true" />
@@ -257,18 +228,22 @@ export function GalleryYoutubeSection({
             </button>
           ))}
         </div>
+        {canLoadMore ? (
+          <div className="gallery-feed-more">
+            <button
+              aria-label="공방 스케치 2행 더 보기"
+              className="gallery-feed-more-button"
+              onClick={showMore}
+              type="button"
+            >
+              더보기
+            </button>
+          </div>
+        ) : null}
       </section>
       {videoOverlay ? createPortal(videoOverlay, document.body) : null}
     </>
   );
-}
-
-function getLastPageStart(total: number) {
-  if (total <= pageSize) {
-    return 0;
-  }
-
-  return Math.floor((total - 1) / pageSize) * pageSize;
 }
 
 function getEmbedUrl(videoId: string) {
