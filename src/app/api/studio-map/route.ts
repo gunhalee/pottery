@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const key = getNaverStaticMapKey();
 
   if (!keyId || !key) {
-    return createMapPlaceholder("Naver Static Map API key is not configured.");
+    return createMapPlaceholder("네이버 Static Map API 키 설정이 필요합니다.");
   }
 
   const url = new URL(request.url);
@@ -75,9 +75,13 @@ export async function GET(request: Request) {
 function getNaverStaticMapKeyId() {
   return (
     process.env.NAVER_MAPS_API_KEY_ID ||
+    process.env.NAVER_STATIC_MAP_KEY_ID ||
     process.env.NAVER_MAPS_CLIENT_ID ||
+    process.env.NAVER_CLOUD_MAPS_CLIENT_ID ||
     process.env.NAVER_MAPS_NCP_KEY_ID ||
     process.env.NCP_MAPS_API_KEY_ID ||
+    process.env.NCP_APIGW_API_KEY_ID ||
+    process.env.NCP_API_KEY_ID ||
     process.env.NEXT_PUBLIC_NAVER_MAPS_CLIENT_ID ||
     process.env.NEXT_PUBLIC_NAVER_MAPS_KEY_ID ||
     process.env.NEXT_PUBLIC_NAVER_MAPS_NCP_KEY_ID ||
@@ -88,9 +92,13 @@ function getNaverStaticMapKeyId() {
 function getNaverStaticMapKey() {
   return (
     process.env.NAVER_MAPS_API_KEY ||
+    process.env.NAVER_STATIC_MAP_KEY ||
     process.env.NAVER_MAPS_CLIENT_SECRET ||
+    process.env.NAVER_CLOUD_MAPS_CLIENT_SECRET ||
     process.env.NAVER_MAPS_NCP_KEY ||
     process.env.NCP_MAPS_API_KEY ||
+    process.env.NCP_APIGW_API_KEY ||
+    process.env.NCP_API_KEY ||
     ""
   ).trim();
 }
