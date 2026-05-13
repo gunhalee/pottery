@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import {
+  AdminActionLink,
+  AdminEmptyText,
+} from "@/components/admin/admin-actions";
 import { AdminNav } from "@/components/admin/admin-nav";
+import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { isAdminAuthenticated } from "@/lib/admin/auth";
 import { getOperationsDashboardData } from "@/lib/admin/operations";
 import type { CronRunLogJobName } from "@/lib/ops/cron-run-log";
@@ -33,34 +38,34 @@ export default async function AdminOpsPage() {
       </header>
 
       <section className="admin-ops-stats" aria-label="운영 요약">
-        <StatCard label="상품 이미지" value={dashboard.stats.productImages} />
-        <StatCard label="본문/작업물 이미지" value={dashboard.stats.contentImages} />
-        <StatCard
+        <AdminStatCard label="상품 이미지" value={dashboard.stats.productImages} />
+        <AdminStatCard label="본문/작업물 이미지" value={dashboard.stats.contentImages} />
+        <AdminStatCard
           label="cleanup 후보"
           value={dashboard.stats.cleanupPreviewCandidates}
         />
-        <StatCard label="연결 콘텐츠" value={dashboard.stats.productContentLinks} />
-        <StatCard
+        <AdminStatCard label="연결 콘텐츠" value={dashboard.stats.productContentLinks} />
+        <AdminStatCard
           label="본문 미연결"
           tone={dashboard.stats.bodyUnlinkedImages > 0 ? "warning" : "neutral"}
           value={dashboard.stats.bodyUnlinkedImages}
         />
-        <StatCard
+        <AdminStatCard
           label="cleanup 실패"
           tone={dashboard.stats.cleanupFailures > 0 ? "danger" : "neutral"}
           value={dashboard.stats.cleanupFailures}
         />
-        <StatCard
+        <AdminStatCard
           label="Cron 실패"
           tone={dashboard.stats.cronFailures > 0 ? "danger" : "neutral"}
           value={dashboard.stats.cronFailures}
         />
-        <StatCard
+        <AdminStatCard
           label="Rate limit 차단"
           tone={dashboard.stats.rateLimitBlocked > 0 ? "warning" : "neutral"}
           value={dashboard.stats.rateLimitBlocked}
         />
-        <StatCard
+        <AdminStatCard
           label="미디어 이슈"
           tone={dashboard.stats.mediaVariantIssues > 0 ? "warning" : "neutral"}
           value={dashboard.stats.mediaVariantIssues}
@@ -127,7 +132,7 @@ export default async function AdminOpsPage() {
             ))}
           </div>
         ) : (
-          <p className="admin-empty-text">아직 rate limit 기록이 없습니다.</p>
+          <AdminEmptyText>아직 rate limit 기록이 없습니다.</AdminEmptyText>
         )}
       </section>
 
@@ -161,16 +166,16 @@ export default async function AdminOpsPage() {
             ))}
           </div>
         ) : (
-          <p className="admin-empty-text">아직 cron 실행 로그가 없습니다.</p>
+          <AdminEmptyText>아직 cron 실행 로그가 없습니다.</AdminEmptyText>
         )}
       </section>
 
       <section className="admin-panel">
         <div className="admin-panel-head">
           <h2>미디어 진단 요약</h2>
-          <Link className="admin-text-button" href="/admin/media" prefetch={false}>
+          <AdminActionLink href="/admin/media">
             미디어에서 보기
-          </Link>
+          </AdminActionLink>
         </div>
         <div className="admin-ops-table">
           <article
@@ -212,6 +217,34 @@ export default async function AdminOpsPage() {
             </div>
             <span>{dashboard.mediaDiagnostics.stats.orphanAssets}</span>
           </article>
+          <article
+            className={`admin-ops-row ${
+              dashboard.mediaDiagnostics.stats.brokenUsages > 0
+                ? "admin-ops-row-danger"
+                : ""
+            }`}
+          >
+            <div>
+              <strong>broken usage</strong>
+              <span>asset 또는 owner row와 연결되지 않은 media usage</span>
+            </div>
+            <span>{dashboard.mediaDiagnostics.stats.brokenUsages}</span>
+          </article>
+          <article
+            className={`admin-ops-row ${
+              dashboard.mediaDiagnostics.stats.sharedStoragePathAssets > 0
+                ? "admin-ops-row-danger"
+                : ""
+            }`}
+          >
+            <div>
+              <strong>shared storage path</strong>
+              <span>서로 다른 asset이 같은 storage path를 공유함</span>
+            </div>
+            <span>
+              {dashboard.mediaDiagnostics.stats.sharedStoragePathAssets}
+            </span>
+          </article>
         </div>
       </section>
 
@@ -242,14 +275,16 @@ export default async function AdminOpsPage() {
             ))}
           </div>
         ) : (
-          <p className="admin-empty-text">아직 cleanup 로그가 없습니다.</p>
+          <AdminEmptyText>아직 cleanup 로그가 없습니다.</AdminEmptyText>
         )}
       </section>
 
       <section className="admin-panel">
         <div className="admin-panel-head">
           <h2>다음 cleanup 후보</h2>
-          <span>{dashboard.cleanupPreview.minAgeHours}시간 이상 미참조</span>
+          <span>
+            {formatCleanupAgePolicy(dashboard.cleanupPreview.minAgeHoursByReason)}
+          </span>
         </div>
         {dashboard.cleanupPreview.candidates.length > 0 ? (
           <div className="admin-ops-table">
@@ -268,7 +303,7 @@ export default async function AdminOpsPage() {
             ))}
           </div>
         ) : (
-          <p className="admin-empty-text">현재 cleanup 후보가 없습니다.</p>
+          <AdminEmptyText>현재 cleanup 후보가 없습니다.</AdminEmptyText>
         )}
       </section>
 
@@ -322,29 +357,12 @@ export default async function AdminOpsPage() {
             ))}
           </div>
         ) : (
-          <p className="admin-empty-text">
+          <AdminEmptyText>
             아직 상품과 연결된 작업물/소식이 없습니다.
-          </p>
+          </AdminEmptyText>
         )}
       </section>
     </main>
-  );
-}
-
-function StatCard({
-  label,
-  tone = "neutral",
-  value,
-}: {
-  label: string;
-  tone?: "danger" | "neutral" | "warning";
-  value: number;
-}) {
-  return (
-    <article className={`admin-ops-stat admin-ops-stat-${tone}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </article>
   );
 }
 
@@ -388,6 +406,17 @@ function cronStatusLabel(status: "failed" | "running" | "success") {
     running: "실행 중",
     success: "성공",
   }[status];
+}
+
+function formatCleanupAgePolicy(
+  policy: Record<
+    | "media_asset_unreferenced"
+    | "media_storage_orphan"
+    | "storage_upload_intent_abandoned",
+    number
+  >,
+) {
+  return `업로드 ${policy.storage_upload_intent_abandoned}시간 · storage ${policy.media_storage_orphan}시간 · asset ${policy.media_asset_unreferenced}시간 이상`;
 }
 
 function formatDuration(value: number | null) {

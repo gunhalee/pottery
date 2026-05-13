@@ -13,6 +13,8 @@ export type AdminClassReviewStatus = "hidden" | "pending" | "published";
 
 export type AdminClassReviewEntry = {
   body: string;
+  classSessionId: string | null;
+  classSessionTitle: string | null;
   classTitle: string | null;
   contact: string | null;
   consentText: string | null;
@@ -31,7 +33,11 @@ export type AdminClassReviewEntry = {
 
 type ClassReviewRow = {
   body: string;
+  class_session_id: string | null;
   class_title: string | null;
+  class_sessions?: {
+    title?: string | null;
+  } | null;
   consent_text: string | null;
   contact: string | null;
   created_at: string;
@@ -63,6 +69,7 @@ export async function getAdminClassReviews({
         "id",
         "participant_name",
         "contact",
+        "class_session_id",
         "class_title",
         "display_name",
         "body",
@@ -74,6 +81,7 @@ export async function getAdminClassReviews({
         "revoked_at",
         "created_at",
         "updated_at",
+        "class_sessions (title)",
       ].join(", "),
     )
     .order("created_at", { ascending: false })
@@ -100,6 +108,8 @@ export async function getAdminClassReviews({
 
   return rows.map((row) => ({
     body: row.body,
+    classSessionId: row.class_session_id,
+    classSessionTitle: row.class_sessions?.title ?? null,
     classTitle: row.class_title,
     consentText: row.consent_text,
     contact: row.contact,
@@ -141,6 +151,32 @@ export async function updateAdminClassReviewStatus({
   }
 
   return data as { id: string; status: AdminClassReviewStatus };
+}
+
+export async function updateAdminClassReviewSession({
+  classSessionId,
+  reviewId,
+}: {
+  classSessionId: string | null;
+  reviewId: string;
+}) {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase class review storage is not configured.");
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("class_reviews")
+    .update({ class_session_id: classSessionId })
+    .eq("id", reviewId)
+    .select("id, class_session_id")
+    .single();
+
+  if (error) {
+    throw new Error(`Class review session update failed: ${error.message}`);
+  }
+
+  return data as { class_session_id: string | null; id: string };
 }
 
 export async function revokeAdminClassReviewConsent(reviewId: string) {

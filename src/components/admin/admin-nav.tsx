@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { logoutAdminAction } from "@/app/admin/actions";
+import { AdminActionButton } from "@/components/admin/admin-actions";
 
 export function AdminNav() {
   return (
@@ -12,13 +13,16 @@ export function AdminNav() {
           주문
         </Link>
         <Link href="/admin/reviews" prefetch={false}>
-          구매평
+          후기
+        </Link>
+        <Link href="/admin/class-sessions" prefetch={false}>
+          클래스
         </Link>
         <Link href="/admin/news" prefetch={false}>
           소식
         </Link>
         <Link href="/admin/gallery" prefetch={false}>
-          작업물
+          작품
         </Link>
         <Link href="/admin/media" prefetch={false}>
           미디어
@@ -28,9 +32,9 @@ export function AdminNav() {
         </Link>
       </nav>
       <form action={logoutAdminAction}>
-        <button className="admin-text-button" type="submit">
+        <AdminActionButton type="submit" variant="text">
           로그아웃
-        </button>
+        </AdminActionButton>
       </form>
     </div>
   );

@@ -3,6 +3,15 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArtworkImage } from "@/components/media/artwork-image";
+import {
+  CommerceQuantityStepper,
+  CommerceSummaryList,
+} from "@/components/site/commerce-form-primitives";
+import {
+  SiteActionButton,
+  SiteActionLink,
+  SiteEmptyState,
+} from "@/components/site/actions";
 import type { ProductOption } from "@/lib/orders/order-model";
 import {
   calculateOrderAmounts,
@@ -10,8 +19,12 @@ import {
   ORDER_SHIPPING_FEE_KRW,
 } from "@/lib/orders/pricing";
 import {
+  artworkPlaceholderImage,
+  getArtworkPlaceholderAlt,
+} from "@/lib/media/media-placeholders";
+import { mediaImageSizes } from "@/lib/media/media-image-sizes";
+import {
   cartChangedEventName,
-  cartStorageKey,
   clearCart,
   getCartItemCount,
   getCartItemKey,
@@ -21,9 +34,11 @@ import {
   type CartItem,
   type CartSnapshot,
 } from "@/lib/shop/cart-storage";
+import { getProductCartImage } from "@/lib/shop/product-images";
 import type { ProductImage, ProductListItem } from "@/lib/shop/product-model";
 
 type CartPageClientProps = {
+  initialSnapshot: CartSnapshot;
   products: ProductListItem[];
 };
 
@@ -49,9 +64,14 @@ const emptySnapshot: CartSnapshot = {
   version: 1,
 };
 
-export function CartPageClient({ products }: CartPageClientProps) {
-  const [hasHydrated, setHasHydrated] = useState(false);
-  const [snapshot, setSnapshot] = useState<CartSnapshot>(emptySnapshot);
+export function CartPageClient({
+  initialSnapshot,
+  products,
+}: CartPageClientProps) {
+  const [hasHydrated, setHasHydrated] = useState(true);
+  const [snapshot, setSnapshot] = useState<CartSnapshot>(
+    initialSnapshot ?? emptySnapshot,
+  );
   const productBySlug = useMemo(
     () => new Map(products.map((product) => [product.slug, product])),
     [products],
@@ -79,62 +99,71 @@ export function CartPageClient({ products }: CartPageClientProps) {
   const containsMadeToOrder = rows.some((row) => row.item.madeToOrder);
 
   useEffect(() => {
-    function syncCart() {
-      setSnapshot(readCartSnapshot());
-      setHasHydrated(true);
-    }
+    let active = true;
 
-    function syncCartFromStorage(event: StorageEvent) {
-      if (event.key === cartStorageKey) {
-        syncCart();
+    async function syncCart() {
+      try {
+        const nextSnapshot = await readCartSnapshot();
+
+        if (active) {
+          setSnapshot(nextSnapshot);
+        }
+      } finally {
+        if (active) {
+          setHasHydrated(true);
+        }
       }
     }
 
-    syncCart();
-    window.addEventListener(cartChangedEventName, syncCart);
-    window.addEventListener("storage", syncCartFromStorage);
+    function syncCartFromEvent(event: Event) {
+      const detail = (event as CustomEvent<{ snapshot?: CartSnapshot }>).detail;
+
+      if (detail?.snapshot) {
+        setSnapshot(detail.snapshot);
+      }
+    }
+
+    void syncCart();
+    window.addEventListener(cartChangedEventName, syncCartFromEvent);
 
     return () => {
-      window.removeEventListener(cartChangedEventName, syncCart);
-      window.removeEventListener("storage", syncCartFromStorage);
+      active = false;
+      window.removeEventListener(cartChangedEventName, syncCartFromEvent);
     };
   }, []);
 
-  function updateQuantity(key: string, quantity: number) {
-    const row = rows.find((item) => item.key === key);
-
-    updateCartItemQuantity(key, quantity, row?.maxQuantity ?? 99);
-    setSnapshot(readCartSnapshot());
+  async function updateQuantity(key: string, quantity: number) {
+    setSnapshot(await updateCartItemQuantity(key, quantity));
   }
 
-  function removeItem(key: string) {
-    removeCartItem(key);
-    setSnapshot(readCartSnapshot());
+  async function removeItem(key: string) {
+    setSnapshot(await removeCartItem(key));
   }
 
-  function removeAllItems() {
-    clearCart();
-    setSnapshot(readCartSnapshot());
+  async function removeAllItems() {
+    setSnapshot(await clearCart());
   }
 
   if (!hasHydrated) {
     return (
-      <div className="shop-subpage-empty">
-        <strong>장바구니를 확인하고 있습니다.</strong>
+      <SiteEmptyState
+        className="shop-subpage-empty"
+        title="장바구니를 확인하고 있습니다."
+      >
         <p>브라우저에 저장된 상품을 불러오는 중입니다.</p>
-      </div>
+      </SiteEmptyState>
     );
   }
 
   if (rows.length === 0) {
     return (
-      <div className="shop-subpage-empty">
-        <strong>장바구니가 비어 있습니다.</strong>
+      <SiteEmptyState
+        action={<SiteActionLink href="/shop">소장하기로 이동</SiteActionLink>}
+        className="shop-subpage-empty"
+        title="장바구니가 비어 있습니다."
+      >
         <p>소장하고 싶은 작업물을 장바구니에 담아 보세요.</p>
-        <Link className="button-primary" href="/shop" prefetch={false}>
-          소장하기로 이동
-        </Link>
-      </div>
+      </SiteEmptyState>
     );
   }
 
@@ -154,17 +183,17 @@ export function CartPageClient({ products }: CartPageClientProps) {
                   className="cart-item-image"
                   fill
                   loading="lazy"
-                  sizes="(max-width: 720px) 96px, 132px"
+                  sizes={mediaImageSizes.cartItem}
                   src={row.image.src}
                 />
               ) : (
                 <ArtworkImage
-                  alt="상품 이미지 준비 중"
+                  alt={getArtworkPlaceholderAlt(row.product?.titleKo)}
                   className="cart-item-image"
                   fill
                   loading="lazy"
-                  sizes="(max-width: 720px) 96px, 132px"
-                  src="/asset/hero-image.jpg"
+                  sizes={mediaImageSizes.cartItem}
+                  src={artworkPlaceholderImage.src}
                 />
               )}
             </Link>
@@ -185,62 +214,37 @@ export function CartPageClient({ products }: CartPageClientProps) {
               </div>
 
               <div className="cart-item-controls">
-                <div
+                <CommerceQuantityStepper
+                  ariaLabel="장바구니 수량"
                   className="cart-quantity-stepper"
-                  role="group"
-                  aria-label="장바구니 수량"
-                >
-                  <button
-                    aria-label="수량 줄이기"
-                    disabled={row.item.quantity <= 1}
-                    onClick={() => updateQuantity(row.key, row.item.quantity - 1)}
-                    type="button"
-                  >
-                    -
-                  </button>
-                  <input
-                    aria-label="수량"
-                    inputMode="numeric"
-                    max={row.maxQuantity}
-                    min={1}
-                    onChange={(event) =>
-                      updateQuantity(row.key, Number(event.target.value))
-                    }
-                    type="number"
-                    value={row.item.quantity}
-                  />
-                  <button
-                    aria-label="수량 늘리기"
-                    disabled={row.item.quantity >= row.maxQuantity}
-                    onClick={() => updateQuantity(row.key, row.item.quantity + 1)}
-                    type="button"
-                  >
-                    +
-                  </button>
-                </div>
-                <button
-                  className="button-quiet cart-remove-button"
-                  onClick={() => removeItem(row.key)}
-                  type="button"
+                  decreaseLabel="수량 줄이기"
+                  increaseLabel="수량 늘리기"
+                  inputLabel="수량"
+                  max={row.maxQuantity}
+                  onChange={(nextQuantity) =>
+                    void updateQuantity(row.key, nextQuantity)
+                  }
+                  value={row.item.quantity}
+                />
+                <SiteActionButton
+                  className="cart-remove-button"
+                  onClick={() => void removeItem(row.key)}
+                  variant="quiet"
                 >
                   삭제
-                </button>
+                </SiteActionButton>
               </div>
 
               <div className="cart-item-total">
                 <strong>{row.amountLabel}</strong>
                 {row.canCheckout ? (
-                  <Link
-                    className="button-primary"
-                    href={row.checkoutHref}
-                    prefetch={false}
-                  >
+                  <SiteActionLink href={row.checkoutHref}>
                     주문하기
-                  </Link>
+                  </SiteActionLink>
                 ) : (
-                  <button className="button-primary" disabled type="button">
+                  <SiteActionButton disabled>
                     주문 불가
-                  </button>
+                  </SiteActionButton>
                 )}
               </div>
             </div>
@@ -251,24 +255,25 @@ export function CartPageClient({ products }: CartPageClientProps) {
       <aside className="cart-summary" aria-label="장바구니 요약">
         <span className="small-caps">Cart Summary</span>
         <h2>담은 상품 {itemCount}개</h2>
-        <dl>
-          <div>
-            <dt>상품 합계</dt>
-            <dd>{formatCurrency(estimatedSubtotal)}</dd>
-          </div>
-          <div>
-            <dt>무료배송 기준</dt>
-            <dd>
-              {freeShippingRemaining > 0
-                ? `${formatCurrency(freeShippingRemaining)} 남음`
-                : "무료배송 가능"}
-            </dd>
-          </div>
-          <div>
-            <dt>예상 결제 금액</dt>
-            <dd>{formatCurrency(estimatedTotal)}</dd>
-          </div>
-        </dl>
+        <CommerceSummaryList
+          items={[
+            {
+              label: "상품 합계",
+              value: formatCurrency(estimatedSubtotal),
+            },
+            {
+              label: "무료배송 기준",
+              value:
+                freeShippingRemaining > 0
+                  ? `${formatCurrency(freeShippingRemaining)} 남음`
+                  : "무료배송 가능",
+            },
+            {
+              label: "예상 결제 금액",
+              value: formatCurrency(estimatedTotal),
+            },
+          ]}
+        />
         <p>
           할인 전 상품금액 기준 {formatCurrency(ORDER_FREE_SHIPPING_THRESHOLD_KRW)}
           이상 무료배송됩니다. 택배 기본 배송비는 {formatCurrency(ORDER_SHIPPING_FEE_KRW)}
@@ -285,9 +290,12 @@ export function CartPageClient({ products }: CartPageClientProps) {
         {containsMadeToOrder ? (
           <p>주문 제작 상품은 제작 착수 전 제작 내용, 견적, 예상 일정을 확인해 주세요.</p>
         ) : null}
-        <button className="button-quiet" onClick={removeAllItems} type="button">
+        <SiteActionButton
+          onClick={() => void removeAllItems()}
+          variant="quiet"
+        >
           장바구니 비우기
-        </button>
+        </SiteActionButton>
       </aside>
     </div>
   );
@@ -339,7 +347,7 @@ function createCartRow({
       amounts.totalKrw === null ? "가격 확인 필요" : formatCurrency(amounts.totalKrw),
     canCheckout,
     checkoutHref: createCheckoutHref({ item, productOption, quantity }),
-    image: product ? getCartImage(product) : null,
+    image: product ? getProductCartImage(product) : null,
     item: {
       ...item,
       quantity,
@@ -377,15 +385,6 @@ function createCheckoutHref({
   }
 
   return `/checkout?${params.toString()}`;
-}
-
-function getCartImage(product: ProductListItem) {
-  return (
-    product.images.find((image) => image.isListImage && image.src) ??
-    product.images.find((image) => image.isPrimary && image.src) ??
-    product.images.find((image) => image.src) ??
-    null
-  );
 }
 
 function getCartStatusText({

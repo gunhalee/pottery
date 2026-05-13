@@ -1,0 +1,112 @@
+/* Class route styles. */
+.class-grid > * {
+  min-width: 0;
+}
+
+.class-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+}
+
+.class-card {
+  display: block;
+  padding: 56px 44px;
+  background: var(--bg2);
+  transition: background 0.2s ease;
+}
+
+.class-card:nth-child(even) {
+  background: var(--white);
+}
+
+.class-card:hover {
+  background: var(--bg3);
+}
+
+.review-title {
+  margin-bottom: 22px;
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 300;
+}
+
+.review-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.review {
+  padding: 22px;
+  border: 0.5px solid var(--brd);
+  background: var(--white);
+}
+
+.review q {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--tx2);
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.9;
+  quotes: none;
+}
+
+.review cite {
+  color: var(--tx3);
+  font-size: 11px;
+  font-style: normal;
+}
+
+@media (max-width: 900px) {
+
+  .class-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .review-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.class-policy-spec-section,
+.class-review-section {
+  margin-top: 46px;
+}
+
+.class-review-form {
+  margin: 18px 0 24px;
+}
+
+.class-review-grid {
+  margin-top: 22px;
+}
+
+.class-review-card cite {
+  display: grid;
+  gap: 4px;
+}
+
+.class-review-image-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.class-review-image-grid img {
+  aspect-ratio: 1;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+@media (max-width: 720px) {
+
+  .class-review-grid {
+    grid-template-columns: 1fr;
+  }
+}

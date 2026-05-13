@@ -3,14 +3,11 @@ import { isAdminAuthenticated } from "@/lib/admin/auth";
 import { getProductById } from "@/lib/shop";
 import { uploadMediaImage } from "@/lib/media/media-upload";
 import {
-  buildMediaVariantSources,
-  pickMediaVariantForSurface,
-} from "@/lib/media/media-variant-policy";
-import {
   consumeRateLimit,
   getClientIp,
   rateLimitHeaders,
 } from "@/lib/security/rate-limit";
+import { createProductImageFromMediaAsset } from "@/lib/shop/product-images";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -157,22 +154,9 @@ export async function POST(request: Request) {
       ownerId: product.id,
       ownerType: "product",
     });
-    const detailVariant = pickMediaVariantForSurface(asset, "detail");
-    const variants = buildMediaVariantSources(asset);
 
     return NextResponse.json({
-      image: {
-        alt: asset.alt,
-        height: detailVariant?.height ?? asset.height,
-        id: asset.id,
-        isDetail: true,
-        isListImage: false,
-        isPrimary: false,
-        src: detailVariant?.src ?? asset.src,
-        storagePath: asset.masterPath,
-        variants,
-        width: detailVariant?.width ?? asset.width,
-      },
+      image: createProductImageFromMediaAsset(asset),
       ok: true,
     });
   } catch (error) {

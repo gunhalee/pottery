@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { CheckoutForm } from "@/components/shop/checkout-form";
+import { SiteActionLink, SiteEmptyState } from "@/components/site/actions";
 import { PageIntro, PageShell } from "@/components/site/primitives";
 import type {
   CheckoutMode,
@@ -41,12 +41,12 @@ export default async function CheckoutPage({
           title="주문하기"
           variant="compact"
         />
-        <div className="checkout-empty">
+        <SiteEmptyState className="checkout-empty">
           <p>상품 정보를 찾지 못했습니다.</p>
-          <Link className="button-primary" href="/shop" prefetch={false}>
+          <SiteActionLink href="/shop">
             상점으로 이동
-          </Link>
-        </div>
+          </SiteActionLink>
+        </SiteEmptyState>
       </PageShell>
     );
   }
@@ -119,20 +119,16 @@ export default async function CheckoutPage({
           unitPrice={unitPrice!}
         />
       ) : (
-        <div className="checkout-empty">
+        <SiteEmptyState className="checkout-empty">
           <strong>{product.titleKo}</strong>
           <p>
             현재 주문 가능한 상태가 아닙니다. 표시 가격은{" "}
             {formatProductPrice(product)}입니다.
           </p>
-          <Link
-            className="button-primary"
-            href={`/shop/${product.slug}`}
-            prefetch={false}
-          >
+          <SiteActionLink href={`/shop/${product.slug}`}>
             상품 상세로 돌아가기
-          </Link>
-        </div>
+          </SiteActionLink>
+        </SiteEmptyState>
       )}
     </PageShell>
   );

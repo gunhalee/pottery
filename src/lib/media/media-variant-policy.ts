@@ -13,12 +13,36 @@ export type MediaVariantSurface =
   | "master"
   | "thumbnail";
 
+export type PickMediaVariantOptions = {
+  allowFallback?: boolean;
+};
+
 const fallbackBySurface: Record<MediaVariantSurface, MediaVariantName[]> = {
   detail: ["detail", "master", "list", "thumbnail"],
   list: ["list", "detail", "master", "thumbnail"],
   master: ["master", "detail", "list", "thumbnail"],
   thumbnail: ["thumbnail", "list", "detail", "master"],
 };
+
+const surfaceByOwnerAndRole = {
+  content_entry: {
+    body: "detail",
+    cover: "detail",
+    description: "detail",
+    detail: "detail",
+    list: "list",
+  },
+  product: {
+    body: "detail",
+    cover: "detail",
+    description: "detail",
+    detail: "detail",
+    list: "list",
+  },
+} satisfies Record<
+  MediaOwnerType,
+  Record<MediaUsageRole, MediaVariantSurface>
+>;
 
 export function buildMediaVariantSources(
   asset: MediaAsset,
@@ -50,29 +74,44 @@ export function pickMediaVariantForRole(
   asset: MediaAsset,
   ownerType: MediaOwnerType,
   role: MediaUsageRole,
+  options?: PickMediaVariantOptions,
 ) {
   return pickVariantSource(
     buildMediaVariantSources(asset),
-    getMediaSurfaceForRole(ownerType, role),
+    getMediaVariantSurfaceForRole(ownerType, role),
+    options,
   );
+}
+
+export function getMediaVariantSurfaceForRole(
+  ownerType: MediaOwnerType,
+  role: MediaUsageRole,
+): MediaVariantSurface {
+  return surfaceByOwnerAndRole[ownerType][role];
 }
 
 export function pickMediaVariantForSurface(
   asset: MediaAsset,
   surface: MediaVariantSurface,
+  options?: PickMediaVariantOptions,
 ) {
-  return pickVariantSource(buildMediaVariantSources(asset), surface);
+  return pickVariantSource(buildMediaVariantSources(asset), surface, options);
 }
 
 export function pickVariantSource(
   sources: MediaVariantSourceMap | undefined,
   surface: MediaVariantSurface,
+  options: PickMediaVariantOptions = {},
 ): MediaVariantSource | null {
   if (!sources) {
     return null;
   }
 
-  for (const variant of fallbackBySurface[surface]) {
+  const variants = options.allowFallback
+    ? fallbackBySurface[surface]
+    : ([surface] as MediaVariantName[]);
+
+  for (const variant of variants) {
     const source = sources[variant];
 
     if (source?.src) {
@@ -81,15 +120,4 @@ export function pickVariantSource(
   }
 
   return null;
-}
-
-function getMediaSurfaceForRole(
-  _ownerType: MediaOwnerType,
-  role: MediaUsageRole,
-): MediaVariantSurface {
-  if (role === "list") {
-    return "list";
-  }
-
-  return "detail";
 }

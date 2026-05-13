@@ -14,7 +14,7 @@ type ArtworkImageProps = {
   width?: number;
 };
 
-const fallbackImageSize = 1200;
+const defaultImageSize = 1200;
 
 export function ArtworkImage({
   alt,
@@ -54,13 +54,13 @@ export function ArtworkImage({
       className={className}
       decoding="async"
       fetchPriority={fetchPriority}
-      height={height ?? fallbackImageSize}
+      height={height ?? defaultImageSize}
       loading={loadingMode}
       preload={preload}
       quality={quality}
       sizes={sizes}
       src={src}
-      width={width ?? fallbackImageSize}
+      width={width ?? defaultImageSize}
     />
   );
 }

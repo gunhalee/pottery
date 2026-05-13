@@ -8,7 +8,7 @@ import type { HomeStoryContent } from "@/lib/content/site-content";
 
 export function HomeStorySection({ content }: { content: HomeStoryContent }) {
   return (
-    <Section className="split home-story-section">
+    <Section className="split home-story-section" deferred>
       <PlaceholderFrame
         className="story-image home-story-image-desktop"
         label={content.imageLabel}

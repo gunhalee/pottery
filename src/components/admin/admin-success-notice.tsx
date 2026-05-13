@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  AdminActionButton,
+  AdminExternalActionLink,
+} from "@/components/admin/admin-actions";
 
 type AdminSuccessNoticeProps = {
   description?: string;
@@ -118,32 +122,29 @@ function SuccessActions({
     <div className="admin-success-actions">
       {primaryHref ? (
         <>
-          <a
-            className="admin-secondary-button"
+          <AdminExternalActionLink
             href={primaryHref}
-            rel="noopener noreferrer"
             target="_blank"
+            variant="secondary"
           >
             {primaryLabel}
-          </a>
-          <button
-            className="admin-secondary-button admin-copy-button"
+          </AdminExternalActionLink>
+          <AdminActionButton
+            className="admin-copy-button"
             onClick={onCopy}
-            type="button"
           >
             {copyLabel}
-          </button>
+          </AdminActionButton>
         </>
       ) : null}
       {secondaryHref ? (
-        <a
-          className="admin-text-button"
+        <AdminExternalActionLink
           href={secondaryHref}
-          rel="noopener noreferrer"
           target="_blank"
+          variant="text"
         >
           {secondaryLabel}
-        </a>
+        </AdminExternalActionLink>
       ) : null}
     </div>
   );

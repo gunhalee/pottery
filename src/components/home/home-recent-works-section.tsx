@@ -13,7 +13,7 @@ export function HomeRecentWorksSection({
   const recentEntries = entries.slice(0, 3);
 
   return (
-    <Section className="home-recent-works-section">
+    <Section className="home-recent-works-section" deferred>
       <div className="works-head">
         <h2 className="section-title">최근 작업물</h2>
         <ArrowLink href="/gallery">전체 보기</ArrowLink>

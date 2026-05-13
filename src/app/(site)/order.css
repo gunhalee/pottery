@@ -1,0 +1,280 @@
+/* Order lookup and post-order action styles. */
+
+@media (max-width: 640px) {
+  .order-lookup-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .order-lookup-result dl div,
+  .order-lookup-items div,
+  .order-lookup-shipments div {
+    grid-template-columns: 1fr;
+  }
+}
+
+.order-return-request-form > strong,
+.order-return-request-form > p,
+.order-return-request-form .order-refund-field-wide,
+.order-return-request-form .button-primary,
+.order-return-request-form .checkout-error,
+.order-resend-form > strong,
+.order-resend-form > p,
+.order-resend-form .checkout-error {
+  grid-column: 1 / -1;
+}
+
+.order-lookup-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(280px, 1.1fr);
+  gap: 42px;
+  align-items: start;
+}
+
+.order-lookup-form {
+  display: grid;
+  gap: 16px;
+}
+
+.order-lookup-form label {
+  display: grid;
+  gap: 7px;
+}
+
+.order-lookup-form span {
+  color: var(--tx3);
+  font-size: 11px;
+}
+
+.order-lookup-form input {
+  min-height: 44px;
+  border: 0;
+  border-bottom: 0.5px solid var(--brd);
+  background: transparent;
+  color: var(--tx);
+  font: inherit;
+  font-size: 14px;
+}
+
+.order-lookup-form .button-primary {
+  width: fit-content;
+  min-width: 150px;
+}
+
+.order-lookup-empty,
+.order-lookup-result {
+  display: grid;
+  gap: 18px;
+  padding: 22px 0;
+  border-top: 0.5px solid var(--line-subtle);
+  border-bottom: 0.5px solid var(--line-subtle);
+}
+
+.order-lookup-empty strong,
+.order-lookup-result strong {
+  font-weight: 300;
+}
+
+.order-lookup-empty p {
+  margin: 0;
+  color: var(--tx2);
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.order-lookup-error strong {
+  color: #7e2f24;
+}
+
+.order-lookup-result-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: baseline;
+}
+
+.order-lookup-result-head span,
+.order-lookup-result dt,
+.order-lookup-items span,
+.order-lookup-shipments span {
+  color: var(--tx3);
+  font-size: 11px;
+}
+
+.order-lookup-result dl,
+.order-lookup-items,
+.order-lookup-shipments {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.order-lookup-result dl div,
+.order-lookup-items div,
+.order-lookup-shipments div {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: baseline;
+  padding-bottom: 10px;
+  border-bottom: 0.5px solid var(--line-quiet);
+}
+
+.order-lookup-result dd {
+  margin: 0;
+  color: var(--tx);
+  font-size: 13px;
+}
+
+.order-lookup-shipments a {
+  color: var(--tx2);
+  font-size: 11px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.order-lookup-bank,
+.order-refund-form {
+  display: grid;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 0.5px solid var(--line-quiet);
+}
+
+.order-lookup-bank dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.order-refund-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.order-refund-form strong,
+.order-refund-form p,
+.order-refund-form button,
+.order-refund-field-wide {
+  grid-column: 1 / -1;
+}
+
+.order-return-request-form,
+.order-resend-form {
+  border-top: 0.5px solid var(--line-subtle);
+  border-bottom: 0.5px solid var(--line-subtle);
+  padding: 20px 0;
+}
+
+.order-return-request-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.order-resend-form,
+.order-lookup-action-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.order-lookup-action-panel {
+  padding-top: 16px;
+  border-top: 0.5px solid var(--line-quiet);
+}
+
+.order-return-request-form strong,
+.order-resend-form strong {
+  display: block;
+  margin: 0;
+  color: var(--tx);
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.order-return-request-form p,
+.order-resend-form p,
+.order-lookup-privacy-note {
+  margin: 0;
+  color: var(--tx2);
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.order-return-request-form label,
+.order-resend-form label,
+.order-refund-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--tx3);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.order-return-request-form input,
+.order-return-request-form select,
+.order-return-request-form textarea,
+.order-resend-form input,
+.order-refund-form input,
+.order-refund-form textarea {
+  width: 100%;
+  border: 0;
+  border-bottom: 0.5px solid var(--brd);
+  background: transparent;
+  color: var(--tx);
+  font: inherit;
+  min-height: 42px;
+  padding: 8px 0;
+}
+
+.order-return-request-form textarea,
+.order-refund-form textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.order-refund-form-head,
+.order-refund-fieldset {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 12px;
+}
+
+.order-refund-form-head {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.order-refund-form-head strong,
+.order-refund-form-head .button-quiet {
+  grid-column: auto;
+}
+
+.order-refund-fieldset {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.order-refund-fieldset:disabled {
+  opacity: 0.54;
+}
+
+.order-refund-fieldset p,
+.order-refund-fieldset .button-primary {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 720px) {
+  .order-return-request-form,
+  .order-refund-fieldset {
+    grid-template-columns: 1fr;
+  }
+
+  .order-refund-form-head {
+    grid-template-columns: 1fr;
+  }
+}
+
+.checkout-error {
+  color: #7e2f24;
+}

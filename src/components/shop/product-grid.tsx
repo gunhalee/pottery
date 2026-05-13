@@ -14,8 +14,9 @@ export function ProductGrid({
 
   return (
     <div className="product-grid">
-      {products.map((product) => (
+      {products.map((product, index) => (
         <ProductCard
+          imagePriority={index === 0}
           initialWished={wishedProductIdSet?.has(product.id)}
           key={product.id}
           product={product}

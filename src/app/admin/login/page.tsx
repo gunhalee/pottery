@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { loginAdminAction } from "../actions";
+import { AdminActionButton } from "@/components/admin/admin-actions";
 import {
   isAdminAuthenticated,
   isAdminPasswordConfigured,
@@ -71,9 +72,13 @@ export default async function AdminLoginPage({
               type="password"
             />
           </label>
-          <button className="button-primary" disabled={!configured} type="submit">
+          <AdminActionButton
+            disabled={!configured}
+            type="submit"
+            variant="primary"
+          >
             로그인
-          </button>
+          </AdminActionButton>
         </form>
       </section>
     </main>

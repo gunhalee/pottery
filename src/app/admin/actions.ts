@@ -9,6 +9,10 @@ import {
   setAdminSessionCookie,
   verifyAdminPassword,
 } from "@/lib/admin/auth";
+import type {
+  ContentPublishErrorCode,
+  ProductPublishErrorCode,
+} from "@/lib/admin/publish-errors";
 import {
   createProductDraft,
   deleteProduct,
@@ -42,8 +46,11 @@ import {
 import {
   findMissingMediaVariantRequirements,
   regenerateMediaAssetVariants,
-  type MediaVariantRequirement,
 } from "@/lib/media/media-maintenance";
+import {
+  getContentImageVariantRequirements,
+  getProductImageVariantRequirements,
+} from "@/lib/media/media-role-requirements";
 
 const draftSchema = z.object({
   slug: z.string(),
@@ -534,7 +541,9 @@ function parseProductUpdateFormData(formData: FormData) {
   });
 }
 
-async function getContentPublishError(input: z.infer<typeof contentUpdateSchema>) {
+async function getContentPublishError(
+  input: z.infer<typeof contentUpdateSchema>,
+): Promise<ContentPublishErrorCode | null> {
   if (input.status !== "published") {
     return null;
   }
@@ -568,27 +577,9 @@ async function getContentPublishError(input: z.infer<typeof contentUpdateSchema>
   }
 
   const missingVariants = await findMissingMediaVariantRequirements(
-    input.images.flatMap((image): MediaVariantRequirement[] => {
-      const requirements: MediaVariantRequirement[] = [];
-
-      if (image.isCover || image.isDetail || bodyImageIds.has(image.id)) {
-        requirements.push({
-          assetId: image.id,
-          label: image.alt || image.id,
-          surface: "detail",
-        });
-      }
-
-      if (image.isListImage) {
-        requirements.push({
-          assetId: image.id,
-          label: image.alt || image.id,
-          surface: "list",
-        });
-      }
-
-      return requirements;
-    }),
+    input.images.flatMap((image) =>
+      getContentImageVariantRequirements(image, bodyImageIds.has(image.id)),
+    ),
   );
 
   if (missingVariants.length > 0) {
@@ -598,7 +589,9 @@ async function getContentPublishError(input: z.infer<typeof contentUpdateSchema>
   return null;
 }
 
-async function getProductPublishError(input: z.infer<typeof productUpdateSchema>) {
+async function getProductPublishError(
+  input: z.infer<typeof productUpdateSchema>,
+): Promise<ProductPublishErrorCode | null> {
   if (!input.published) {
     return null;
   }
@@ -627,31 +620,7 @@ async function getProductPublishError(input: z.infer<typeof productUpdateSchema>
   }
 
   const missingVariants = await findMissingMediaVariantRequirements(
-    input.images.flatMap((image): MediaVariantRequirement[] => {
-      if (!image.id) {
-        return [];
-      }
-
-      const requirements: MediaVariantRequirement[] = [];
-
-      if (image.isPrimary || image.isDetail || image.isDescription) {
-        requirements.push({
-          assetId: image.id,
-          label: image.alt || image.id,
-          surface: "detail",
-        });
-      }
-
-      if (image.isListImage) {
-        requirements.push({
-          assetId: image.id,
-          label: image.alt || image.id,
-          surface: "list",
-        });
-      }
-
-      return requirements;
-    }),
+    input.images.flatMap((image) => getProductImageVariantRequirements(image)),
   );
 
   if (missingVariants.length > 0) {

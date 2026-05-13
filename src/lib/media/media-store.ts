@@ -77,6 +77,7 @@ export type MediaAssetCreateInput = {
   masterPath: string;
   sizeBytes?: number;
   src: string;
+  reserved?: boolean;
   variants: Array<{
     height: number;
     sizeBytes?: number;
@@ -177,40 +178,39 @@ export async function readMediaUsagesByOwner(
   return usageMap;
 }
 
-export async function readMediaLibraryAssets(limit = 80) {
+export async function readMediaLibraryAssets(
+  limit = 80,
+  options: { includeReserved?: boolean } = {},
+) {
   if (!isSupabaseConfigured()) {
     return [] satisfies Array<MediaAsset & { usageCount: number }>;
   }
 
   const supabase = getSupabaseAdminClient();
+  let assetQuery = supabase
+    .from("media_assets")
+    .select("*, media_variants (*)")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (!options.includeReserved) {
+    assetQuery = assetQuery.eq("reserved", false);
+  }
+
   const [{ data, error }, usageRows] = await Promise.all([
-    supabase
-      .from("media_assets")
-      .select("*, media_variants (*)")
-      .order("created_at", { ascending: false })
-      .limit(limit),
-    supabase.from("media_usages").select("asset_id"),
+    assetQuery,
+    readMediaAssetUsageCounts(supabase),
   ]);
 
   if (error) {
     throw new Error(`Failed to read media library: ${error.message}`);
   }
 
-  if (usageRows.error) {
-    throw new Error(`Failed to read media usage counts: ${usageRows.error.message}`);
-  }
-
-  const usageCounts = new Map<string, number>();
-
-  for (const row of (usageRows.data ?? []) as Array<{ asset_id: string }>) {
-    usageCounts.set(row.asset_id, (usageCounts.get(row.asset_id) ?? 0) + 1);
-  }
-
   return ((data ?? []) as Array<
     MediaAssetRow & { media_variants?: MediaVariantRow[] | null }
   >).map((row) => ({
     ...fromMediaAssetRow(row, row.media_variants ?? []),
-    usageCount: usageCounts.get(row.id) ?? 0,
+    usageCount: usageRows.get(row.id) ?? 0,
   }));
 }
 
@@ -281,7 +281,7 @@ export async function createMediaAsset(input: MediaAssetCreateInput) {
       id,
       master_path: input.masterPath,
       mime_type: "image/webp",
-      reserved: false,
+      reserved: Boolean(input.reserved),
       size_bytes: input.sizeBytes ?? null,
       src: input.src,
       width: input.width,
@@ -310,7 +310,7 @@ export async function createMediaAsset(input: MediaAssetCreateInput) {
     id,
     masterPath: input.masterPath,
     mimeType: "image/webp",
-    reserved: false,
+    reserved: Boolean(input.reserved),
     sizeBytes: input.sizeBytes,
     src: input.src,
     updatedAt: createdAt,
@@ -432,16 +432,7 @@ export async function deleteUnusedMediaAssetsByMasterPaths(
     master_path: string;
     media_variants?: Array<{ storage_path: string }> | null;
   }>) {
-    const { count, error: countError } = await supabase
-      .from("media_usages")
-      .select("id", { count: "exact", head: true })
-      .eq("asset_id", asset.id);
-
-    if (countError) {
-      throw new Error(`Failed to inspect media usage: ${countError.message}`);
-    }
-
-    if ((count ?? 0) > 0) {
+    if ((await getMediaAssetUsageCount(supabase, asset.id)) > 0) {
       continue;
     }
 
@@ -547,4 +538,60 @@ function variantRank(variant: MediaVariantName) {
 function emptyToNull(value: string | undefined | null) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
+}
+
+async function readMediaAssetUsageCounts(supabase: SupabaseClient) {
+  const usageCounts = new Map<string, number>();
+  const tables = [
+    { column: "asset_id", name: "media_usages" },
+    { column: "media_asset_id", name: "shop_product_feedback_images" },
+    { column: "media_asset_id", name: "class_review_images" },
+    { column: "media_asset_id", name: "shop_return_request_images" },
+  ];
+  const rows = await Promise.all(
+    tables.map(async (table) => {
+      const { data, error } = await supabase
+        .from(table.name)
+        .select(table.column);
+
+      if (error) {
+        if (isMissingUsageTableError(error)) {
+          return [] as string[];
+        }
+
+        throw new Error(`Failed to read ${table.name} usage counts: ${error.message}`);
+      }
+
+      return ((data ?? []) as unknown as Array<Record<string, string | null>>)
+        .map((row) => row[table.column])
+        .filter((value): value is string => Boolean(value));
+    }),
+  );
+
+  for (const assetId of rows.flat()) {
+    usageCounts.set(assetId, (usageCounts.get(assetId) ?? 0) + 1);
+  }
+
+  return usageCounts;
+}
+
+async function getMediaAssetUsageCount(
+  supabase: SupabaseClient,
+  assetId: string,
+) {
+  const usageCounts = await readMediaAssetUsageCounts(supabase);
+
+  return usageCounts.get(assetId) ?? 0;
+}
+
+function isMissingUsageTableError(error: { code?: string; message?: string }) {
+  const message = error.message ?? "";
+
+  return (
+    error.code === "42P01" ||
+    error.code === "PGRST205" ||
+    message.includes("schema cache") ||
+    message.includes("does not exist") ||
+    message.includes("relation")
+  );
 }

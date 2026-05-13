@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   buildMediaVariantSources,
+  getMediaVariantSurfaceForRole,
   pickVariantSource,
   type MediaVariantSurface,
 } from "@/lib/media/media-variant-policy";
@@ -32,7 +33,9 @@ export type MediaDiagnosticIssueCode =
   | "duplicate_variant_path"
   | "master_missing"
   | "orphan_asset"
+  | "owner_missing"
   | "role_variant_fallback"
+  | "shared_storage_path"
   | "variant_missing";
 
 export type MediaDiagnosticIssue = {
@@ -42,13 +45,24 @@ export type MediaDiagnosticIssue = {
   title: string;
 };
 
+export type MediaVariantFallbackDiagnostic = {
+  expectedSurface: MediaVariantSurface;
+  ownerId: string;
+  ownerType: MediaOwnerType;
+  role: MediaUsageRole;
+  selectedVariant: MediaVariantName;
+  usageId: string;
+};
+
 export type MediaAssetDiagnostic = {
   asset: MediaAsset & { usageCount: number };
   canRegenerate: boolean;
   fallbackCount: number;
+  fallbackUsages: MediaVariantFallbackDiagnostic[];
   health: "error" | "ok" | "warning";
   issues: MediaDiagnosticIssue[];
   missingVariants: MediaVariantName[];
+  sharedStoragePaths: string[];
 };
 
 export type BrokenMediaUsageDiagnostic = {
@@ -66,9 +80,12 @@ export type MediaDiagnosticsDashboard = {
   stats: {
     brokenUsages: number;
     errorAssets: number;
+    fallbackTargets: Record<MediaVariantSurface, number>;
     fallbackUsages: number;
     okAssets: number;
     orphanAssets: number;
+    ownerMissingUsages: number;
+    sharedStoragePathAssets: number;
     totalAssets: number;
     warningAssets: number;
   };
@@ -102,15 +119,24 @@ export async function getMediaDiagnostics(
     return emptyDiagnostics();
   }
 
-  const [assets, usages] = await Promise.all([
-    readMediaLibraryAssets(limit),
+  const [initialAssets, usages] = await Promise.all([
+    readMediaLibraryAssets(limit, { includeReserved: true }),
     readRawMediaUsages(),
   ]);
-  const assetMap = new Map(assets.map((asset) => [asset.id, asset]));
+  let assets = initialAssets;
   const usagesByAsset = groupUsagesByAsset(usages);
-  const brokenUsages = usages
-    .filter((usage) => !assetMap.has(usage.asset_id))
-    .map((usage) => ({
+  const referencedAssets = await readReferencedAssetsMissingFromPage(
+    assets,
+    usages,
+    usagesByAsset,
+  );
+  assets = mergeDiagnosticAssets(assets, referencedAssets);
+  const assetMap = new Map(assets.map((asset) => [asset.id, asset]));
+  const ownerIndex = await readMediaUsageOwnerIndex(usages);
+  const brokenUsages = [
+    ...(usages
+      .filter((usage) => !assetMap.has(usage.asset_id))
+      .map((usage) => ({
       assetId: usage.asset_id,
       id: usage.id,
       issue: {
@@ -122,10 +148,15 @@ export async function getMediaDiagnostics(
       ownerId: usage.owner_id,
       ownerType: usage.owner_type,
       role: usage.role,
-    }));
-  const diagnostics = assets.map((asset) =>
-    diagnoseAsset(asset, usagesByAsset.get(asset.id) ?? []),
+      }))),
+    ...getOwnerMissingMediaUsages(usages, ownerIndex),
+  ];
+  const diagnostics = addSharedStoragePathIssues(
+    assets.map((asset) =>
+      diagnoseAsset(asset, usagesByAsset.get(asset.id) ?? []),
+    ),
   );
+  const fallbackTargets = getFallbackTargetStats(diagnostics);
 
   return {
     assets: diagnostics.sort(sortDiagnostics),
@@ -133,6 +164,7 @@ export async function getMediaDiagnostics(
     stats: {
       brokenUsages: brokenUsages.length,
       errorAssets: diagnostics.filter((item) => item.health === "error").length,
+      fallbackTargets,
       fallbackUsages: diagnostics.reduce(
         (total, item) => total + item.fallbackCount,
         0,
@@ -140,6 +172,12 @@ export async function getMediaDiagnostics(
       okAssets: diagnostics.filter((item) => item.health === "ok").length,
       orphanAssets: diagnostics.filter((item) =>
         item.issues.some((issue) => issue.code === "orphan_asset"),
+      ).length,
+      ownerMissingUsages: brokenUsages.filter(
+        (item) => item.issue.code === "owner_missing",
+      ).length,
+      sharedStoragePathAssets: diagnostics.filter(
+        (item) => item.sharedStoragePaths.length > 0,
       ).length,
       totalAssets: diagnostics.length,
       warningAssets: diagnostics.filter((item) => item.health === "warning")
@@ -310,6 +348,118 @@ async function readRawMediaUsages() {
   return (data ?? []) as RawMediaUsageRow[];
 }
 
+async function readReferencedAssetsMissingFromPage(
+  assets: Array<MediaAsset & { usageCount: number }>,
+  usages: RawMediaUsageRow[],
+  usagesByAsset: Map<string, RawMediaUsageRow[]>,
+) {
+  const assetIds = new Set(assets.map((asset) => asset.id));
+  const missingAssetIds = [
+    ...new Set(
+      usages
+        .map((usage) => usage.asset_id)
+        .filter((assetId) => !assetIds.has(assetId)),
+    ),
+  ];
+
+  if (missingAssetIds.length === 0) {
+    return [] satisfies Array<MediaAsset & { usageCount: number }>;
+  }
+
+  const referencedAssets = await readMediaAssetsByIds(missingAssetIds);
+
+  return referencedAssets.map((asset) => ({
+    ...asset,
+    usageCount: usagesByAsset.get(asset.id)?.length ?? 0,
+  }));
+}
+
+function mergeDiagnosticAssets(
+  assets: Array<MediaAsset & { usageCount: number }>,
+  referencedAssets: Array<MediaAsset & { usageCount: number }>,
+) {
+  const merged = new Map<string, MediaAsset & { usageCount: number }>();
+
+  for (const asset of [...assets, ...referencedAssets]) {
+    const previous = merged.get(asset.id);
+    merged.set(
+      asset.id,
+      previous ? { ...asset, usageCount: previous.usageCount } : asset,
+    );
+  }
+
+  return [...merged.values()];
+}
+
+async function readMediaUsageOwnerIndex(usages: RawMediaUsageRow[]) {
+  const idsByType = groupUsageOwnerIds(usages);
+  const [productIds, contentEntryIds] = await Promise.all([
+    readExistingOwnerIds("shop_products", idsByType.product),
+    readExistingOwnerIds("content_entries", idsByType.content_entry),
+  ]);
+
+  return new Set([
+    ...productIds.map((id) => ownerKey("product", id)),
+    ...contentEntryIds.map((id) => ownerKey("content_entry", id)),
+  ]);
+}
+
+async function readExistingOwnerIds(table: string, ids: string[]) {
+  if (ids.length === 0) {
+    return [] satisfies string[];
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from(table)
+    .select("id")
+    .in("id", [...new Set(ids)]);
+
+  if (error) {
+    throw new Error(`Failed to read ${table} media owners: ${error.message}`);
+  }
+
+  return ((data ?? []) as Array<{ id: string }>).map((row) => row.id);
+}
+
+function groupUsageOwnerIds(usages: RawMediaUsageRow[]) {
+  const grouped: Record<MediaOwnerType, string[]> = {
+    content_entry: [],
+    product: [],
+  };
+
+  for (const usage of usages) {
+    grouped[usage.owner_type].push(usage.owner_id);
+  }
+
+  return grouped;
+}
+
+function ownerKey(ownerType: MediaOwnerType, ownerId: string) {
+  return `${ownerType}:${ownerId}`;
+}
+
+function getOwnerMissingMediaUsages(
+  usages: RawMediaUsageRow[],
+  ownerIndex: Set<string>,
+) {
+  return usages
+    .filter((usage) => !ownerIndex.has(ownerKey(usage.owner_type, usage.owner_id)))
+    .map((usage) => ({
+      assetId: usage.asset_id,
+      id: usage.id,
+      issue: {
+        code: "owner_missing" as const,
+        description: "media usage가 연결된 상품/콘텐츠 row를 찾을 수 없습니다.",
+        severity: "error" as const,
+        title: "owner row 누락",
+      },
+      ownerId: usage.owner_id,
+      ownerType: usage.owner_type,
+      role: usage.role,
+    }));
+}
+
 function diagnoseAsset(
   asset: MediaAsset & { usageCount: number },
   usages: RawMediaUsageRow[],
@@ -317,9 +467,8 @@ function diagnoseAsset(
   const issues: MediaDiagnosticIssue[] = [];
   const missingVariants = getMissingStoredVariants(asset);
   const duplicatedPaths = getDuplicatedVariantPaths(asset);
-  const fallbackCount = usages.filter((usage) =>
-    isRoleUsingFallback(asset, usage.role),
-  ).length;
+  const fallbackUsages = getRoleVariantFallbacks(asset, usages);
+  const fallbackCount = fallbackUsages.length;
 
   if (!asset.masterPath || !asset.src) {
     issues.push({
@@ -370,10 +519,74 @@ function diagnoseAsset(
     asset,
     canRegenerate: Boolean(asset.masterPath && asset.bucket === mediaAssetBucket),
     fallbackCount,
+    fallbackUsages,
     health: getHealth(issues),
     issues,
     missingVariants,
+    sharedStoragePaths: [],
   };
+}
+
+function addSharedStoragePathIssues(diagnostics: MediaAssetDiagnostic[]) {
+  const assetIdsByPath = new Map<string, Set<string>>();
+
+  for (const item of diagnostics) {
+    for (const path of getUniqueStoragePathsForAsset(item.asset)) {
+      const assetIds = assetIdsByPath.get(path) ?? new Set<string>();
+      assetIds.add(item.asset.id);
+      assetIdsByPath.set(path, assetIds);
+    }
+  }
+
+  const sharedPathsByAsset = new Map<string, string[]>();
+
+  for (const [path, assetIds] of assetIdsByPath.entries()) {
+    if (assetIds.size <= 1) {
+      continue;
+    }
+
+    for (const assetId of assetIds) {
+      sharedPathsByAsset.set(assetId, [
+        ...(sharedPathsByAsset.get(assetId) ?? []),
+        path,
+      ]);
+    }
+  }
+
+  return diagnostics.map((item) => {
+    const sharedStoragePaths = sharedPathsByAsset.get(item.asset.id) ?? [];
+
+    if (sharedStoragePaths.length === 0) {
+      return item;
+    }
+
+    const issues = [
+      ...item.issues,
+      {
+        code: "shared_storage_path" as const,
+        description: `다른 asset과 storage path를 공유합니다: ${sharedStoragePaths.join(", ")}`,
+        severity: "error" as const,
+        title: "asset 간 storage path 중복",
+      },
+    ];
+
+    return {
+      ...item,
+      health: getHealth(issues),
+      issues,
+      sharedStoragePaths,
+    };
+  });
+}
+
+function getUniqueStoragePathsForAsset(asset: MediaAsset) {
+  return [
+    ...new Set(
+      [asset.masterPath, ...asset.variants.map((variant) => variant.storagePath)]
+        .map((path) => path?.trim())
+        .filter((path): path is string => Boolean(path)),
+    ),
+  ];
 }
 
 function getMissingStoredVariants(asset: MediaAsset) {
@@ -430,10 +643,37 @@ function isExpectedMasterPathMirror(sources: string[]) {
   );
 }
 
-function isRoleUsingFallback(asset: MediaAsset, role: MediaUsageRole) {
-  const surface = getSurfaceForRole(role);
-  const selected = pickVariantSource(buildMediaVariantSources(asset), surface);
-  return Boolean(selected && selected.variant !== surface);
+function getRoleVariantFallbacks(
+  asset: MediaAsset,
+  usages: RawMediaUsageRow[],
+): MediaVariantFallbackDiagnostic[] {
+  const sources = buildMediaVariantSources(asset);
+  const fallbacks: MediaVariantFallbackDiagnostic[] = [];
+
+  for (const usage of usages) {
+    const expectedSurface = getMediaVariantSurfaceForRole(
+      usage.owner_type,
+      usage.role,
+    );
+    const selected = pickVariantSource(sources, expectedSurface, {
+      allowFallback: true,
+    });
+
+    if (!selected || selected.variant === expectedSurface) {
+      continue;
+    }
+
+    fallbacks.push({
+      expectedSurface,
+      ownerId: usage.owner_id,
+      ownerType: usage.owner_type,
+      role: usage.role,
+      selectedVariant: selected.variant,
+      usageId: usage.id,
+    });
+  }
+
+  return fallbacks;
 }
 
 function hasExactSurfaceVariant(asset: MediaAsset, surface: MediaVariantSurface) {
@@ -441,11 +681,9 @@ function hasExactSurfaceVariant(asset: MediaAsset, surface: MediaVariantSurface)
   return Boolean(source?.src);
 }
 
-function getSurfaceForRole(role: MediaUsageRole): MediaVariantSurface {
-  return role === "list" ? "list" : "detail";
-}
-
-function getHealth(issues: MediaDiagnosticIssue[]) {
+function getHealth(
+  issues: MediaDiagnosticIssue[],
+): MediaAssetDiagnostic["health"] {
   if (issues.some((issue) => issue.severity === "error")) {
     return "error";
   }
@@ -487,6 +725,27 @@ function sortDiagnostics(
   return b.asset.createdAt.localeCompare(a.asset.createdAt);
 }
 
+function getFallbackTargetStats(diagnostics: MediaAssetDiagnostic[]) {
+  const stats = createEmptyFallbackTargetStats();
+
+  for (const item of diagnostics) {
+    for (const usage of item.fallbackUsages) {
+      stats[usage.expectedSurface] += 1;
+    }
+  }
+
+  return stats;
+}
+
+function createEmptyFallbackTargetStats(): Record<MediaVariantSurface, number> {
+  return {
+    detail: 0,
+    list: 0,
+    master: 0,
+    thumbnail: 0,
+  };
+}
+
 function emptyDiagnostics(): MediaDiagnosticsDashboard {
   return {
     assets: [],
@@ -494,9 +753,12 @@ function emptyDiagnostics(): MediaDiagnosticsDashboard {
     stats: {
       brokenUsages: 0,
       errorAssets: 0,
+      fallbackTargets: createEmptyFallbackTargetStats(),
       fallbackUsages: 0,
       okAssets: 0,
       orphanAssets: 0,
+      ownerMissingUsages: 0,
+      sharedStoragePathAssets: 0,
       totalAssets: 0,
       warningAssets: 0,
     },

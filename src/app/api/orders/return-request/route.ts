@@ -92,6 +92,7 @@ export async function POST(request: Request) {
         alt: `${returnRequest.orderNumber} 교환·반품 사진 ${index + 1}`,
         buffer: Buffer.from(await photo.arrayBuffer()),
         filename: photo.name || `return-request-${index + 1}.webp`,
+        reserved: true,
       });
       assets.push(asset);
     }

@@ -1,0 +1,121 @@
+/* Shared product specification styles. */
+@supports (content-visibility: auto) {
+  .product-spec-section {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 760px;
+  }
+}
+
+.product-spec-section {
+  max-width: 1020px;
+  margin-top: 64px;
+  border-top: 0;
+  padding-top: 0;
+}
+
+.product-spec-list {
+  margin: 0;
+}
+
+.product-spec-row {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 18px;
+  align-items: baseline;
+  margin: 0 0 26px;
+  padding: 0 0 22px;
+  border-bottom: 0.5px solid var(--product-detail-line-color);
+}
+
+.product-spec-row dt {
+  margin: 0;
+  color: var(--tx3);
+  font-size: var(--product-spec-label-size);
+  font-weight: 300;
+  line-height: 1.4;
+  word-break: keep-all;
+}
+
+.product-spec-row dd {
+  margin: 0;
+  color: var(--tx);
+  font-size: var(--product-spec-value-size);
+  font-weight: 300;
+  line-height: 1.6;
+  white-space: pre-line;
+  word-break: keep-all;
+}
+
+@media (max-width: 900px) {
+
+  .product-spec-row {
+    margin-bottom: 28px;
+    padding-bottom: 24px;
+  }
+
+  .product-spec-row dt {
+    font-size: var(--product-spec-label-size);
+  }
+
+  .product-spec-row dd {
+    font-size: var(--product-spec-value-size);
+  }
+}
+
+.product-spec-section {
+  width: 100%;
+  max-width: none;
+  margin-top: 46px;
+}
+
+.product-spec-list {
+  margin: 0;
+}
+
+.product-spec-row {
+  display: grid;
+  grid-template-columns: 124px minmax(0, 1fr);
+  gap: 18px;
+  align-items: baseline;
+  margin: 0;
+  padding: 15px 0;
+  border-bottom: 1px solid #eceef0;
+}
+
+.product-spec-row dt {
+  margin: 0;
+  color: #68707b;
+  font-size: var(--product-spec-label-size);
+  font-weight: 500;
+  line-height: 1.55;
+  word-break: keep-all;
+}
+
+.product-spec-row dd {
+  margin: 0;
+  color: #111827;
+  font-size: var(--product-spec-value-size);
+  font-weight: 400;
+  line-height: 1.65;
+  white-space: pre-line;
+  word-break: keep-all;
+}
+
+@media (max-width: 640px) {
+
+  .product-spec-section {
+    width: calc(100% - 48px);
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  .product-spec-list {
+    margin-top: 0;
+  }
+
+  .product-spec-row {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 14px;
+    padding: 13px 0;
+  }
+}

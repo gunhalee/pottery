@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createProductDraftAction } from "../actions";
+import {
+  AdminActionButton,
+  AdminActionLink,
+} from "@/components/admin/admin-actions";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { isAdminAuthenticated } from "@/lib/admin/auth";
 import { formatProductPrice, readProducts, type ConsepotProduct } from "@/lib/shop";
@@ -67,9 +71,9 @@ export default async function AdminProductsPage({
               required
             />
           </label>
-          <button className="button-primary" type="submit">
+          <AdminActionButton type="submit" variant="primary">
             초안 만들기
-          </button>
+          </AdminActionButton>
         </form>
       </section>
 
@@ -100,13 +104,9 @@ function ProductRow({ product }: { product: ConsepotProduct }) {
       <div>{statusLabel(product.commerce.availabilityStatus)}</div>
       <div>{formatProductPrice(product)}</div>
       <div>{product.commerce.stockQuantity ?? "재고 미입력"}</div>
-      <Link
-        className="admin-text-button"
-        href={`/admin/products/${product.id}`}
-        prefetch={false}
-      >
+      <AdminActionLink href={`/admin/products/${product.id}`}>
         편집
-      </Link>
+      </AdminActionLink>
     </article>
   );
 }

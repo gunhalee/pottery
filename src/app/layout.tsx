@@ -1,19 +1,12 @@
 import type { Metadata } from "next";
-import { Gothic_A1, Gowun_Batang } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Gothic_A1 } from "next/font/google";
+import { SiteTelemetry } from "@/components/layout/site-telemetry";
 import { siteConfig } from "@/lib/config/site";
 import "./globals.css";
 
 const gothicA1 = Gothic_A1({
   variable: "--font-gothic-a1",
-  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
-  preload: false,
-});
-
-const gowunBatang = Gowun_Batang({
-  variable: "--font-gowun-batang",
-  weight: ["400", "700"],
+  weight: ["300", "400", "500", "700"],
   preload: false,
 });
 
@@ -32,14 +25,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="ko"
-      className={`${gothicA1.variable} ${gowunBatang.variable} h-full`}
-    >
+    <html lang="ko" className={`${gothicA1.variable} h-full`}>
       <body className="min-h-full">
         {children}
-        <Analytics />
-        <SpeedInsights />
+        <SiteTelemetry />
       </body>
     </html>
   );

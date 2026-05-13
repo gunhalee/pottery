@@ -5,11 +5,8 @@ import type {
   ContentImageLayout,
   ContentKind,
 } from "@/lib/content-manager/content-model";
+import { createContentImageFromMediaAsset } from "@/lib/content-manager/content-images";
 import { uploadMediaImage } from "@/lib/media/media-upload";
-import {
-  buildMediaVariantSources,
-  pickMediaVariantForSurface,
-} from "@/lib/media/media-variant-policy";
 import {
   consumeRateLimit,
   getClientIp,
@@ -172,28 +169,13 @@ export async function POST(request: Request) {
       ownerId: entry.id,
       ownerType: "content_entry",
     });
-    const detailVariant = pickMediaVariantForSurface(asset, "detail");
-    const variants = buildMediaVariantSources(asset);
 
     return NextResponse.json({
-      image: {
-        alt: asset.alt,
-        caption: asset.caption,
-        createdAt: asset.createdAt,
-        height: detailVariant?.height ?? asset.height,
-        id: asset.id,
-        isCover: false,
-        isDetail: false,
-        isListImage: false,
-        isReserved: asset.reserved,
+      image: createContentImageFromMediaAsset({
+        asset,
         layout,
         sortOrder: entry.images.length,
-        src: detailVariant?.src ?? asset.src,
-        storagePath: asset.masterPath,
-        updatedAt: asset.updatedAt,
-        variants,
-        width: detailVariant?.width ?? asset.width,
-      },
+      }),
       ok: true,
     });
   } catch (error) {

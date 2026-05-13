@@ -1,6 +1,11 @@
-import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import {
+  AdminActionButton,
+  AdminActionLink,
+  AdminEmptyText,
+} from "@/components/admin/admin-actions";
+import { ArtworkImage } from "@/components/media/artwork-image";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { isAdminAuthenticated } from "@/lib/admin/auth";
 import {
@@ -15,9 +20,15 @@ import {
 } from "@/lib/admin/product-feedback";
 import {
   revokeAdminClassReviewConsentAction,
+  updateAdminClassReviewSessionAction,
   updateAdminClassReviewStatusAction,
   updateAdminProductFeedbackStatusAction,
 } from "./actions";
+import {
+  getAdminClassSessions,
+  type ClassSessionSummary,
+} from "@/lib/shop/class-sessions";
+import { mediaImageSizes } from "@/lib/media/media-image-sizes";
 
 type AdminReviewsPageProps = {
   searchParams: Promise<{
@@ -46,9 +57,10 @@ export default async function AdminReviewsPage({
   const flags = await searchParams;
   const status = flags.status ?? "pending";
   const classStatus = flags.classStatus ?? "pending";
-  const [reviews, classReviews] = await Promise.all([
+  const [reviews, classReviews, classSessions] = await Promise.all([
     getAdminProductFeedback({ status }),
     getAdminClassReviews({ status: classStatus }),
+    getAdminClassSessions(),
   ]);
 
   return (
@@ -97,7 +109,7 @@ export default async function AdminReviewsPage({
             ))}
           </div>
         ) : (
-          <p className="admin-empty-text">검토할 구매평이 없습니다.</p>
+          <AdminEmptyText>검토할 구매평이 없습니다.</AdminEmptyText>
         )}
       </section>
 
@@ -121,11 +133,15 @@ export default async function AdminReviewsPage({
         {classReviews.length > 0 ? (
           <div className="admin-review-list">
             {classReviews.map((review) => (
-              <ClassReviewCard key={review.id} review={review} />
+              <ClassReviewCard
+                classSessions={classSessions}
+                key={review.id}
+                review={review}
+              />
             ))}
           </div>
         ) : (
-          <p className="admin-empty-text">검토할 클래스 후기가 없습니다.</p>
+          <AdminEmptyText>검토할 클래스 후기가 없습니다.</AdminEmptyText>
         )}
       </section>
     </main>
@@ -161,14 +177,12 @@ function ProductReviewCard({
           ) : null}
         </div>
         {review.productSlug ? (
-          <Link
-            className="admin-text-button"
+          <AdminActionLink
             href={`/shop/${review.productSlug}`}
-            prefetch={false}
             target="_blank"
           >
             상품 보기
-          </Link>
+          </AdminActionLink>
         ) : null}
       </div>
       <p className="admin-review-body">{review.body}</p>
@@ -184,7 +198,13 @@ function ProductReviewCard({
   );
 }
 
-function ClassReviewCard({ review }: { review: AdminClassReviewEntry }) {
+function ClassReviewCard({
+  classSessions,
+  review,
+}: {
+  classSessions: ClassSessionSummary[];
+  review: AdminClassReviewEntry;
+}) {
   return (
     <article className="admin-review-card">
       <div className="admin-review-card-main">
@@ -192,10 +212,13 @@ function ClassReviewCard({ review }: { review: AdminClassReviewEntry }) {
           <span className="admin-order-action">
             {reviewStatusLabel(review.status)}
           </span>
-          <h2>{review.classTitle ?? "클래스 후기"}</h2>
+          <h2>{review.classTitle ?? review.classSessionTitle ?? "클래스 후기"}</h2>
           <p>
             {review.participantName} · {formatDateTime(review.createdAt)}
           </p>
+          {review.classSessionTitle ? (
+            <p>연결 회차: {review.classSessionTitle}</p>
+          ) : null}
           {review.contact ? <p>연락처 {review.contact}</p> : null}
           <p>
             활용 동의: {review.marketingConsent ? "동의" : "미동의"}
@@ -215,6 +238,27 @@ function ClassReviewCard({ review }: { review: AdminClassReviewEntry }) {
       <p className="admin-review-body">{review.body}</p>
       <AdminReviewImages images={review.images} />
       <div className="admin-review-actions">
+        <form action={updateAdminClassReviewSessionAction}>
+          <input name="reviewId" type="hidden" value={review.id} />
+          <select
+            aria-label="클래스 회차 연결"
+            defaultValue={review.classSessionId ?? ""}
+            name="classSessionId"
+          >
+            <option value="">연결 없음</option>
+            {classSessions.map((session) => (
+              <option key={session.id} value={session.id}>
+                {session.title}
+                {session.dateLabel || session.sessionDate
+                  ? ` · ${session.dateLabel || session.sessionDate}`
+                  : ""}
+              </option>
+            ))}
+          </select>
+          <AdminActionButton type="submit">
+            회차 연결 저장
+          </AdminActionButton>
+        </form>
         <form action={updateAdminClassReviewStatusAction}>
           <input name="reviewId" type="hidden" value={review.id} />
           <ReviewStatusButtons />
@@ -222,9 +266,9 @@ function ClassReviewCard({ review }: { review: AdminClassReviewEntry }) {
         {review.marketingConsent && !review.revokedAt ? (
           <form action={revokeAdminClassReviewConsentAction}>
             <input name="reviewId" type="hidden" value={review.id} />
-            <button className="admin-secondary-button" type="submit">
+            <AdminActionButton type="submit">
               동의 철회 처리
-            </button>
+            </AdminActionButton>
           </form>
         ) : null}
       </div>
@@ -256,10 +300,11 @@ function AdminReviewImages({
           rel="noopener noreferrer"
           target="_blank"
         >
-          <Image
+          <ArtworkImage
             alt={image.alt}
             height={image.height}
             loading="lazy"
+            sizes={mediaImageSizes.adminReviewThumbnail}
             src={image.src}
             width={image.width}
           />
@@ -272,30 +317,27 @@ function AdminReviewImages({
 function ReviewStatusButtons() {
   return (
     <>
-      <button
-        className="admin-secondary-button"
+      <AdminActionButton
         name="status"
         type="submit"
         value="published"
       >
         공개
-      </button>
-      <button
-        className="admin-secondary-button"
+      </AdminActionButton>
+      <AdminActionButton
         name="status"
         type="submit"
         value="hidden"
       >
         숨김
-      </button>
-      <button
-        className="admin-secondary-button"
+      </AdminActionButton>
+      <AdminActionButton
         name="status"
         type="submit"
         value="pending"
       >
         대기
-      </button>
+      </AdminActionButton>
     </>
   );
 }

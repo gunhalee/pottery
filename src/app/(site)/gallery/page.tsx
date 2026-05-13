@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { GalleryInstagramSection } from "@/components/gallery/gallery-instagram-section";
-import { GalleryYoutubeSection } from "@/components/gallery/gallery-youtube-section";
+import { DeferredGalleryInstagramSection } from "@/components/gallery/deferred-gallery-instagram-section";
+import { DeferredGalleryYoutubeSection } from "@/components/gallery/deferred-gallery-youtube-section";
 import { ArtworkImage } from "@/components/media/artwork-image";
 import { PageBottomCtaSection } from "@/components/site/page-bottom-cta-section";
 import { PageShell } from "@/components/site/primitives";
@@ -19,7 +19,7 @@ export default async function GalleryPage() {
         <h1 className="sr-only">작업물</h1>
         <div className="gallery-grid gallery-content-grid">
           {galleryItems.length > 0 ? (
-            galleryItems.map((item) => {
+            galleryItems.map((item, index) => {
               const image = getContentListImage(item);
 
               return (
@@ -32,9 +32,11 @@ export default async function GalleryPage() {
                   {image ? (
                     <ArtworkImage
                       alt={image.alt}
+                      fetchPriority={index === 0 ? "high" : "auto"}
                       fill
                       height={image.height}
-                      loading="lazy"
+                      loading={index < 2 ? "eager" : "lazy"}
+                      quality={70}
                       sizes={mediaImageSizes.galleryCard}
                       src={image.src}
                       width={image.width}
@@ -50,8 +52,8 @@ export default async function GalleryPage() {
             </div>
           )}
         </div>
-        <GalleryInstagramSection profileUrl={siteConfig.instagramUrl} />
-        <GalleryYoutubeSection channelUrl={siteConfig.youtubeUrl} />
+        <DeferredGalleryInstagramSection profileUrl={siteConfig.instagramUrl} />
+        <DeferredGalleryYoutubeSection channelUrl={siteConfig.youtubeUrl} />
       </PageShell>
       <PageBottomCtaSection
         className="gallery-cta-section"

@@ -7,6 +7,7 @@ import {
   SectionTitle,
   SplitFeature,
 } from "@/components/site/primitives";
+import { SiteExternalActionLink } from "@/components/site/actions";
 import { NaverPlaceMap } from "@/components/site/naver-place-map";
 import { introFeatures, paletteLabels } from "@/lib/content/site-content";
 import { studioLocation } from "@/lib/config/site";
@@ -63,14 +64,9 @@ export default function IntroPage() {
             </div>
           </dl>
           <div className="studio-location-actions">
-            <a
-              className="button-primary"
-              href={studioLocation.naverMapUrl}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
+            <SiteExternalActionLink href={studioLocation.naverMapUrl}>
               네이버 지도에서 보기
-            </a>
+            </SiteExternalActionLink>
           </div>
         </div>
         <NaverPlaceMap

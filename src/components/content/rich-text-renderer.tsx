@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { InstagramEmbed } from "@/components/content/instagram-embed";
 import { ArtworkImage } from "@/components/media/artwork-image";
-import { withContentImageVariant } from "@/lib/content-manager/content-images";
+import { getContentBodyImage } from "@/lib/content-manager/content-images";
 import type { ContentImage } from "@/lib/content-manager/content-model";
 
 type RichTextRendererProps = {
@@ -206,9 +206,12 @@ function renderContentImage(
 
   const image =
     typeof node.id === "string" ? imageById.get(node.id) ?? null : null;
-  const displayImage = image ? withContentImageVariant(image, "detail") : null;
-  const src =
-    displayImage?.src ?? (typeof node.src === "string" ? node.src : "");
+  const displayImage = image ? getContentBodyImage(image) : null;
+  const src = image
+    ? (displayImage?.src ?? "")
+    : typeof node.src === "string"
+      ? node.src
+      : "";
   const alt = displayImage?.alt ?? (typeof node.alt === "string" ? node.alt : "");
   const caption =
     displayImage?.caption ??
@@ -233,6 +236,7 @@ function renderContentImage(
         alt={alt}
         height={height}
         loading="lazy"
+        quality={70}
         sizes={getRichTextImageSizes(layout)}
         src={src}
         width={width}

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "clean:next": "node scripts/clean-next.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -11,8 +12,15 @@
     "media:migrate": "node scripts/migrate-media-assets.mjs",
     "media:migrate:apply": "node scripts/migrate-media-assets.mjs --apply",
     "orders:seed": "node scripts/seed-shop-orders.mjs",
+    "perf:assets": "node scripts/analyze-route-assets-with-server.mjs --fetch-images --output .next/route-asset-audit.json",
+    "perf:assets:budget": "node scripts/analyze-route-assets-with-server.mjs --fetch-images --budget docs/performance-budgets.json --output .next/route-asset-audit.json",
+    "smoke:admin-editors": "node scripts/smoke-admin-editors.mjs",
+    "smoke:admin-media": "node scripts/smoke-admin-media.mjs",
+    "smoke:fallbacks": "node scripts/smoke-fallbacks.mjs",
+    "smoke:routes": "node scripts/smoke-routes.mjs",
     "smoke:supabase": "node scripts/smoke-supabase-rpc.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify:core": "npm run lint && npm run typecheck && npm run smoke:fallbacks && npm run clean:next && npm run build && npm run perf:assets:budget && npm run smoke:routes && npm run smoke:admin-media && npm run smoke:admin-editors"
   },
   "dependencies": {
     "@lexical/code": "^0.44.0",

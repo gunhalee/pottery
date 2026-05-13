@@ -1,5 +1,10 @@
 import { ArtworkImage } from "@/components/media/artwork-image";
 import { SiteLink } from "@/components/navigation/site-link";
+import { SiteArrowLink } from "@/components/site/actions";
+import {
+  artworkPlaceholderImage,
+  getArtworkPlaceholderAlt,
+} from "@/lib/media/media-placeholders";
 import { mediaImageSizes } from "@/lib/media/media-image-sizes";
 import {
   formatProductPrice,
@@ -8,12 +13,14 @@ import {
   type ProductListItem,
 } from "@/lib/shop";
 import { ProductBadge } from "./product-badge";
-import { ProductWishlistButton } from "./product-wishlist-button";
+import { ProductWishlistButtonLoader } from "./product-wishlist-button-loader";
 
 export function ProductCard({
+  imagePriority = false,
   initialWished,
   product,
 }: {
+  imagePriority?: boolean;
   initialWished?: boolean;
   product: ProductListItem;
 }) {
@@ -31,23 +38,27 @@ export function ProductCard({
           <ArtworkImage
             alt={primaryImage.alt}
             className="product-card-image"
+            fetchPriority={imagePriority ? "high" : "auto"}
             fill
-            loading="lazy"
+            loading={imagePriority ? "eager" : "lazy"}
+            quality={70}
             sizes={mediaImageSizes.productCard}
             src={primaryImage.src}
           />
         ) : (
           <ArtworkImage
-            alt={`${product.titleKo} 이미지 준비 중`}
-            className="product-card-image product-card-fallback-image"
+            alt={getArtworkPlaceholderAlt(product.titleKo)}
+            className="product-card-image product-card-placeholder-image"
+            fetchPriority={imagePriority ? "high" : "auto"}
             fill
-            loading="lazy"
+            loading={imagePriority ? "eager" : "lazy"}
+            quality={70}
             sizes={mediaImageSizes.productCard}
-            src="/asset/hero-image.jpg"
+            src={artworkPlaceholderImage.src}
           />
         )}
       </SiteLink>
-      <ProductWishlistButton
+      <ProductWishlistButtonLoader
         className="product-card-wish-button"
         initialWished={initialWished}
         productSlug={product.slug}
@@ -71,12 +82,12 @@ export function ProductCard({
         </div>
         <div className="product-card-secondary">
           <p className="product-card-description">{product.shortDescription}</p>
-          <SiteLink
-            className="product-card-link link-arrow"
+          <SiteArrowLink
+            className="product-card-link"
             href={`/shop/${product.slug}`}
           >
             자세히 보기
-          </SiteLink>
+          </SiteArrowLink>
         </div>
       </div>
     </article>

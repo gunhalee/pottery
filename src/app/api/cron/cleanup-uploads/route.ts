@@ -15,7 +15,9 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const defaultMinAgeHours = 48;
+const defaultAbandonedIntentMinAgeHours = 12;
+const defaultStorageOrphanMinAgeHours = 24;
+const defaultUnreferencedAssetMinAgeHours = 48;
 const defaultMaxDeletes = 100;
 const maxDeletesLimit = 500;
 const cronRateLimit = {
@@ -68,9 +70,26 @@ export async function GET(request: NextRequest) {
   }
 
   const dryRun = request.nextUrl.searchParams.get("dryRun") === "1";
-  const minAgeHours = readBoundedNumber(
+  const minAgeHours = readOptionalBoundedNumber(
     request.nextUrl.searchParams.get("minAgeHours"),
-    defaultMinAgeHours,
+    1,
+    24 * 30,
+  );
+  const abandonedIntentMinAgeHours = readBoundedNumber(
+    request.nextUrl.searchParams.get("abandonedIntentMinAgeHours"),
+    minAgeHours ?? defaultAbandonedIntentMinAgeHours,
+    1,
+    24 * 30,
+  );
+  const storageOrphanMinAgeHours = readBoundedNumber(
+    request.nextUrl.searchParams.get("storageOrphanMinAgeHours"),
+    minAgeHours ?? defaultStorageOrphanMinAgeHours,
+    1,
+    24 * 30,
+  );
+  const unreferencedAssetMinAgeHours = readBoundedNumber(
+    request.nextUrl.searchParams.get("unreferencedAssetMinAgeHours"),
+    minAgeHours ?? defaultUnreferencedAssetMinAgeHours,
     1,
     24 * 30,
   );
@@ -81,9 +100,11 @@ export async function GET(request: NextRequest) {
     maxDeletesLimit,
   );
   const requestSummary = {
+    abandonedIntentMinAgeHours,
     dryRun,
     maxDeletesPerRun,
-    minAgeHours,
+    storageOrphanMinAgeHours,
+    unreferencedAssetMinAgeHours,
   };
   const cronRun = await startCronRun({
     jobName: "upload_cleanup",
@@ -92,9 +113,11 @@ export async function GET(request: NextRequest) {
 
   try {
     const summary = await cleanupOrphanUploads({
+      abandonedIntentMinAgeHours,
       dryRun,
       maxDeletesPerRun,
-      minAgeHours,
+      storageOrphanMinAgeHours,
+      unreferencedAssetMinAgeHours,
     });
 
     const runSummary = {
@@ -148,6 +171,24 @@ function readBoundedNumber(
 
   if (!Number.isFinite(numberValue)) {
     return fallback;
+  }
+
+  return Math.min(max, Math.max(min, Math.floor(numberValue)));
+}
+
+function readOptionalBoundedNumber(
+  value: string | null,
+  min: number,
+  max: number,
+) {
+  if (!value) {
+    return undefined;
+  }
+
+  const numberValue = Number(value);
+
+  if (!Number.isFinite(numberValue)) {
+    return undefined;
   }
 
   return Math.min(max, Math.max(min, Math.floor(numberValue)));

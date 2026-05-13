@@ -21,6 +21,10 @@ import type {
   RefundAccountStatus,
   ShippingMethod,
 } from "@/lib/orders/order-model";
+import {
+  assertFulfillmentTransitionAllowed,
+  deriveOrderStatusFromPaymentAndFulfillment,
+} from "@/lib/orders/order-state";
 import { syncPortOnePayment } from "@/lib/payments";
 
 export type AdminOrderView =
@@ -590,15 +594,16 @@ export async function updateAdminOrderFulfillment(
     | "shipping_method"
   >;
 
-  assertFulfillmentUpdateAllowed({
+  assertFulfillmentTransitionAllowed({
     allowBackwardFulfillment: input.allowBackwardFulfillment,
     currentFulfillmentStatus: order.fulfillment_status,
     nextFulfillmentStatus: input.fulfillmentStatus,
+    orderStatus: order.order_status,
     paymentStatus: order.payment_status,
     shippingMethod: order.shipping_method,
   });
 
-  const nextOrderStatus = deriveOrderStatus({
+  const nextOrderStatus = deriveOrderStatusFromPaymentAndFulfillment({
     fulfillmentStatus: input.fulfillmentStatus,
     orderStatus: order.order_status,
     paymentStatus: order.payment_status,
@@ -1326,116 +1331,6 @@ function orderTone(row: OrderRow): AdminOrderTone {
   }
 
   return "neutral";
-}
-
-function deriveOrderStatus({
-  fulfillmentStatus,
-  orderStatus,
-  paymentStatus,
-}: {
-  fulfillmentStatus: FulfillmentStatus;
-  orderStatus: OrderStatus;
-  paymentStatus: PaymentStatus;
-}): OrderStatus {
-  if (fulfillmentStatus === "canceled") {
-    return "canceled";
-  }
-
-  if (
-    orderStatus === "refunded" ||
-    orderStatus === "canceled" ||
-    orderStatus === "deposit_expired" ||
-    orderStatus === "refund_pending"
-  ) {
-    return orderStatus;
-  }
-
-  if (paymentStatus !== "paid") {
-    return orderStatus === "draft" ? "draft" : "pending_payment";
-  }
-
-  if (fulfillmentStatus === "shipped") {
-    return "shipped";
-  }
-
-  if (fulfillmentStatus === "delivered" || fulfillmentStatus === "picked_up") {
-    return "delivered";
-  }
-
-  if (fulfillmentStatus === "preparing" || fulfillmentStatus === "pickup_ready") {
-    return "preparing";
-  }
-
-  return "paid";
-}
-
-function assertFulfillmentUpdateAllowed({
-  allowBackwardFulfillment,
-  currentFulfillmentStatus,
-  nextFulfillmentStatus,
-  paymentStatus,
-  shippingMethod,
-}: {
-  allowBackwardFulfillment: boolean;
-  currentFulfillmentStatus: FulfillmentStatus;
-  nextFulfillmentStatus: FulfillmentStatus;
-  paymentStatus: PaymentStatus;
-  shippingMethod: ShippingMethod;
-}) {
-  if (
-    paymentStatus !== "paid" &&
-    nextFulfillmentStatus !== currentFulfillmentStatus
-  ) {
-    throw new Error(
-      "결제 완료 전에는 배송/수령 상태를 변경할 수 없습니다.",
-    );
-  }
-
-  if (
-    isBackwardFulfillmentChange({
-      currentFulfillmentStatus,
-      nextFulfillmentStatus,
-      shippingMethod,
-    }) &&
-    !allowBackwardFulfillment
-  ) {
-    throw new Error("이전 단계로 되돌리려면 확인 체크가 필요합니다.");
-  }
-}
-
-function isBackwardFulfillmentChange({
-  currentFulfillmentStatus,
-  nextFulfillmentStatus,
-  shippingMethod,
-}: {
-  currentFulfillmentStatus: FulfillmentStatus;
-  nextFulfillmentStatus: FulfillmentStatus;
-  shippingMethod: ShippingMethod;
-}) {
-  const weights =
-    shippingMethod === "pickup"
-      ? {
-          canceled: 4,
-          delivered: 3,
-          picked_up: 3,
-          pickup_ready: 2,
-          preparing: 1,
-          returned: 4,
-          shipped: 2,
-          unfulfilled: 0,
-        }
-      : {
-          canceled: 4,
-          delivered: 3,
-          picked_up: 3,
-          pickup_ready: 1,
-          preparing: 1,
-          returned: 4,
-          shipped: 2,
-          unfulfilled: 0,
-        };
-
-  return weights[nextFulfillmentStatus] < weights[currentFulfillmentStatus];
 }
 
 function shipmentStatusFromFulfillment(

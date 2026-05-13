@@ -2,6 +2,14 @@
 
 import type { FormEvent } from "react";
 import { useState } from "react";
+import {
+  SiteActionButton,
+} from "@/components/site/actions";
+import {
+  CommerceFormField,
+  CommerceFormNote,
+  CommerceFormStatusMessage,
+} from "@/components/site/commerce-form-primitives";
 
 type GiftRecipientAddressFormProps = {
   expiresAt: string;
@@ -96,31 +104,33 @@ export function GiftRecipientAddressForm({
         <span>우편번호</span>
         <input maxLength={12} name="shippingPostcode" required />
       </label>
-      <label className="gift-address-field-wide">
+      <CommerceFormField scope="gift-address" wide>
         <span>주소</span>
         <input maxLength={160} name="shippingAddress1" required />
-      </label>
-      <label className="gift-address-field-wide">
+      </CommerceFormField>
+      <CommerceFormField scope="gift-address" wide>
         <span>상세 주소</span>
         <input maxLength={160} name="shippingAddress2" />
-      </label>
-      <label className="gift-address-field-wide">
+      </CommerceFormField>
+      <CommerceFormField scope="gift-address" wide>
         <span>배송 요청사항</span>
         <textarea maxLength={120} name="shippingMemo" />
-      </label>
-      <p className="gift-address-note">
+      </CommerceFormField>
+      <CommerceFormNote scope="gift-address">
         입력한 정보는 선물 배송과 관련 문의 응대 목적으로만 사용됩니다.
-      </p>
-      <button className="button-primary" disabled={state.kind === "submitting"}>
+      </CommerceFormNote>
+      <SiteActionButton disabled={state.kind === "submitting"} type="submit">
         {state.kind === "submitting" ? "저장 중" : "배송 정보 저장"}
-      </button>
-      {state.kind === "error" ? (
-        <p className="checkout-error" role="alert">
-          {state.message}
-        </p>
-      ) : null}
+      </SiteActionButton>
+      <CommerceFormStatusMessage status={toFormStatus(state)} />
     </form>
   );
+}
+
+function toFormStatus(state: FormState) {
+  return state.kind === "error"
+    ? { kind: "error" as const, message: state.message }
+    : null;
 }
 
 function formatDate(value: string) {

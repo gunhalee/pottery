@@ -1,5 +1,9 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import {
+  AdminActionButton,
+  AdminActionLink,
+  AdminEmptyText,
+} from "@/components/admin/admin-actions";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { isAdminAuthenticated } from "@/lib/admin/auth";
 import {
@@ -74,9 +78,9 @@ export default async function AdminOrderDetailPage({
           </p>
         </div>
         <div className="admin-header-actions">
-          <Link className="admin-text-button" href="/admin/orders" prefetch={false}>
+          <AdminActionLink href="/admin/orders">
             목록
-          </Link>
+          </AdminActionLink>
           <AdminNav />
         </div>
       </header>
@@ -219,9 +223,9 @@ export default async function AdminOrderDetailPage({
                 </label>
               </>
             ) : (
-              <p className="admin-empty-text">
+              <AdminEmptyText>
                 방문수령 주문은 송장 정보를 입력하지 않습니다.
-              </p>
+              </AdminEmptyText>
             )}
             {showBackwardConfirmation && fulfillmentEditable ? (
               <label>
@@ -247,13 +251,13 @@ export default async function AdminOrderDetailPage({
                 rows={4}
               />
             </label>
-            <button
-              className="button-primary"
+            <AdminActionButton
               disabled={!fulfillmentEditable}
               type="submit"
+              variant="primary"
             >
               처리 상태 저장
-            </button>
+            </AdminActionButton>
             {!fulfillmentEditable ? (
               <input
                 name="fulfillmentStatus"
@@ -382,7 +386,7 @@ export default async function AdminOrderDetailPage({
             ))}
           </div>
         ) : (
-          <p className="admin-empty-text">아직 처리 기록이 없습니다.</p>
+          <AdminEmptyText>아직 처리 기록이 없습니다.</AdminEmptyText>
         )}
       </section>
     </main>
@@ -418,7 +422,7 @@ function OrderRecordsPanel({
           ))}
         </div>
       ) : (
-        <p className="admin-empty-text">{emptyText}</p>
+        <AdminEmptyText>{emptyText}</AdminEmptyText>
       )}
     </section>
   );
@@ -479,13 +483,13 @@ function PortOnePaymentPanel({ order }: { order: AdminOrderDetail }) {
       </dl>
       <form action={syncAdminPortOnePaymentAction} className="admin-inline-form">
         <input name="orderId" type="hidden" value={order.id} />
-        <button
-          className="button-primary"
+        <AdminActionButton
           disabled={!order.portonePaymentId}
           type="submit"
+          variant="primary"
         >
           PG 상태 재조회
-        </button>
+        </AdminActionButton>
       </form>
     </section>
   );
@@ -538,9 +542,9 @@ function CashReceiptPanel({
           ))}
         </div>
       ) : (
-        <p className="admin-empty-text">
+        <AdminEmptyText>
           PG 결제 상태가 갱신되면 현금영수증 기록이 함께 반영됩니다.
-        </p>
+        </AdminEmptyText>
       )}
     </section>
   );
@@ -594,15 +598,15 @@ function RefundAccountsPanel({
                   name="adminNote"
                   placeholder="관리 메모"
                 />
-                <button className="admin-secondary-button" type="submit">
+                <AdminActionButton type="submit">
                   저장
-                </button>
+                </AdminActionButton>
               </form>
             </article>
           ))}
         </div>
       ) : (
-        <p className="admin-empty-text">아직 접수된 환불계좌가 없습니다.</p>
+        <AdminEmptyText>아직 접수된 환불계좌가 없습니다.</AdminEmptyText>
       )}
     </section>
   );
@@ -645,7 +649,7 @@ function ShipmentRecordsPanel({
           ))}
         </div>
       ) : (
-        <p className="admin-empty-text">아직 배송 기록이 없습니다.</p>
+        <AdminEmptyText>아직 배송 기록이 없습니다.</AdminEmptyText>
       )}
     </section>
   );
@@ -681,10 +685,10 @@ function NotificationRecordsPanel({
           ))}
         </div>
       ) : (
-        <p className="admin-empty-text">
+        <AdminEmptyText>
           아직 알림 작업이 없습니다. 알림 outbox 테이블 준비 후 새 주문부터
           쌓입니다.
-        </p>
+        </AdminEmptyText>
       )}
     </section>
   );

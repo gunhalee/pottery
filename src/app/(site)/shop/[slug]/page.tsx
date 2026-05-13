@@ -6,27 +6,26 @@ import { PageShell } from "@/components/site/primitives";
 import { RichTextRenderer } from "@/components/content/rich-text-renderer";
 import { ProductBadge } from "@/components/shop/product-badge";
 import { ProductCard } from "@/components/shop/product-card";
-import { ProductFeedbackPanel } from "@/components/shop/product-feedback-panel";
-import {
-  ProductImageGallery,
-  type ProductGalleryImage,
-} from "@/components/shop/product-image-gallery";
+import { DeferredProductFeedbackPanel } from "@/components/shop/deferred-product-feedback-panel";
+import { ProductImageGallery } from "@/components/shop/product-image-gallery";
 import { ProductPurchasePanel } from "@/components/shop/product-purchase-panel";
 import { ProductSpecList } from "@/components/shop/product-spec-list";
 import { ProductTitleActions } from "@/components/shop/product-title-actions";
 import { getPublishedContentListEntries } from "@/lib/content-manager/content-store";
 import {
+  artworkPlaceholderImage,
+  getArtworkPlaceholderAlt,
+} from "@/lib/media/media-placeholders";
+import {
   formatProductPrice,
   getProductBadges,
   getProductBySlug,
   getProductCta,
-  getProductDisplayImages,
-  getProductPrimaryImage,
-  getProductThumbnailImage,
+  getProductGalleryImages,
   getProductSlugs,
   getPublishedProductListItems,
+  type ProductGalleryImage,
 } from "@/lib/shop";
-import { getProductFeedbackSummary } from "@/lib/shop/product-feedback";
 
 type ShopDetailPageProps = {
   params: Promise<{
@@ -72,16 +71,13 @@ export default async function ShopDetailPage({
     notFound();
   }
 
-  const primaryImage = getProductPrimaryImage(product);
-  const displayImages = getProductDisplayImages(product);
   const cta = getProductCta(product);
   const isMadeToOrderPurchase = cta.kind === "made_to_order";
-  const feedbackSummary = await getProductFeedbackSummary(product.id);
-  const galleryImages = getGalleryImages({
-    displayImages,
-    primaryImage,
-    title: product.titleKo,
-  });
+  const productGalleryImages = getProductGalleryImages(product);
+  const galleryImages =
+    productGalleryImages.length > 0
+      ? productGalleryImages
+      : getPlaceholderGalleryImages(product.titleKo);
   const relatedProducts = productListItems
     .filter((item) => item.slug !== product.slug)
     .slice(0, 3);
@@ -206,11 +202,9 @@ export default async function ShopDetailPage({
         ]}
       />
 
-      <ProductFeedbackPanel
+      <DeferredProductFeedbackPanel
         productId={product.id}
         productSlug={product.slug}
-        reviewCount={feedbackSummary.reviewCount}
-        reviews={feedbackSummary.reviews}
       />
 
       {relatedProducts.length > 0 ? (
@@ -234,50 +228,14 @@ function buildProductNotice(usageNote: string | undefined) {
   return [usageNote, handmadeCeramicDefaultNotice].filter(Boolean).join("\n");
 }
 
-function getGalleryImages({
-  displayImages,
-  primaryImage,
-  title,
-}: {
-  displayImages: ReturnType<typeof getProductDisplayImages>;
-  primaryImage: ReturnType<typeof getProductPrimaryImage>;
-  title: string;
-}): ProductGalleryImage[] {
-  const images = displayImages.length > 0 ? displayImages : primaryImage ? [primaryImage] : [];
-  const seen = new Set<string>();
-  const galleryImages: ProductGalleryImage[] = [];
-
-  for (const image of images) {
-    if (!image.src || seen.has(image.src)) {
-      continue;
-    }
-
-    seen.add(image.src);
-    const thumbnail = getProductThumbnailImage(image);
-
-    galleryImages.push({
-      alt: image.alt,
-      height: image.height,
-      id: image.id ?? image.src,
-      src: image.src,
-      thumbnailHeight: thumbnail.height,
-      thumbnailSrc: thumbnail.src,
-      thumbnailWidth: thumbnail.width,
-      width: image.width,
-    });
-  }
-
-  if (galleryImages.length === 0) {
-    return [
-      {
-        alt: `${title} 이미지 준비 중`,
-        height: 1783,
-        id: "fallback-product-image",
-        src: "/asset/hero-image.jpg",
-        width: 3156,
-      },
-    ];
-  }
-
-  return galleryImages;
+function getPlaceholderGalleryImages(title: string): ProductGalleryImage[] {
+  return [
+    {
+      alt: getArtworkPlaceholderAlt(title),
+      height: artworkPlaceholderImage.height,
+      id: artworkPlaceholderImage.id,
+      src: artworkPlaceholderImage.src,
+      width: artworkPlaceholderImage.width,
+    },
+  ];
 }

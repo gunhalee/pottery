@@ -23,6 +23,7 @@ export function HomeSubscribeLinksSection({
       className={["home-subscribe-section", className]
         .filter(Boolean)
         .join(" ")}
+      deferred
     >
       <div className="home-subscribe-panel">
         <p className="home-subscribe-title">{title}</p>

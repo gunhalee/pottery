@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ProductWishlistButton } from "./product-wishlist-button";
+import { ShopShareIcon } from "./shop-icons";
+import { ProductWishlistButtonLoader } from "./product-wishlist-button-loader";
 
 type ProductTitleActionsProps = {
   productSlug: string;
@@ -41,9 +42,9 @@ export function ProductTitleActions({
         onClick={shareProduct}
         type="button"
       >
-        <ShareIcon />
+        <ShopShareIcon />
       </button>
-      <ProductWishlistButton
+      <ProductWishlistButtonLoader
         className="product-icon-button"
         productSlug={productSlug}
         productTitle={productTitle}
@@ -52,16 +53,5 @@ export function ProductTitleActions({
         {message}
       </span>
     </div>
-  );
-}
-
-function ShareIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
-      <circle cx="18" cy="5" r="3" />
-      <circle cx="6" cy="12" r="3" />
-      <circle cx="18" cy="19" r="3" />
-      <path d="m8.7 10.7 6.6-4.4M8.7 13.3l6.6 4.4" />
-    </svg>
   );
 }

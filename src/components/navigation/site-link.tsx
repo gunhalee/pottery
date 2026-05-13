@@ -1,14 +1,16 @@
-import Link, { type LinkProps } from "next/link";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 import type { AppHref } from "@/lib/routing/types";
 
-type SiteLinkProps = LinkProps &
-  Omit<AnchorHTMLAttributes<HTMLAnchorElement>, keyof LinkProps> & {
-    children: ReactNode;
-  };
+type SiteLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & {
+  children?: ReactNode;
+  href: AppHref;
+  prefetch?: boolean;
+};
 
 export type SiteLinkHref = AppHref;
 
-export function SiteLink({ prefetch = false, ...props }: SiteLinkProps) {
-  return <Link {...props} prefetch={prefetch} />;
+export function SiteLink({ prefetch, ...props }: SiteLinkProps) {
+  void prefetch;
+
+  return <a {...props} />;
 }

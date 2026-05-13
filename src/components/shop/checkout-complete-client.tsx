@@ -1,7 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  SiteActionLink,
+} from "@/components/site/actions";
+import {
+  CommerceFormStatusMessage,
+  CommerceSummaryList,
+} from "@/components/site/commerce-form-primitives";
 import type { PortOnePaymentCompleteResult } from "@/lib/payments/portone-model";
 
 type CheckoutCompleteClientProps = {
@@ -106,7 +112,7 @@ export function CheckoutCompleteClient({
       result.paymentStatus === "pending";
 
     return (
-      <div className="checkout-result">
+      <div className={isVirtualAccount ? "checkout-result checkout-bank-result" : "checkout-result"}>
         <span>{isVirtualAccount ? "입금대기" : "주문 완료"}</span>
         <strong>{result.orderNumber}</strong>
         {isVirtualAccount ? (
@@ -115,24 +121,24 @@ export function CheckoutCompleteClient({
               가상계좌가 발급되었습니다. 입금기한 내 입금해 주세요. 입금 확인
               후 주문이 확정되고 배송 준비가 시작됩니다.
             </p>
-            <dl className="checkout-bank-result">
-              <div>
-                <dt>입금 계좌</dt>
-                <dd>
-                  {result.depositAccount
+            <CommerceSummaryList
+              items={[
+                {
+                  label: "입금 계좌",
+                  value: result.depositAccount
                     ? `${result.depositAccount.bankName} ${result.depositAccount.accountNumber} / ${result.depositAccount.accountHolder}`
-                    : "주문 조회에서 확인해 주세요."}
-                </dd>
-              </div>
-              <div>
-                <dt>입금 기한</dt>
-                <dd>{formatDateTime(result.depositDueAt)}</dd>
-              </div>
-              <div>
-                <dt>입금 금액</dt>
-                <dd>{formatMoney(result.total)}</dd>
-              </div>
-            </dl>
+                    : "주문 조회에서 확인해 주세요.",
+                },
+                {
+                  label: "입금 기한",
+                  value: formatDateTime(result.depositDueAt),
+                },
+                {
+                  label: "입금 금액",
+                  value: formatMoney(result.total),
+                },
+              ]}
+            />
           </>
         ) : (
           <p>
@@ -140,9 +146,9 @@ export function CheckoutCompleteClient({
             카카오 알림톡으로 발송됩니다.
           </p>
         )}
-        <Link className="button-primary" href="/order/lookup" prefetch={false}>
+        <SiteActionLink href="/order/lookup">
           주문 조회하기
-        </Link>
+        </SiteActionLink>
       </div>
     );
   }
@@ -152,10 +158,12 @@ export function CheckoutCompleteClient({
       <div className="checkout-result">
         <span>결제 확인</span>
         <strong>확인이 필요합니다</strong>
-        <p className="checkout-error">{state.error}</p>
-        <Link className="button-primary" href="/order/lookup" prefetch={false}>
+        <CommerceFormStatusMessage
+          status={{ kind: "error", message: state.error }}
+        />
+        <SiteActionLink href="/order/lookup">
           주문 조회하기
-        </Link>
+        </SiteActionLink>
       </div>
     );
   }

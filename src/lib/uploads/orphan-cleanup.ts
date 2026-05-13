@@ -75,10 +75,15 @@ type CleanupLogInput = CleanupCandidate & {
 };
 
 export type UploadCleanupOptions = {
+  abandonedIntentMinAgeHours?: number;
   dryRun?: boolean;
   maxDeletesPerRun?: number;
   minAgeHours?: number;
+  storageOrphanMinAgeHours?: number;
+  unreferencedAssetMinAgeHours?: number;
 };
+
+export type UploadCleanupAgePolicy = Record<CleanupReason, number>;
 
 export type UploadCleanupSummary = {
   candidates: number;
@@ -86,33 +91,89 @@ export type UploadCleanupSummary = {
   dryRun: boolean;
   failed: number;
   minAgeHours: number;
+  minAgeHoursByReason: UploadCleanupAgePolicy;
   reasons: Record<CleanupReason, number>;
   skipped: number;
 };
 
-const defaultMinAgeHours = 48;
+const defaultAbandonedIntentMinAgeHours = 12;
+const defaultStorageOrphanMinAgeHours = 24;
+const defaultUnreferencedAssetMinAgeHours = 48;
 const defaultMaxDeletesPerRun = 100;
 
+function resolveCleanupAgePolicy(
+  options: Pick<
+    UploadCleanupOptions,
+    | "abandonedIntentMinAgeHours"
+    | "minAgeHours"
+    | "storageOrphanMinAgeHours"
+    | "unreferencedAssetMinAgeHours"
+  >,
+): UploadCleanupAgePolicy {
+  return {
+    media_asset_unreferenced:
+      options.unreferencedAssetMinAgeHours ??
+      options.minAgeHours ??
+      defaultUnreferencedAssetMinAgeHours,
+    media_storage_orphan:
+      options.storageOrphanMinAgeHours ??
+      options.minAgeHours ??
+      defaultStorageOrphanMinAgeHours,
+    storage_upload_intent_abandoned:
+      options.abandonedIntentMinAgeHours ??
+      options.minAgeHours ??
+      defaultAbandonedIntentMinAgeHours,
+  };
+}
+
+function resolveCleanupCutoffs(agePolicy: UploadCleanupAgePolicy) {
+  return {
+    media_asset_unreferenced: toAgeCutoff(
+      agePolicy.media_asset_unreferenced,
+    ),
+    media_storage_orphan: toAgeCutoff(agePolicy.media_storage_orphan),
+    storage_upload_intent_abandoned: toAgeCutoff(
+      agePolicy.storage_upload_intent_abandoned,
+    ),
+  };
+}
+
+function toAgeCutoff(minAgeHours: number) {
+  return new Date(Date.now() - minAgeHours * 60 * 60 * 1000);
+}
+
+function getMinimumAgeHours(agePolicy: UploadCleanupAgePolicy) {
+  return Math.min(...Object.values(agePolicy));
+}
+
 export async function inspectOrphanUploads(
-  options: Pick<UploadCleanupOptions, "minAgeHours"> & {
+  options: Pick<
+    UploadCleanupOptions,
+    | "abandonedIntentMinAgeHours"
+    | "minAgeHours"
+    | "storageOrphanMinAgeHours"
+    | "unreferencedAssetMinAgeHours"
+  > & {
     maxCandidates?: number;
   } = {},
 ) {
+  const agePolicy = resolveCleanupAgePolicy(options);
+
   if (!isSupabaseConfigured()) {
     return {
       candidates: [] satisfies UploadCleanupCandidate[],
-      minAgeHours: options.minAgeHours ?? defaultMinAgeHours,
+      minAgeHours: getMinimumAgeHours(agePolicy),
+      minAgeHoursByReason: agePolicy,
     };
   }
 
-  const minAgeHours = options.minAgeHours ?? defaultMinAgeHours;
-  const cutoff = new Date(Date.now() - minAgeHours * 60 * 60 * 1000);
   const references = await readReferencedStoragePaths();
-  const candidates = await findCleanupCandidates(references, cutoff);
+  const candidates = await findCleanupCandidates(references, agePolicy);
 
   return {
     candidates: candidates.slice(0, options.maxCandidates ?? candidates.length),
-    minAgeHours,
+    minAgeHours: getMinimumAgeHours(agePolicy),
+    minAgeHoursByReason: agePolicy,
   };
 }
 
@@ -124,18 +185,18 @@ export async function cleanupOrphanUploads(
   }
 
   const dryRun = options.dryRun ?? false;
-  const minAgeHours = options.minAgeHours ?? defaultMinAgeHours;
+  const agePolicy = resolveCleanupAgePolicy(options);
   const maxDeletesPerRun = options.maxDeletesPerRun ?? defaultMaxDeletesPerRun;
-  const cutoff = new Date(Date.now() - minAgeHours * 60 * 60 * 1000);
   const references = await readReferencedStoragePaths();
-  const candidates = await findCleanupCandidates(references, cutoff);
+  const candidates = await findCleanupCandidates(references, agePolicy);
   const eligibleCandidates = candidates.slice(0, maxDeletesPerRun);
   const summary: UploadCleanupSummary = {
     candidates: candidates.length,
     deleted: 0,
     dryRun,
     failed: 0,
-    minAgeHours,
+    minAgeHours: getMinimumAgeHours(agePolicy),
+    minAgeHoursByReason: agePolicy,
     reasons: {
       media_asset_unreferenced: 0,
       media_storage_orphan: 0,
@@ -194,10 +255,13 @@ export async function cleanupOrphanUploads(
 
 async function findCleanupCandidates(
   references: ReferencedStoragePaths,
-  cutoff: Date,
+  agePolicy: UploadCleanupAgePolicy,
 ) {
+  const cutoffs = resolveCleanupCutoffs(agePolicy);
   const storageFiles = await listStorageFiles(mediaAssetBucket);
-  const abandonedUploadIntents = await readAbandonedStorageUploadIntents(cutoff);
+  const abandonedUploadIntents = await readAbandonedStorageUploadIntents(
+    cutoffs.storage_upload_intent_abandoned,
+  );
   const intentStoragePaths = new Set<string>();
   const candidates: CleanupCandidate[] = [];
 
@@ -227,7 +291,7 @@ async function findCleanupCandidates(
 
   for (const file of storageFiles) {
     if (
-      isOlderThanCutoff(file, cutoff) &&
+      isOlderThanCutoff(file, cutoffs.media_storage_orphan) &&
       !references.mediaStoragePaths.has(file.path) &&
       !intentStoragePaths.has(file.path)
     ) {
@@ -244,7 +308,10 @@ async function findCleanupCandidates(
     if (
       !asset.reserved &&
       !references.usedAssetIds.has(asset.id) &&
-      isTimestampOlderThanCutoff(asset.createdAt ?? asset.updatedAt, cutoff)
+      isTimestampOlderThanCutoff(
+        asset.createdAt ?? asset.updatedAt,
+        cutoffs.media_asset_unreferenced,
+      )
     ) {
       candidates.push({
         assetId: asset.id,
@@ -265,19 +332,15 @@ async function findCleanupCandidates(
 
 async function readReferencedStoragePaths(): Promise<ReferencedStoragePaths> {
   const supabase = getSupabaseAdminClient();
-  const [assetRows, usageRows] = await Promise.all([
+  const [assetRows, usedAssetIds] = await Promise.all([
     supabase
       .from("media_assets")
       .select("id, master_path, reserved, created_at, updated_at, media_variants (storage_path)"),
-    supabase.from("media_usages").select("asset_id"),
+    readUsedMediaAssetIds(),
   ]);
 
   if (assetRows.error) {
     throw new Error(`Failed to read media assets: ${assetRows.error.message}`);
-  }
-
-  if (usageRows.error) {
-    throw new Error(`Failed to read media usages: ${usageRows.error.message}`);
   }
 
   const mediaAssets = new Map<string, MediaAssetReference>();
@@ -296,11 +359,7 @@ async function readReferencedStoragePaths(): Promise<ReferencedStoragePaths> {
   return {
     mediaAssets,
     mediaStoragePaths,
-    usedAssetIds: new Set(
-      ((usageRows.data ?? []) as Array<{ asset_id: string | null }>)
-        .map((row) => row.asset_id)
-        .filter((value): value is string => Boolean(value)),
-    ),
+    usedAssetIds,
   };
 }
 
@@ -415,7 +474,7 @@ async function deleteCandidate(candidate: CleanupCandidate) {
 
     if (candidate.intentId) {
       await markStorageUploadIntentCleaned(
-        { id: candidate.intentId, persisted: true },
+        { id: candidate.intentId },
         undefined,
         storagePaths,
       );
@@ -473,17 +532,9 @@ async function readMediaAssetReference(assetId: string) {
 }
 
 async function mediaAssetHasUsage(assetId: string) {
-  const supabase = getSupabaseAdminClient();
-  const { count, error } = await supabase
-    .from("media_usages")
-    .select("asset_id", { count: "exact", head: true })
-    .eq("asset_id", assetId);
+  const usedAssetIds = await readUsedMediaAssetIds();
 
-  if (error) {
-    throw new Error(`Failed to read media usage count: ${error.message}`);
-  }
-
-  return (count ?? 0) > 0;
+  return usedAssetIds.has(assetId);
 }
 
 async function storagePathHasMediaReference(storagePath: string) {
@@ -585,4 +636,47 @@ function getFileTimestamp(file: StorageFile) {
 
 function isMissingBucketError(error: { message?: string; statusCode?: string }) {
   return error.statusCode === "404" || /not found/i.test(error.message ?? "");
+}
+
+async function readUsedMediaAssetIds() {
+  const supabase = getSupabaseAdminClient();
+  const tables = [
+    { column: "asset_id", name: "media_usages" },
+    { column: "media_asset_id", name: "shop_product_feedback_images" },
+    { column: "media_asset_id", name: "class_review_images" },
+    { column: "media_asset_id", name: "shop_return_request_images" },
+  ];
+  const rows = await Promise.all(
+    tables.map(async (table) => {
+      const { data, error } = await supabase
+        .from(table.name)
+        .select(table.column);
+
+      if (error) {
+        if (isMissingUsageTableError(error)) {
+          return [] as string[];
+        }
+
+        throw new Error(`Failed to read ${table.name}: ${error.message}`);
+      }
+
+      return ((data ?? []) as unknown as Array<Record<string, string | null>>)
+        .map((row) => row[table.column])
+        .filter((value): value is string => Boolean(value));
+    }),
+  );
+
+  return new Set(rows.flat());
+}
+
+function isMissingUsageTableError(error: { code?: string; message?: string }) {
+  const message = error.message ?? "";
+
+  return (
+    error.code === "42P01" ||
+    error.code === "PGRST205" ||
+    message.includes("schema cache") ||
+    message.includes("does not exist") ||
+    message.includes("relation")
+  );
 }

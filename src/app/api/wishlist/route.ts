@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
@@ -8,14 +7,13 @@ import {
 } from "@/lib/security/rate-limit";
 import { getProductBySlug } from "@/lib/shop";
 import {
-  createWishlistCookieValue,
-  readWishlistIdFromCookieValue,
-  wishlistCookieMaxAgeSeconds,
-  wishlistCookieName,
-} from "@/lib/shop/wishlist-session";
+  getAnonymousSessionFromRequest,
+  getOrCreateAnonymousSession,
+  setAnonymousSessionCookie,
+} from "@/lib/shop/anonymous-session";
 import {
-  getWishlistItemState,
-  setWishlistItem,
+  getWishlistItemStateForSession,
+  setWishlistItemForSession,
 } from "@/lib/shop/wishlist-store";
 
 export const runtime = "nodejs";
@@ -47,11 +45,9 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const wishlistId = readWishlistIdFromCookieValue(
-    request.cookies.get(wishlistCookieName)?.value,
-  );
+  const session = await getAnonymousSessionFromRequest(request);
 
-  if (!wishlistId) {
+  if (!session) {
     return NextResponse.json(
       { wished: false },
       { headers: { "Cache-Control": "no-store" } },
@@ -68,7 +64,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const state = await getWishlistItemState(wishlistId, product.id);
+    const state = await getWishlistItemStateForSession(session.id, product.id);
     return NextResponse.json(state, {
       headers: { "Cache-Control": "no-store" },
     });
@@ -138,32 +134,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const existingWishlistId = readWishlistIdFromCookieValue(
-    request.cookies.get(wishlistCookieName)?.value,
-  );
-  const wishlistId = existingWishlistId ?? randomUUID();
-
   try {
-    const state = await setWishlistItem({
+    const { session } = await getOrCreateAnonymousSession(request);
+    const state = await setWishlistItemForSession({
       productId: product.id,
+      sessionId: session.id,
       wished: parsed.data.wished,
-      wishlistId,
     });
     const response = NextResponse.json(state, {
       headers: rateLimitHeaders(rateLimit),
     });
 
-    response.cookies.set(
-      wishlistCookieName,
-      createWishlistCookieValue(wishlistId),
-      {
-        httpOnly: true,
-        maxAge: wishlistCookieMaxAgeSeconds,
-        path: "/",
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
-      },
-    );
+    setAnonymousSessionCookie(response, session);
 
     return response;
   } catch (error) {

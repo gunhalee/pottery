@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { ShopArrowLeftIcon } from "@/components/shop/shop-icons";
 
 type ShopBackButtonProps = {
   fallbackHref?: string;
@@ -24,16 +25,8 @@ export function ShopBackButton({
 
   return (
     <button className="product-detail-backlink" onClick={goBack} type="button">
-      <ArrowLeftIcon />
+      <ShopArrowLeftIcon />
       {label}
     </button>
-  );
-}
-
-function ArrowLeftIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
-      <path d="M15 18l-6-6 6-6" />
-    </svg>
   );
 }

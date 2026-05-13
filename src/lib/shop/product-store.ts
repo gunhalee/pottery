@@ -1,17 +1,12 @@
 ﻿import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
 import { z } from "zod";
 import { publicCacheTags } from "@/lib/cache/public-cache-tags";
 import type { MediaUsage } from "@/lib/media/media-model";
-import {
-  buildMediaVariantSources,
-  pickMediaVariantForRole,
-} from "@/lib/media/media-variant-policy";
+import { getProductImageUsageRoles } from "@/lib/media/media-role-requirements";
 import {
   deleteUnusedMediaAssetsByMasterPaths,
   mediaAssetBucket,
@@ -19,11 +14,9 @@ import {
 } from "@/lib/media/media-store";
 import {
   getSupabaseAdminClient,
-  getSupabasePublicClient,
   isSupabaseConfigured,
-  isSupabasePublicReadConfigured,
 } from "@/lib/supabase/server";
-import { productCatalog } from "./product-catalog";
+import { getSupabasePublicReadClient } from "@/lib/supabase/read-client";
 import type {
   AvailabilityStatus,
   ConsepotProduct,
@@ -33,8 +26,8 @@ import type {
   ProductKind,
   RestockCtaType,
 } from "./product-model";
+import { createProductImagesFromMediaUsages } from "./product-media-images";
 
-const dataFilePath = path.join(process.cwd(), "data", "shop-products.json");
 export const productImageBucket = mediaAssetBucket;
 const emptyProductStoryBody = {
   root: {
@@ -306,22 +299,15 @@ export type ProductInventoryUpdateInput = {
 };
 
 export async function readProducts(): Promise<ConsepotProduct[]> {
-  if (isSupabaseConfigured()) {
-    return readProductsFromSupabase();
-  }
-
-  return readProductsFromJson();
+  requireProductSupabaseStore();
+  return readProductsFromSupabase();
 }
 
 export async function writeProducts(products: ConsepotProduct[]) {
-  if (isSupabaseConfigured()) {
-    await writeProductsToSupabase(products);
-    return;
-  }
+  requireProductSupabaseStore();
 
   const parsed = productListSchema.parse(products);
-  await mkdir(path.dirname(dataFilePath), { recursive: true });
-  await writeFile(dataFilePath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
+  await writeProductsToSupabase(parsed);
 }
 
 export async function getPublishedProducts() {
@@ -337,12 +323,8 @@ export async function getProductBySlug(slug: string) {
 }
 
 export async function getProductById(id: string) {
-  if (isSupabaseConfigured()) {
-    return readProductByIdFromSupabase(id);
-  }
-
-  const products = await readProducts();
-  return products.find((product) => product.id === id) ?? null;
+  requireProductSupabaseStore();
+  return readProductByIdFromSupabase(id);
 }
 
 export async function getProductSlugs() {
@@ -350,45 +332,29 @@ export async function getProductSlugs() {
 }
 
 export async function createProductDraft(input: ProductDraftInput) {
-  if (isSupabaseConfigured()) {
-    return createProductDraftInSupabase(input);
-  }
-
-  return createProductDraftInJson(input);
+  requireProductSupabaseStore();
+  return createProductDraftInSupabase(input);
 }
 
 export async function updateProduct(id: string, input: ProductUpdateInput) {
-  if (isSupabaseConfigured()) {
-    return updateProductInSupabase(id, input);
-  }
-
-  return updateProductInJson(id, input);
+  requireProductSupabaseStore();
+  return updateProductInSupabase(id, input);
 }
 
 export async function updateProductInventory(
   id: string,
   input: ProductInventoryUpdateInput,
 ) {
-  if (isSupabaseConfigured()) {
-    return updateProductInventoryInSupabase(id, input);
-  }
-
-  return updateProductInventoryInJson(id, input);
+  requireProductSupabaseStore();
+  return updateProductInventoryInSupabase(id, input);
 }
 
 export async function deleteProduct(id: string) {
-  if (isSupabaseConfigured()) {
-    return deleteProductInSupabase(id);
-  }
-
-  return deleteProductInJson(id);
+  requireProductSupabaseStore();
+  return deleteProductInSupabase(id);
 }
 
 export async function deleteProductImageAssets(images: ProductImage[]) {
-  if (!isSupabaseConfigured()) {
-    return;
-  }
-
   const masterPaths = images
     .map((image) => image.storagePath)
     .filter((storagePath): storagePath is string => Boolean(storagePath));
@@ -397,7 +363,14 @@ export async function deleteProductImageAssets(images: ProductImage[]) {
     return;
   }
 
+  requireProductSupabaseStore();
   await deleteUnusedMediaAssetsByMasterPaths(masterPaths);
+}
+
+function requireProductSupabaseStore() {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase 상품 저장소가 구성되지 않았습니다.");
+  }
 }
 
 export function normalizeSlug(slug: string) {
@@ -414,19 +387,10 @@ async function readProductsFromSupabase() {
 
 const readPublishedProductsCached = unstable_cache(
   async () => {
-    if (isSupabasePublicReadConfigured()) {
-      return readProductsFromSupabaseQuery(
-        { published: true },
-        getSupabasePublicClient(),
-      );
-    }
-
-    if (isSupabaseConfigured()) {
-      return readProductsFromSupabaseQuery({ published: true });
-    }
-
-    const products = await readProductsFromJson();
-    return products.filter((product) => product.published);
+    return readProductsFromSupabaseQuery(
+      { published: true },
+      getSupabasePublicReadClient(),
+    );
   },
   ["published-products"],
   {
@@ -437,26 +401,13 @@ const readPublishedProductsCached = unstable_cache(
 
 const readPublishedProductListItemsCached = unstable_cache(
   async (limit: number | null) => {
-    if (isSupabasePublicReadConfigured()) {
-      return readProductListItemsFromSupabaseQuery(
-        { limit: limit ?? undefined, published: true },
-        getSupabasePublicClient(),
-      );
-    }
-
-    if (isSupabaseConfigured()) {
-      return readProductListItemsFromSupabaseQuery({
+    return readProductListItemsFromSupabaseQuery(
+      {
         limit: limit ?? undefined,
         published: true,
-      });
-    }
-
-    const products = await readProductsFromJson();
-    const items = productListItemListSchema.parse(
-      products.filter((product) => product.published).map(toProductListItem),
+      },
+      getSupabasePublicReadClient(),
     );
-
-    return typeof limit === "number" ? items.slice(0, limit) : items;
   },
   ["published-product-list-items"],
   {
@@ -467,28 +418,11 @@ const readPublishedProductListItemsCached = unstable_cache(
 
 const readPublishedProductBySlugCached = unstable_cache(
   async (slug: string) => {
-    if (isSupabasePublicReadConfigured()) {
-      const products = await readProductsFromSupabaseQuery(
-        { limit: 1, published: true, slug },
-        getSupabasePublicClient(),
-      );
-      return products[0] ?? null;
-    }
-
-    if (isSupabaseConfigured()) {
-      const products = await readProductsFromSupabaseQuery({
-        limit: 1,
-        published: true,
-        slug,
-      });
-      return products[0] ?? null;
-    }
-
-    const products = await readProductsFromJson();
-    return (
-      products.find((product) => product.published && product.slug === slug) ??
-      null
+    const products = await readProductsFromSupabaseQuery(
+      { limit: 1, published: true, slug },
+      getSupabasePublicReadClient(),
     );
+    return products[0] ?? null;
   },
   ["published-product-by-slug"],
   {
@@ -499,18 +433,7 @@ const readPublishedProductBySlugCached = unstable_cache(
 
 const readPublishedProductSlugsCached = unstable_cache(
   async () => {
-    if (isSupabasePublicReadConfigured()) {
-      return readPublishedProductSlugsFromSupabase(getSupabasePublicClient());
-    }
-
-    if (isSupabaseConfigured()) {
-      return readPublishedProductSlugsFromSupabase();
-    }
-
-    const products = await readProductsFromJson();
-    return products
-      .filter((product) => product.published)
-      .map((product) => product.slug);
+    return readPublishedProductSlugsFromSupabase(getSupabasePublicReadClient());
   },
   ["published-product-slugs"],
   {
@@ -553,7 +476,7 @@ async function readProductsFromSupabaseQuery(
   const { data, error } = await query;
 
   if (error) {
-    throw new Error(`Supabase ?곹뭹 議고쉶 ?ㅽ뙣: ${error.message}`);
+    throw new Error(`Supabase 상품 조회 실패: ${error.message}`);
   }
 
   const rows = (data ?? []) as ProductSelectRow[];
@@ -728,7 +651,7 @@ async function createProductDraftInSupabase(input: ProductDraftInput) {
     },
     published: false,
     restockCtaType: "restock_alert",
-    shortDescription: "?곹뭹 ?ㅻ챸???낅젰??二쇱꽭??",
+    shortDescription: "상품 설명을 입력해 주세요.",
     slug,
     titleKo,
     updatedAt: new Date().toISOString(),
@@ -743,7 +666,7 @@ async function updateProductInSupabase(id: string, input: ProductUpdateInput) {
   const current = await getProductById(id);
 
   if (!current) {
-    throw new Error("?곹뭹??李얠쓣 ???놁뒿?덈떎.");
+    throw new Error("상품을 찾을 수 없습니다.");
   }
 
   const product = productSchema.parse({
@@ -817,7 +740,7 @@ async function updateProductInventoryInSupabase(
     .eq("id", id);
 
   if (error) {
-    throw new Error(`Supabase ?곹뭹 ?ш퀬 ????ㅽ뙣: ${error.message}`);
+    throw new Error(`Supabase 상품 재고 저장 실패: ${error.message}`);
   }
 
   return getProductById(id);
@@ -827,7 +750,7 @@ async function deleteProductInSupabase(id: string) {
   const current = await getProductById(id);
 
   if (!current) {
-    throw new Error("?곹뭹??李얠쓣 ???놁뒿?덈떎.");
+    throw new Error("상품을 찾을 수 없습니다.");
   }
 
   const supabase = getSupabaseAdminClient();
@@ -836,185 +759,10 @@ async function deleteProductInSupabase(id: string) {
   });
 
   if (error) {
-    throw new Error(`Supabase ?곹뭹 ??젣 ?ㅽ뙣: ${error.message}`);
+    throw new Error(`Supabase 상품 삭제 실패: ${error.message}`);
   }
 
   return current;
-}
-
-async function readProductsFromJson() {
-  try {
-    const file = await readFile(dataFilePath, "utf8");
-    return productListSchema.parse(JSON.parse(file));
-  } catch (error) {
-    if (isMissingFileError(error)) {
-      return getSeedProducts();
-    }
-
-    throw error;
-  }
-}
-
-async function createProductDraftInJson(input: ProductDraftInput) {
-  const now = new Date().toISOString();
-  const products = await readProductsFromJson();
-  const slug = normalizeSlug(input.slug);
-
-  if (products.some((product) => product.slug === slug)) {
-    throw new Error("?대? ?ъ슜 以묒씤 slug?낅땲??");
-  }
-
-  const product: ConsepotProduct = productSchema.parse({
-    category: "cup",
-    commerce: {
-      availabilityStatus: "upcoming",
-      currency: "KRW",
-      price: null,
-      source: "internal",
-      stockQuantity: null,
-    },
-    createdAt: now,
-    id: randomUUID(),
-    images: [],
-    isArchived: false,
-    isLimited: false,
-    kind: "regular",
-    limitedType: null,
-    madeToOrder: {
-      available: false,
-      daysMax: 45,
-      daysMin: 30,
-    },
-    plantOption: {
-      enabled: false,
-      priceDelta: 0,
-    },
-    published: false,
-    restockCtaType: "restock_alert",
-    shortDescription: "?곹뭹 ?ㅻ챸???낅젰??二쇱꽭??",
-    slug,
-    titleKo: input.titleKo.trim(),
-    updatedAt: now,
-  });
-
-  await writeJsonProducts([product, ...products]);
-  return product;
-}
-
-async function updateProductInJson(id: string, input: ProductUpdateInput) {
-  const products = await readProductsFromJson();
-  const now = new Date().toISOString();
-  const nextSlug = normalizeSlug(input.slug);
-  const current = products.find((product) => product.id === id);
-
-  if (!current) {
-    throw new Error("?곹뭹??李얠쓣 ???놁뒿?덈떎.");
-  }
-
-  if (
-    products.some((product) => product.id !== id && product.slug === nextSlug)
-  ) {
-    throw new Error("?대? ?ъ슜 以묒씤 slug?낅땲??");
-  }
-
-  const nextProducts = products.map((product) =>
-    product.id === id
-      ? productSchema.parse({
-          ...product,
-          careNote: emptyToUndefined(input.careNote),
-          category: input.category.trim(),
-          commerce: {
-            ...product.commerce,
-            availabilityStatus: input.availabilityStatus,
-            price: input.price,
-            stockQuantity: input.stockQuantity,
-          },
-          glaze: emptyToUndefined(input.glaze),
-          images: normalizeProductImages(input.images, input.titleKo),
-          isArchived: input.isArchived,
-          isLimited: input.isLimited,
-          kind: input.kind,
-          limitedType: input.isLimited ? input.limitedType : null,
-          madeToOrder: {
-            available: input.madeToOrderAvailable,
-            daysMax: input.madeToOrderDaysMax,
-            daysMin: input.madeToOrderDaysMin,
-            notice: emptyToUndefined(input.madeToOrderNotice),
-          },
-          material: emptyToUndefined(input.material),
-          plantOption: {
-            careNotice: emptyToUndefined(input.plantCareNotice),
-            enabled: input.plantOptionEnabled,
-            priceDelta: input.plantOptionPriceDelta,
-            returnNotice: emptyToUndefined(input.plantReturnNotice),
-            shippingRestrictionNotice: emptyToUndefined(
-              input.plantShippingRestrictionNotice,
-            ),
-            species: emptyToUndefined(input.plantSpecies),
-          },
-          published: input.published,
-          publishedAt:
-            input.published && !product.publishedAt
-              ? now.slice(0, 10)
-              : product.publishedAt,
-          restockCtaType: input.restockCtaType,
-          shippingNote: emptyToUndefined(input.shippingNote),
-          shortDescription: input.shortDescription.trim(),
-          size: emptyToUndefined(input.size),
-          slug: nextSlug,
-          story: emptyToUndefined(input.story),
-          storyBody: createParagraphStoryBody(input.story ?? ""),
-          storyText: input.story?.trim() ?? "",
-          titleKo: input.titleKo.trim(),
-          updatedAt: now,
-          usageNote: emptyToUndefined(input.usageNote),
-        })
-      : product,
-  );
-
-  await writeJsonProducts(nextProducts);
-  return nextProducts.find((product) => product.id === id) ?? null;
-}
-
-async function updateProductInventoryInJson(
-  id: string,
-  input: ProductInventoryUpdateInput,
-) {
-  const products = await readProductsFromJson();
-  const nextProducts = products.map((product) =>
-    product.id === id
-      ? productSchema.parse({
-          ...product,
-          commerce: {
-            ...product.commerce,
-            availabilityStatus: input.availabilityStatus,
-            stockQuantity: input.stockQuantity,
-          },
-          updatedAt: new Date().toISOString(),
-        })
-      : product,
-  );
-
-  await writeJsonProducts(nextProducts);
-  return nextProducts.find((product) => product.id === id) ?? null;
-}
-
-async function deleteProductInJson(id: string) {
-  const products = await readProductsFromJson();
-  const current = products.find((product) => product.id === id);
-
-  if (!current) {
-    throw new Error("?곹뭹??李얠쓣 ???놁뒿?덈떎.");
-  }
-
-  await writeJsonProducts(products.filter((product) => product.id !== id));
-  return current;
-}
-
-async function writeJsonProducts(products: ConsepotProduct[]) {
-  const parsed = productListSchema.parse(products);
-  await mkdir(path.dirname(dataFilePath), { recursive: true });
-  await writeFile(dataFilePath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
 }
 
 async function saveProductWithRelationsInSupabase(product: ConsepotProduct) {
@@ -1035,22 +783,7 @@ function toSupabaseProductMediaUsageRows(product: ConsepotProduct) {
       return [];
     }
 
-    const hasExplicitRole =
-      image.isPrimary ||
-      image.isListImage ||
-      image.isDetail ||
-      image.isDescription;
-    const roles = [
-      image.isPrimary ? "cover" : null,
-      image.isListImage ? "list" : null,
-      image.isDetail || !hasExplicitRole ? "detail" : null,
-      image.isDescription ? "description" : null,
-    ].filter(
-      (
-        role,
-      ): role is "cover" | "description" | "detail" | "list" =>
-        Boolean(role),
-    );
+    const roles = getProductImageUsageRoles(image);
 
     return roles.map((role) => ({
       alt_override: image.alt,
@@ -1080,7 +813,7 @@ function fromSupabaseRow(
     createdAt: row.created_at,
     glaze: row.glaze ?? undefined,
     id: row.id,
-    images: mediaUsagesToProductImages(usages),
+    images: createProductImagesFromMediaUsages(usages),
     isArchived: row.is_archived,
     isLimited: row.is_limited,
     kind: row.kind,
@@ -1132,7 +865,7 @@ function fromSupabaseProductListRow(
     },
     createdAt: row.created_at,
     id: row.id,
-    images: mediaUsagesToProductImages(usages),
+    images: createProductImagesFromMediaUsages(usages),
     isArchived: row.is_archived,
     isLimited: row.is_limited,
     kind: row.kind,
@@ -1159,29 +892,6 @@ function fromSupabaseProductListRow(
     slug: row.slug,
     titleKo: row.title_ko,
     updatedAt: row.updated_at,
-  });
-}
-
-function toProductListItem(product: ConsepotProduct): ProductListItem {
-  return productListItemSchema.parse({
-    category: product.category,
-    commerce: product.commerce,
-    createdAt: product.createdAt,
-    id: product.id,
-    images: product.images,
-    isArchived: product.isArchived,
-    isLimited: product.isLimited,
-    kind: product.kind,
-    limitedType: product.limitedType,
-    madeToOrder: product.madeToOrder,
-    plantOption: product.plantOption,
-    published: product.published,
-    publishedAt: product.publishedAt,
-    restockCtaType: product.restockCtaType,
-    shortDescription: product.shortDescription,
-    slug: product.slug,
-    titleKo: product.titleKo,
-    updatedAt: product.updatedAt,
   });
 }
 
@@ -1228,76 +938,10 @@ function toSupabaseProductRow(product: ConsepotProduct) {
   };
 }
 
-function getSeedProducts(): ConsepotProduct[] {
-  return productCatalog;
-}
-
-function mediaUsagesToProductImages(usages: MediaUsage[]) {
-  const grouped = new Map<string, MediaUsage[]>();
-
-  for (const usage of usages) {
-    const assetUsages = grouped.get(usage.assetId) ?? [];
-    assetUsages.push(usage);
-    grouped.set(usage.assetId, assetUsages);
-  }
-
-  const sortOrderByAssetId = new Map(
-    [...grouped.entries()].map(([assetId, assetUsages]) => [
-      assetId,
-      Math.min(...assetUsages.map((usage) => usage.sortOrder)),
-    ]),
-  );
-
-  return [...grouped.values()]
-    .map((assetUsages) => {
-      const asset = assetUsages[0]?.asset;
-
-      if (!asset) {
-        return null;
-      }
-
-      const roles = new Set(assetUsages.map((usage) => usage.role));
-      const primaryUsage =
-        assetUsages.find((usage) => usage.role === "cover") ??
-        assetUsages.find((usage) => usage.role === "list") ??
-        assetUsages[0];
-      const variantRole =
-        roles.has("list") ? "list" : (primaryUsage?.role ?? "detail");
-      const imageVariant = pickMediaVariantForRole(
-        asset,
-        "product",
-        variantRole,
-      );
-      const variants = buildMediaVariantSources(asset);
-
-      return imageSchema.parse({
-        alt: primaryUsage?.altOverride ?? asset.alt,
-        caption: primaryUsage?.captionOverride ?? asset.caption,
-        height: imageVariant?.height ?? asset.height,
-        id: asset.id,
-        isDescription: roles.has("description"),
-        isDetail: roles.has("detail"),
-        isListImage: roles.has("list"),
-        isPrimary: roles.has("cover"),
-        src: imageVariant?.src ?? asset.src,
-        storagePath: asset.masterPath,
-        variants,
-        width: imageVariant?.width ?? asset.width,
-      });
-    })
-    .filter((image): image is ProductImage => Boolean(image))
-    .sort((a, b) => {
-      const aOrder = sortOrderByAssetId.get(a.id ?? "") ?? 0;
-      const bOrder = sortOrderByAssetId.get(b.id ?? "") ?? 0;
-
-      return aOrder - bOrder;
-    });
-}
-
 function normalizeProductImages(images: ProductImage[], fallbackTitle: string) {
   const cleaned = images
     .map((image) => ({
-      alt: image.alt.trim() || `${fallbackTitle.trim() || "?곹뭹"} ?대?吏`,
+      alt: image.alt.trim() || `${fallbackTitle.trim() || "상품"} 이미지`,
       caption: emptyToUndefined(image.caption),
       height: image.height,
       id: emptyToUndefined(image.id),
@@ -1368,15 +1012,6 @@ function createParagraphStoryBody(text: string) {
       version: 1,
     },
   };
-}
-
-function isMissingFileError(error: unknown) {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    error.code === "ENOENT"
-  );
 }
 
 function isMissingOptionalProductCommerceColumn(error: { message?: string }) {

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FocusEvent, KeyboardEvent } from "react";
@@ -21,6 +20,15 @@ import {
   wishlistChangedEventName,
   type WishlistChangedDetail,
 } from "@/lib/shop/wishlist-events";
+import { scheduleWhenIdle } from "@/lib/browser/schedule-when-idle";
+import {
+  ProductCommerceButton,
+  ProductGiftIcon,
+  ProductNPayLogo,
+  ProductQuantityStepper,
+  ProductShippingSelect,
+} from "./product-commerce-primitives";
+import { ProductMobilePurchaseBarLoader } from "./product-mobile-purchase-bar-loader";
 
 type ProductPurchasePanelProps = {
   availabilityLabel: string;
@@ -81,10 +89,8 @@ export function ProductPurchasePanel({
     useState<ShippingMethod>("parcel");
   const [isShippingMenuOpen, setIsShippingMenuOpen] = useState(false);
   const favoriteInteractionRef = useRef(false);
-  const payRowRef = useRef<HTMLDivElement | null>(null);
-  const [isMobilePurchaseBarVisible, setIsMobilePurchaseBarVisible] =
-    useState(false);
   const shippingMenuId = useId();
+  const payRowId = useId();
   const clampedQuantity = clampQuantity(quantity, effectiveMaxQuantity);
   const containsLivePlant =
     productOption === "plant_included" && Boolean(plantOption?.enabled);
@@ -106,6 +112,9 @@ export function ProductPurchasePanel({
     madeToOrder,
     shippingMethod,
   });
+  const standardCheckoutLabel = madeToOrder?.enabled
+    ? "추가 제작 주문"
+    : "구매하기";
 
   const formatted = useMemo(
     () => ({
@@ -130,6 +139,7 @@ export function ProductPurchasePanel({
 
   useEffect(() => {
     const controller = new AbortController();
+    const cancel = scheduleWhenIdle(readFavoriteState, 1400);
 
     async function readFavoriteState() {
       try {
@@ -157,9 +167,8 @@ export function ProductPurchasePanel({
       }
     }
 
-    readFavoriteState();
-
     return () => {
+      cancel();
       controller.abort();
     };
   }, [productSlug]);
@@ -182,28 +191,6 @@ export function ProductPurchasePanel({
       window.removeEventListener(wishlistChangedEventName, syncFavoriteState);
     };
   }, [productSlug]);
-
-  useEffect(() => {
-    const payRow = payRowRef.current;
-
-    if (!payRow || typeof IntersectionObserver === "undefined") {
-      setIsMobilePurchaseBarVisible(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsMobilePurchaseBarVisible(!entry.isIntersecting);
-      },
-      { threshold: 0.01 },
-    );
-
-    observer.observe(payRow);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
 
   function updateQuantity(nextQuantity: number) {
     setQuantity(clampQuantity(nextQuantity, effectiveMaxQuantity));
@@ -238,7 +225,7 @@ export function ProductPurchasePanel({
     router.push(`/checkout?${params.toString()}`);
   }
 
-  function addCurrentSelectionToCart() {
+  async function addCurrentSelectionToCart() {
     if (!isPurchasable || price === null || effectiveUnitPrice === null) {
       showPlaceholder("장바구니");
       return;
@@ -247,19 +234,24 @@ export function ProductPurchasePanel({
     setIsCartSaving(true);
 
     try {
-      addCartItem(
-        {
-          madeToOrder: Boolean(madeToOrder?.enabled),
-          productOption,
-          productSlug,
-          quantity: clampedQuantity,
-          shippingMethod,
-        },
-        effectiveMaxQuantity,
-      );
+      await addCartItem({
+        madeToOrder: Boolean(madeToOrder?.enabled),
+        productOption,
+        productSlug,
+        quantity: clampedQuantity,
+        shippingMethod,
+      });
       setMessage({
         id: Date.now(),
         text: "장바구니에 담았습니다.",
+      });
+    } catch (error) {
+      setMessage({
+        id: Date.now(),
+        text:
+          error instanceof Error
+            ? error.message
+            : "장바구니 저장 중 오류가 발생했습니다.",
       });
     } finally {
       setIsCartSaving(false);
@@ -377,57 +369,20 @@ export function ProductPurchasePanel({
         <div className="product-commerce-row product-shipping-method-row">
           <dt>배송 방법</dt>
           <dd>
-            <div
-              className="product-shipping-select"
-              data-open={isShippingMenuOpen ? "true" : "false"}
+            <ProductShippingSelect
+              isOpen={isShippingMenuOpen}
+              label="배송 방법"
+              menuId={shippingMenuId}
               onBlur={handleShippingSelectBlur}
-            >
-              <button
-                aria-controls={shippingMenuId}
-                aria-expanded={isShippingMenuOpen}
-                aria-haspopup="listbox"
-                aria-label="배송 방법"
-                className="product-shipping-select-trigger"
-                onClick={() =>
-                  setIsShippingMenuOpen((isCurrentOpen) => !isCurrentOpen)
-                }
-                onKeyDown={handleShippingTriggerKeyDown}
-                type="button"
-              >
-                <span>{selectedShippingOption.label}</span>
-                <span className="product-shipping-select-icon" aria-hidden="true">
-                  <ChevronDownIcon />
-                </span>
-              </button>
-              {isShippingMenuOpen ? (
-                <div
-                  className="product-shipping-options"
-                  id={shippingMenuId}
-                  role="listbox"
-                >
-                  {shippingOptions.map((option) => (
-                    <button
-                      aria-selected={option.value === shippingMethod}
-                      className="product-shipping-option"
-                      key={option.value}
-                      onClick={() => selectShippingMethod(option.value)}
-                      onMouseDown={(event) => {
-                        event.preventDefault();
-                        selectShippingMethod(option.value);
-                      }}
-                      onPointerDown={(event) => {
-                        event.preventDefault();
-                        selectShippingMethod(option.value);
-                      }}
-                      role="option"
-                      type="button"
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
+              onSelect={selectShippingMethod}
+              onToggle={() =>
+                setIsShippingMenuOpen((isCurrentOpen) => !isCurrentOpen)
+              }
+              onTriggerKeyDown={handleShippingTriggerKeyDown}
+              options={shippingOptions}
+              selectedLabel={selectedShippingOption.label}
+              selectedValue={shippingMethod}
+            />
           </dd>
         </div>
         <div className="product-commerce-row">
@@ -443,7 +398,9 @@ export function ProductPurchasePanel({
             ) : (
               <>
                 <span>
-                  택배 · 배송비 {formatted.shipping} ·{" "}
+                  택배 · 배송비 {formatted.shipping}
+                </span>
+                <span>
                   {formatted.freeShippingThreshold} 이상 무료배송
                 </span>
                 <strong>{shippingPeriodNotice}</strong>
@@ -489,37 +446,14 @@ export function ProductPurchasePanel({
       <div className="product-quantity-box">
         <div className="product-quantity-head">
           <span>수량</span>
-          <div
-            className="product-quantity-stepper"
-            role="group"
-            aria-label="구매 수량"
-          >
-            <button
-              aria-label="수량 줄이기"
-              disabled={clampedQuantity <= 1}
-              onClick={() => updateQuantity(clampedQuantity - 1)}
-              type="button"
-            >
-              -
-            </button>
-            <input
-              aria-label="구매 수량"
-              inputMode="numeric"
-              max={effectiveMaxQuantity}
-              min={1}
-              onChange={(event) => updateQuantity(Number(event.target.value))}
-              type="number"
-              value={clampedQuantity}
-            />
-            <button
-              aria-label="수량 늘리기"
-              disabled={clampedQuantity >= effectiveMaxQuantity}
-              onClick={() => updateQuantity(clampedQuantity + 1)}
-              type="button"
-            >
-              +
-            </button>
-          </div>
+          <ProductQuantityStepper
+            decreaseLabel="수량 줄이기"
+            increaseLabel="수량 늘리기"
+            inputLabel="구매 수량"
+            max={effectiveMaxQuantity}
+            onChange={updateQuantity}
+            value={clampedQuantity}
+          />
         </div>
       </div>
 
@@ -532,114 +466,62 @@ export function ProductPurchasePanel({
       </div>
 
       <div className="product-action-grid">
-        <button
-          className="product-buy-button"
+        <ProductCommerceButton
           onClick={() => startCheckout("standard")}
-          type="button"
+          variant="buy"
         >
-          {madeToOrder?.enabled ? "추가 제작 주문" : "구매하기"}
-        </button>
-        <button
-          className="product-secondary-button"
+          {standardCheckoutLabel}
+        </ProductCommerceButton>
+        <ProductCommerceButton
           onClick={() => startCheckout("gift")}
-          type="button"
+          variant="secondary"
         >
-          <GiftIcon />
+          <ProductGiftIcon />
           선물하기
-        </button>
-        <button
-          className="product-secondary-button"
+        </ProductCommerceButton>
+        <ProductCommerceButton
           disabled={isCartSaving}
           onClick={addCurrentSelectionToCart}
-          type="button"
+          variant="secondary"
         >
           {isCartSaving ? "담는 중" : "장바구니"}
-        </button>
+        </ProductCommerceButton>
       </div>
 
-      <div className="product-pay-row" ref={payRowRef}>
-        <button
+      <div className="product-pay-row" id={payRowId}>
+        <ProductCommerceButton
           aria-label="N pay 구매하기"
-          className="product-npay-button"
           onClick={() => startCheckout("naver_pay")}
-          type="button"
+          variant="npay"
         >
-          <Image
-            alt=""
-            aria-hidden="true"
-            className="product-npay-logo"
-            height={52}
-            src="/asset/logo_npaybk_small.svg"
-            width={168}
-          />
+          <ProductNPayLogo />
           구매하기
-        </button>
-        <button
+        </ProductCommerceButton>
+        <ProductCommerceButton
           aria-label={isFavorite ? "찜 해제" : "찜하기"}
           aria-pressed={isFavorite}
-          className="product-wish-button"
           disabled={isFavoriteSaving}
           onClick={toggleFavorite}
-          type="button"
+          variant="wish"
         >
           찜
-        </button>
+        </ProductCommerceButton>
       </div>
 
       <p className="product-commerce-message" aria-live="polite" key={message?.id}>
         {message?.text ?? "\u00a0"}
       </p>
 
-      <div
-        aria-hidden={!isMobilePurchaseBarVisible}
-        aria-label="모바일 구매 바"
-        className="product-mobile-purchase-bar"
-        data-visible={isMobilePurchaseBarVisible ? "true" : "false"}
-      >
-        <button
-          aria-label="선물하기"
-          className="product-mobile-gift"
-          disabled={!isMobilePurchaseBarVisible}
-          onClick={() => startCheckout("gift")}
-          type="button"
-        >
-          <GiftIcon />
-        </button>
-        <button
-          aria-label="N pay 구매하기"
-          className="product-mobile-npay"
-          disabled={!isMobilePurchaseBarVisible}
-          onClick={() => startCheckout("naver_pay")}
-          type="button"
-        >
-          <Image
-            alt=""
-            aria-hidden="true"
-            className="product-npay-logo"
-            height={52}
-            src="/asset/logo_npaybk_small.svg"
-            width={168}
-          />
-        </button>
-        <button
-          className="product-mobile-buy"
-          disabled={!isMobilePurchaseBarVisible}
-          onClick={() => startCheckout("standard")}
-          type="button"
-        >
-          {madeToOrder?.enabled ? "추가 제작 주문" : "구매하기"}
-        </button>
-        <button
-          aria-label={isFavorite ? "찜 해제" : "찜하기"}
-          aria-pressed={isFavorite}
-          className="product-mobile-wish"
-          disabled={!isMobilePurchaseBarVisible || isFavoriteSaving}
-          onClick={toggleFavorite}
-          type="button"
-        >
-          <HeartIcon filled={isFavorite} />
-        </button>
-      </div>
+      <ProductMobilePurchaseBarLoader
+        isFavorite={isFavorite}
+        isFavoriteSaving={isFavoriteSaving}
+        onGiftCheckout={() => startCheckout("gift")}
+        onNaverPayCheckout={() => startCheckout("naver_pay")}
+        onStandardCheckout={() => startCheckout("standard")}
+        onToggleFavorite={toggleFavorite}
+        payRowId={payRowId}
+        standardCheckoutLabel={standardCheckoutLabel}
+      />
     </div>
   );
 }
@@ -682,28 +564,4 @@ function getShippingPeriodNotice({
   }
 
   return "결제 후 2~5영업일 이내 발송을 원칙으로 합니다.";
-}
-
-function HeartIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg aria-hidden="true" fill={filled ? "currentColor" : "none"} viewBox="0 0 24 24">
-      <path d="M20.4 5.6a5.2 5.2 0 0 0-7.4 0L12 6.7l-1-1.1a5.2 5.2 0 0 0-7.4 7.4l1 1 7.4 7.2 7.4-7.2 1-1a5.2 5.2 0 0 0 0-7.4Z" />
-    </svg>
-  );
-}
-
-function GiftIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
-      <path d="M4 11h16v9H4zM3 7h18v4H3zM12 7v13M12 7H8.8a2.2 2.2 0 1 1 2.2-2.2L12 7ZM12 7h3.2A2.2 2.2 0 1 0 13 4.8L12 7Z" />
-    </svg>
-  );
-}
-
-function ChevronDownIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
 }

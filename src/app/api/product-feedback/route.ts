@@ -1,9 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { uploadMediaImage } from "@/lib/media/media-upload";
-import {
-  enqueueAdminNotificationJob,
-} from "@/lib/notifications/order-notifications";
+import { enqueueAdminNotificationJob } from "@/lib/notifications/order-notifications";
 import {
   consumeRateLimit,
   getClientIp,
@@ -11,8 +9,13 @@ import {
 } from "@/lib/security/rate-limit";
 import { getProductById } from "@/lib/shop";
 import {
+  getOrCreateAnonymousSession,
+  setAnonymousSessionCookie,
+} from "@/lib/shop/anonymous-session";
+import {
   attachProductFeedbackImages,
   createProductFeedback,
+  getProductFeedbackSummary,
 } from "@/lib/shop/product-feedback";
 
 export const runtime = "nodejs";
@@ -27,18 +30,52 @@ const maxPhotoCount = 5;
 const acceptedImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-const feedbackPayloadSchema = z.object({
+const feedbackIdentitySchema = z.object({
+  productId: z.uuid(),
+  productSlug: z.string().trim().min(1).max(120).regex(slugPattern),
+});
+
+const feedbackPayloadSchema = feedbackIdentitySchema.extend({
   authorName: z.string().trim().min(1).max(40),
   body: z.string().trim().min(5).max(1200),
   contact: z.string().trim().max(120).optional(),
   marketingConsent: z.boolean().optional(),
-  productId: z.uuid(),
-  productSlug: z.string().trim().min(1).max(120).regex(slugPattern),
   rating: z.number().int().min(1).max(5),
   website: z.string().trim().max(120).optional(),
 });
 
-export async function POST(request: Request) {
+export async function GET(request: NextRequest) {
+  const parsed = feedbackIdentitySchema.safeParse({
+    productId: request.nextUrl.searchParams.get("productId") ?? "",
+    productSlug: request.nextUrl.searchParams.get("productSlug") ?? "",
+  });
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "상품 정보를 확인하지 못했습니다." },
+      { status: 400 },
+    );
+  }
+
+  const product = await getProductById(parsed.data.productId);
+
+  if (!product || !product.published || product.slug !== parsed.data.productSlug) {
+    return NextResponse.json(
+      { error: "상품 정보를 확인하지 못했습니다." },
+      { status: 404 },
+    );
+  }
+
+  const summary = await getProductFeedbackSummary(product.id);
+
+  return NextResponse.json(summary, {
+    headers: {
+      "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+    },
+  });
+}
+
+export async function POST(request: NextRequest) {
   const rateLimit = await consumeRateLimit({
     key: getClientIp(request.headers),
     limit: feedbackRateLimit.limit,
@@ -48,7 +85,7 @@ export async function POST(request: Request) {
 
   if (!rateLimit.allowed) {
     return NextResponse.json(
-      { error: "작성 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." },
+      { error: "작성 요청이 많습니다. 잠시 후 다시 시도해 주세요." },
       {
         headers: rateLimitHeaders(rateLimit),
         status: 429,
@@ -60,7 +97,7 @@ export async function POST(request: Request) {
 
   if (contentLength > maxFeedbackBodyBytes) {
     return NextResponse.json(
-      { error: "사진은 최대 5장, 각 20MB 이하로 올릴 수 있습니다." },
+      { error: "사진은 최대 5장, 장당 20MB 이하로 올릴 수 있습니다." },
       { status: 413 },
     );
   }
@@ -103,6 +140,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    const { session } = await getOrCreateAnonymousSession(request);
     const feedback = await createProductFeedback({
       authorName: parsed.data.authorName,
       body: parsed.data.body,
@@ -118,6 +156,7 @@ export async function POST(request: Request) {
         alt: buildPhotoAlt(product.titleKo, parsed.data.authorName, index),
         buffer: Buffer.from(await photo.arrayBuffer()),
         filename: photo.name || `review-${index + 1}.webp`,
+        reserved: true,
       });
       assets.push(asset);
     }
@@ -136,10 +175,14 @@ export async function POST(request: Request) {
       template: "admin_feedback_received",
     });
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       { message: "접수되었습니다. 검토 후 반영됩니다." },
       { headers: rateLimitHeaders(rateLimit) },
     );
+
+    setAnonymousSessionCookie(response, session);
+
+    return response;
   } catch (error) {
     console.error(error);
 
@@ -212,7 +255,7 @@ function validatePhotos(photos: File[]) {
     }
 
     if (photo.size > maxPhotoBytes) {
-      return "사진은 각 20MB 이하로 올릴 수 있습니다.";
+      return "사진은 장당 20MB 이하로 올릴 수 있습니다.";
     }
   }
 
@@ -225,5 +268,5 @@ function getFormValue(formData: FormData, key: string) {
 }
 
 function buildPhotoAlt(productTitle: string, authorName: string, index: number) {
-  return `${productTitle} 구매평 사진 ${index + 1} - ${authorName}`;
+  return `${productTitle} 구매후기 사진 ${index + 1} - ${authorName}`;
 }

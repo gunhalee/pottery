@@ -1,0 +1,8 @@
+
+> pottery@0.1.0 start
+> next start -p 3011
+
+▲ Next.js 16.2.4
+- Local:         http://localhost:3011
+- Network:       http://192.168.0.247:3011
+✓ Ready in 499ms

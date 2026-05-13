@@ -1,10 +1,8 @@
-import { pickVariantSource } from "@/lib/media/media-variant-policy";
 import type {
   ConsepotProduct,
   ProductBadgeKind,
   ProductCta,
   ProductCtaKind,
-  ProductImage,
   ProductListItem,
 } from "./product-model";
 
@@ -13,7 +11,6 @@ type ProductActionHref = {
   href: string | null;
 };
 
-type ProductImageSource = Pick<ProductListItem, "images">;
 type ProductBadgeSource = Pick<
   ProductListItem,
   "commerce" | "isLimited" | "kind" | "madeToOrder" | "plantOption"
@@ -39,40 +36,15 @@ export {
   type ProductInventoryUpdateInput,
   type ProductUpdateInput,
 } from "./product-store";
-
-export function getProductPrimaryImage(product: ProductImageSource) {
-  const image =
-    product.images.find((image) => image.isPrimary && image.src) ??
-    product.images.find((image) => image.src) ??
-    product.images.find((image) => image.isPrimary) ??
-    product.images[0] ??
-    null;
-
-  return image ? withProductImageVariant(image, "detail") : null;
-}
-
-export function getProductListImage(product: ProductImageSource) {
-  const image =
-    product.images.find((image) => image.isListImage && image.src) ??
-    product.images.find((image) => image.isListImage) ??
-    getProductPrimaryImage(product);
-
-  return image ? withProductImageVariant(image, "list") : null;
-}
-
-export function getProductDisplayImages(product: ProductImageSource) {
-  return product.images
-    .filter(
-      (image) =>
-        Boolean(image.src || pickVariantSource(image.variants, "detail")) &&
-        (image.isDetail || image.isPrimary),
-    )
-    .map((image) => withProductImageVariant(image, "detail"));
-}
-
-export function getProductThumbnailImage(image: ProductImage) {
-  return withProductImageVariant(image, "thumbnail");
-}
+export {
+  getProductCartImage,
+  getProductDisplayImages,
+  getProductGalleryImages,
+  getProductListImage,
+  getProductPrimaryImage,
+  getProductThumbnailImage,
+  type ProductGalleryImage,
+} from "./product-images";
 
 export function getProductBadges(product: ProductBadgeSource) {
   const badges: ProductBadgeKind[] = [];
@@ -100,25 +72,6 @@ export function getProductBadges(product: ProductBadgeSource) {
   }
 
   return badges;
-}
-
-function withProductImageVariant(
-  image: ProductImage,
-  surface: "detail" | "list" | "master" | "thumbnail",
-) {
-  const variant = pickVariantSource(image.variants, surface);
-
-  if (!variant) {
-    return image;
-  }
-
-  return {
-    ...image,
-    height: variant.height,
-    src: variant.src,
-    storagePath: variant.storagePath ?? image.storagePath,
-    width: variant.width,
-  };
 }
 
 export function getProductCta(product: ConsepotProduct): ProductCta {

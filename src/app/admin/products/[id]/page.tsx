@@ -1,9 +1,12 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
   deleteProductAction,
   updateProductAction,
 } from "../../actions";
+import {
+  AdminActionButton,
+  AdminActionLink,
+} from "@/components/admin/admin-actions";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { AdminSuccessNotice } from "@/components/admin/admin-success-notice";
 import { ProductImageManager } from "@/components/admin/product-image-manager";
@@ -65,9 +68,9 @@ export default async function AdminProductEditPage({
           </p>
         </div>
         <div className="admin-header-actions">
-          <Link className="admin-text-button" href="/admin/products">
+          <AdminActionLink href="/admin/products">
             목록
-          </Link>
+          </AdminActionLink>
           <AdminNav />
         </div>
       </header>
@@ -412,9 +415,9 @@ export default async function AdminProductEditPage({
               />
             </label>
 
-            <button className="button-primary" type="submit">
+            <AdminActionButton type="submit" variant="primary">
               저장
-            </button>
+            </AdminActionButton>
           </form>
         </section>
 
@@ -475,9 +478,9 @@ export default async function AdminProductEditPage({
                   required
                 />
               </label>
-              <button className="admin-danger-button" type="submit">
+              <AdminActionButton type="submit" variant="danger">
                 상품 삭제
-              </button>
+              </AdminActionButton>
             </form>
           </section>
         </aside>

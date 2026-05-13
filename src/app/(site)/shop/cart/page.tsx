@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { ShopBackButton } from "@/components/navigation/shop-back-button";
 import { CartPageClient } from "@/components/shop/cart-page-client";
 import { PageIntro, PageShell } from "@/components/site/primitives";
+import { getAnonymousSessionFromCookieStore } from "@/lib/shop/anonymous-session";
+import { getCartSnapshotForSession } from "@/lib/shop/cart-store";
 import { getPublishedProductListItems } from "@/lib/shop";
 
 export const metadata: Metadata = {
@@ -10,7 +13,12 @@ export const metadata: Metadata = {
 };
 
 export default async function ShopCartPage() {
-  const products = await getPublishedProductListItems();
+  const cookieStore = await cookies();
+  const session = await getAnonymousSessionFromCookieStore(cookieStore);
+  const [products, initialSnapshot] = await Promise.all([
+    getPublishedProductListItems(),
+    getCartSnapshotForSession(session?.id ?? null),
+  ]);
 
   return (
     <PageShell className="shop-subpage-shell">
@@ -20,7 +28,7 @@ export default async function ShopCartPage() {
 
       <PageIntro title="장바구니" variant="compact" />
 
-      <CartPageClient products={products} />
+      <CartPageClient initialSnapshot={initialSnapshot} products={products} />
     </PageShell>
   );
 }

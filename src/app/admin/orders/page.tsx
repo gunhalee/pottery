@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import {
+  AdminActionButton,
+  AdminActionLink,
+} from "@/components/admin/admin-actions";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { isAdminAuthenticated } from "@/lib/admin/auth";
 import {
@@ -109,9 +113,9 @@ export default async function AdminOrdersPage({
                 type="search"
               />
             </label>
-            <button className="admin-secondary-button" type="submit">
+            <AdminActionButton type="submit">
               검색
-            </button>
+            </AdminActionButton>
           </form>
         </div>
 
@@ -160,9 +164,9 @@ export default async function AdminOrdersPage({
                 : "주문이 접수되면 이곳에 결제와 배송 처리 상태가 표시됩니다."}
             </p>
             {dashboard.query || dashboard.activeView !== "all" ? (
-              <Link className="admin-text-button" href="/admin/orders" prefetch={false}>
+              <AdminActionLink href="/admin/orders">
                 전체 주문 보기
-              </Link>
+              </AdminActionLink>
             ) : null}
           </div>
         )}
@@ -229,9 +233,9 @@ function OrderRow({ order }: { order: AdminOrderListItem }) {
         <span className={`admin-order-action admin-order-action-${order.tone}`}>
           {order.actionLabel}
         </span>
-        <Link className="admin-text-button" href={`/admin/orders/${order.id}`} prefetch={false}>
+        <AdminActionLink href={`/admin/orders/${order.id}`}>
           열기
-        </Link>
+        </AdminActionLink>
       </div>
     </article>
   );

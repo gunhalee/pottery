@@ -10,6 +10,7 @@ import {
 } from "@/lib/content/site-content";
 import { getPublishedContentListEntries } from "@/lib/content-manager/content-store";
 import { getOptionalPublicAsset } from "@/lib/site/public-assets";
+import "./home.css";
 
 const heroVideoSrc = getOptionalPublicAsset("/asset/hero-video.mp4");
 

@@ -1,0 +1,349 @@
+/* Shop shared styles: product cards, badges, utility navigation, and shared shop chrome. */
+
+.shop-floating-actions {
+  position: fixed;
+  right: 28px;
+  bottom: 78px;
+  z-index: 81;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 42px 12px;
+}
+
+.product-card {
+  position: relative;
+  min-width: 0;
+}
+
+.product-card-image-link {
+  position: relative;
+  overflow: hidden;
+  display: block;
+  aspect-ratio: 1;
+  margin-bottom: 12px;
+}
+
+.product-card-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  transition: transform 0.28s ease;
+}
+
+.product-card-placeholder-image {
+  filter: grayscale(1);
+  opacity: 0.72;
+}
+
+.product-card:hover .product-card-image,
+.product-card:focus-within .product-card-image {
+  transform: scale(1.025);
+}
+
+.product-card-body {
+  display: grid;
+  gap: 8px;
+}
+
+.product-card-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.product-card-title-line {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+
+.product-badge-row {
+  display: flex;
+  min-height: 0;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.product-badge {
+  display: inline-flex;
+  min-height: 23px;
+  align-items: center;
+  padding: 4px 7px;
+  border: 0.5px solid var(--line-subtle);
+  color: var(--tx2);
+  font-size: 9px;
+  line-height: 1;
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+.product-badge-available {
+  border-color: color-mix(in srgb, var(--tx) 28%, var(--brd));
+  color: var(--tx);
+}
+
+.product-badge-sold_out,
+.product-badge-archive {
+  color: var(--tx3);
+}
+
+.product-badge-limited {
+  border-color: var(--tx);
+  background: var(--tx);
+  color: var(--white);
+}
+
+.product-card-title {
+  margin: 0;
+  min-width: 0;
+  font-size: inherit;
+  font-weight: 300;
+  line-height: inherit;
+}
+
+.product-card-title-line .product-badge-row {
+  flex: 0 1 auto;
+  gap: 4px;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.product-card-title-line .product-badge {
+  min-height: 17px;
+  padding: 2px 5px;
+  font-size: 8px;
+}
+
+.product-card-secondary {
+  opacity: 1;
+  transform: none;
+  transition:
+  opacity 0.2s ease,
+  transform 0.2s ease;
+}
+
+.product-card-description {
+  margin: 0 0 8px;
+  color: var(--tx2);
+  font-size: 11px;
+  line-height: 1.8;
+  word-break: keep-all;
+}
+
+.product-card-price {
+  color: var(--tx);
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 300;
+  line-height: inherit;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.product-card-link {
+  margin-top: 10px;
+}
+
+.product-card-wish-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 0.5px solid color-mix(in srgb, var(--brd) 76%, transparent);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  color: #0c1b32;
+  cursor: pointer;
+  transition:
+  background 0.2s ease,
+  color 0.2s ease,
+  opacity 0.2s ease,
+  transform 0.2s ease;
+}
+
+.product-card-wish-button:hover {
+  background: var(--white);
+  transform: translateY(-1px);
+}
+
+.product-card-wish-button[aria-pressed="true"] {
+  color: #04bf54;
+}
+
+.product-card-wish-button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.product-card-wish-button svg {
+  width: 21px;
+  height: 21px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.55;
+}
+
+.shop-subpage-shell {
+  padding-top: 42px;
+}
+
+.shop-utility-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+  color: var(--tx);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.shop-utility-nav a {
+  color: inherit;
+  text-decoration: none;
+  text-underline-offset: 4px;
+}
+
+.shop-utility-nav a:hover,
+.shop-utility-nav a:focus-visible {
+  text-decoration: underline;
+}
+
+.shop-utility-divider {
+  color: var(--tx3);
+}
+
+@media (max-width: 900px) {
+  .shop-floating-actions {
+    right: 22px;
+    bottom: 74px;
+  }
+
+  .shop-utility-nav {
+    font-size: 12px;
+  }
+
+  .product-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .shop-utility-nav {
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .product-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .product-card-body {
+    min-height: 0;
+  }
+
+  .product-card-secondary {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.product-detail-backbar {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  margin-bottom: 18px;
+  border-top: 1px solid #e1e2e4;
+  border-bottom: 1px solid #e1e2e4;
+}
+
+.product-detail-backlink {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #343942;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 400;
+  text-decoration: none;
+}
+
+.product-detail-backlink:hover {
+  color: #111827;
+}
+
+.product-detail-backlink svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+@media (max-width: 900px) {
+  .product-detail-backbar {
+    margin-bottom: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .product-detail-backbar {
+    min-height: 38px;
+    margin: 0 24px 18px;
+  }
+
+  .product-detail-backlink {
+    min-height: 36px;
+    font-size: 13px;
+  }
+
+  .product-detail-backlink svg {
+    width: 17px;
+    height: 17px;
+  }
+}
+
+@media (max-width: 640px) {
+  .shop-floating-actions {
+    right: 18px;
+    bottom: 70px;
+  }
+
+  .product-card-wish-button {
+    top: 8px;
+    right: 8px;
+    width: 34px;
+    height: 34px;
+  }
+
+}

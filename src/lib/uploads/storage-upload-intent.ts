@@ -1,11 +1,7 @@
 import "server-only";
 
-import { randomUUID } from "node:crypto";
 import type { MediaOwnerType } from "@/lib/media/media-model";
-import {
-  getSupabaseAdminClient,
-  isSupabaseConfigured,
-} from "@/lib/supabase/server";
+import { getSupabaseAdminClient } from "@/lib/supabase/server";
 
 export type StorageUploadIntentStatus =
   | "claimed"
@@ -33,7 +29,6 @@ export type StorageUploadIntent = {
 
 export type StorageUploadIntentHandle = {
   id: string;
-  persisted: boolean;
 };
 
 type StorageUploadIntentRow = {
@@ -73,12 +68,6 @@ export async function createStorageUploadIntent({
   ownerId,
   ownerType,
 }: CreateStorageUploadIntentInput): Promise<StorageUploadIntentHandle> {
-  const fallback = createFallbackHandle();
-
-  if (!isSupabaseConfigured()) {
-    return fallback;
-  }
-
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("storage_upload_intents")
@@ -94,16 +83,11 @@ export async function createStorageUploadIntent({
     .single();
 
   if (error) {
-    if (!isMissingStorageUploadIntentTableError(error)) {
-      console.error(`Failed to create storage upload intent: ${error.message}`);
-    }
-
-    return fallback;
+    throw new Error(`Failed to create storage upload intent: ${error.message}`);
   }
 
   return {
     id: data.id,
-    persisted: true,
   };
 }
 
@@ -185,10 +169,6 @@ export async function markStorageUploadIntentFailed(
 export async function readAbandonedStorageUploadIntents(
   cutoff: Date,
 ): Promise<StorageUploadIntent[]> {
-  if (!isSupabaseConfigured()) {
-    return [];
-  }
-
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("storage_upload_intents")
@@ -200,10 +180,6 @@ export async function readAbandonedStorageUploadIntents(
     .order("created_at", { ascending: true });
 
   if (error) {
-    if (isMissingStorageUploadIntentTableError(error)) {
-      return [];
-    }
-
     throw new Error(`Failed to read storage upload intents: ${error.message}`);
   }
 
@@ -215,10 +191,6 @@ export async function readAbandonedStorageUploadIntents(
 export async function readStorageUploadIntentById(
   id: string,
 ): Promise<StorageUploadIntent | null> {
-  if (!isSupabaseConfigured()) {
-    return null;
-  }
-
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("storage_upload_intents")
@@ -229,10 +201,6 @@ export async function readStorageUploadIntentById(
     .maybeSingle();
 
   if (error) {
-    if (isMissingStorageUploadIntentTableError(error)) {
-      return null;
-    }
-
     throw new Error(`Failed to read storage upload intent: ${error.message}`);
   }
 
@@ -243,10 +211,6 @@ async function updateStorageUploadIntent(
   intent: StorageUploadIntentHandle,
   input: UpdateStorageUploadIntentInput,
 ) {
-  if (!intent.persisted || !isSupabaseConfigured()) {
-    return;
-  }
-
   const supabase = getSupabaseAdminClient();
   const { error } = await supabase
     .from("storage_upload_intents")
@@ -260,16 +224,9 @@ async function updateStorageUploadIntent(
     })
     .eq("id", intent.id);
 
-  if (error && !isMissingStorageUploadIntentTableError(error)) {
+  if (error) {
     console.error(`Failed to update storage upload intent: ${error.message}`);
   }
-}
-
-function createFallbackHandle(): StorageUploadIntentHandle {
-  return {
-    id: randomUUID(),
-    persisted: false,
-  };
 }
 
 function mapStorageUploadIntentRow(
@@ -297,12 +254,4 @@ function normalizeMetadata(metadata?: Record<string, unknown>) {
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unknown storage upload error.";
-}
-
-function isMissingStorageUploadIntentTableError(error: { message?: string }) {
-  const message = error.message ?? "";
-  return (
-    message.includes("storage_upload_intents") &&
-    (message.includes("schema cache") || message.includes("does not exist"))
-  );
 }

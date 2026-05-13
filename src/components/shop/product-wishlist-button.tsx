@@ -6,8 +6,9 @@ import {
   wishlistChangedEventName,
   type WishlistChangedDetail,
 } from "@/lib/shop/wishlist-events";
+import { ShopHeartIcon } from "./shop-icons";
 
-type ProductWishlistButtonProps = {
+export type ProductWishlistButtonProps = {
   className?: string;
   initialWished?: boolean;
   productSlug: string;
@@ -22,47 +23,21 @@ export function ProductWishlistButton({
 }: ProductWishlistButtonProps) {
   const [isWished, setIsWished] = useState(Boolean(initialWished));
   const [isSaving, setIsSaving] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
+  const hasResolvedStateRef = useRef(typeof initialWished === "boolean");
   const interactedRef = useRef(false);
 
   useEffect(() => {
-    if (typeof initialWished === "boolean") {
+    if (typeof initialWished !== "boolean") {
       return;
     }
 
-    const controller = new AbortController();
+    hasResolvedStateRef.current = true;
 
-    async function readWishlistState() {
-      try {
-        const response = await fetch(
-          `/api/wishlist?productSlug=${encodeURIComponent(productSlug)}`,
-          {
-            cache: "no-store",
-            signal: controller.signal,
-          },
-        );
-
-        if (!response.ok) {
-          return;
-        }
-
-        const result = (await response.json()) as { wished?: boolean };
-
-        if (!interactedRef.current) {
-          setIsWished(Boolean(result.wished));
-        }
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
-      }
+    if (!interactedRef.current) {
+      setIsWished(initialWished);
     }
-
-    readWishlistState();
-
-    return () => {
-      controller.abort();
-    };
-  }, [initialWished, productSlug]);
+  }, [initialWished]);
 
   useEffect(() => {
     function syncWishlistState(event: Event) {
@@ -73,6 +48,7 @@ export function ProductWishlistButton({
       }
 
       interactedRef.current = true;
+      hasResolvedStateRef.current = true;
       setIsWished(detail.wished);
     }
 
@@ -84,9 +60,13 @@ export function ProductWishlistButton({
   }, [productSlug]);
 
   async function toggleWishlist() {
-    const nextWished = !isWished;
+    const currentWished = hasResolvedStateRef.current
+      ? isWished
+      : await readWishlistState();
+    const nextWished = !currentWished;
 
     interactedRef.current = true;
+    hasResolvedStateRef.current = true;
     setIsWished(nextWished);
     setIsSaving(true);
 
@@ -114,9 +94,36 @@ export function ProductWishlistButton({
       setIsWished(wished);
       dispatchWishlistChanged({ productSlug, wished });
     } catch {
-      setIsWished(!nextWished);
+      setIsWished(currentWished);
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function readWishlistState() {
+    setIsChecking(true);
+
+    try {
+      const response = await fetch(
+        `/api/wishlist?productSlug=${encodeURIComponent(productSlug)}`,
+        {
+          cache: "no-store",
+        },
+      );
+
+      if (!response.ok) {
+        return false;
+      }
+
+      const result = (await response.json()) as { wished?: boolean };
+      const wished = Boolean(result.wished);
+      setIsWished(wished);
+
+      return wished;
+    } catch {
+      return false;
+    } finally {
+      setIsChecking(false);
     }
   }
 
@@ -125,23 +132,11 @@ export function ProductWishlistButton({
       aria-label={`${productTitle} ${isWished ? "찜 해제" : "찜하기"}`}
       aria-pressed={isWished}
       className={className}
-      disabled={isSaving}
+      disabled={isChecking || isSaving}
       onClick={toggleWishlist}
       type="button"
     >
-      <HeartIcon filled={isWished} />
+      <ShopHeartIcon filled={isWished} />
     </button>
-  );
-}
-
-function HeartIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg
-      aria-hidden="true"
-      fill={filled ? "currentColor" : "none"}
-      viewBox="0 0 24 24"
-    >
-      <path d="M20.4 5.6a5.2 5.2 0 0 0-7.4 0L12 6.7l-1-1.1a5.2 5.2 0 0 0-7.4 7.4l1 1 7.4 7.2 7.4-7.2 1-1a5.2 5.2 0 0 0 0-7.4Z" />
-    </svg>
   );
 }

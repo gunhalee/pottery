@@ -3,12 +3,10 @@ import { cookies } from "next/headers";
 import { ShopBackButton } from "@/components/navigation/shop-back-button";
 import { ProductGrid } from "@/components/shop/product-grid";
 import { WishlistRefreshOnChange } from "@/components/shop/wishlist-refresh-on-change";
+import { SiteEmptyState } from "@/components/site/actions";
 import { PageIntro, PageShell } from "@/components/site/primitives";
-import {
-  readWishlistIdFromCookieValue,
-  wishlistCookieName,
-} from "@/lib/shop/wishlist-session";
-import { getWishlistProductIds } from "@/lib/shop/wishlist-store";
+import { getAnonymousSessionFromCookieStore } from "@/lib/shop/anonymous-session";
+import { getWishlistProductIdsForSession } from "@/lib/shop/wishlist-store";
 import { getPublishedProductListItems } from "@/lib/shop";
 
 export const metadata: Metadata = {
@@ -18,11 +16,9 @@ export const metadata: Metadata = {
 
 export default async function ShopWishlistPage() {
   const cookieStore = await cookies();
-  const wishlistId = readWishlistIdFromCookieValue(
-    cookieStore.get(wishlistCookieName)?.value,
-  );
+  const session = await getAnonymousSessionFromCookieStore(cookieStore);
   const [wishlistProductIds, products] = await Promise.all([
-    wishlistId ? getWishlistProductIds(wishlistId) : Promise.resolve([]),
+    session ? getWishlistProductIdsForSession(session.id) : Promise.resolve([]),
     getPublishedProductListItems(),
   ]);
   const wishlistOrder = new Map(
@@ -50,10 +46,12 @@ export default async function ShopWishlistPage() {
           wishedProductIds={wishlistProductIds}
         />
       ) : (
-        <div className="shop-subpage-empty">
-          <strong>아직 찜한 상품이 없습니다.</strong>
+        <SiteEmptyState
+          className="shop-subpage-empty"
+          title="아직 찜한 상품이 없습니다."
+        >
           <p>마음에 드는 작업물을 발견하면 하트 버튼으로 저장해 보세요.</p>
-        </div>
+        </SiteEmptyState>
       )}
     </PageShell>
   );

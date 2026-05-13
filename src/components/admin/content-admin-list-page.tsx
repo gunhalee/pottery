@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { createContentDraftAction } from "@/app/admin/actions";
+import {
+  AdminActionButton,
+  AdminActionLink,
+} from "@/components/admin/admin-actions";
 import { AdminNav } from "@/components/admin/admin-nav";
 import type {
   ContentEntry,
@@ -72,9 +76,9 @@ export function ContentAdminListPage({
               placeholder="비우면 자동 생성"
             />
           </label>
-          <button className="button-primary" type="submit">
+          <AdminActionButton type="submit" variant="primary">
             초안 만들기
-          </button>
+          </AdminActionButton>
         </form>
       </section>
 
@@ -119,19 +123,15 @@ function ContentEntryRow({
       <div>{entry.images.length} images</div>
       <div>{formatDate(entry.updatedAt)}</div>
       {entry.status === "published" ? (
-        <Link className="admin-text-button" href={publicPath} prefetch={false}>
+        <AdminActionLink href={publicPath}>
           보기
-        </Link>
+        </AdminActionLink>
       ) : (
         <span className="admin-muted-cell">비공개</span>
       )}
-      <Link
-        className="admin-text-button"
-        href={`${adminPath}/${entry.id}`}
-        prefetch={false}
-      >
+      <AdminActionLink href={`${adminPath}/${entry.id}`}>
         편집
-      </Link>
+      </AdminActionLink>
     </article>
   );
 }

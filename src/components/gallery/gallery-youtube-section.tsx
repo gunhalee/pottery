@@ -9,7 +9,9 @@ import {
   useRef,
   useState,
 } from "react";
+import { mediaImageSizes } from "@/lib/media/media-image-sizes";
 
+import { useLazyFeedActivation } from "./use-lazy-feed-activation";
 import { useGalleryFeedColumns } from "./use-gallery-feed-columns";
 
 type YouTubeFeedItem = {
@@ -36,8 +38,10 @@ const initialVisibleRows = 2;
 const rowsPerLoad = 2;
 
 export function GalleryYoutubeSection({
+  activateImmediately = false,
   channelUrl,
 }: {
+  activateImmediately?: boolean;
   channelUrl: string;
 }) {
   const [items, setItems] = useState<YouTubeFeedItem[]>([]);
@@ -45,6 +49,8 @@ export function GalleryYoutubeSection({
   const [visibleRows, setVisibleRows] = useState(initialVisibleRows);
   const [selectedItem, setSelectedItem] = useState<YouTubeFeedItem | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const { active: isFeedActive, ref: feedSectionRef } = useLazyFeedActivation();
+  const shouldLoadFeed = activateImmediately || isFeedActive;
   const columns = useGalleryFeedColumns();
   const feedItems = useMemo(
     () => items.filter((item) => Boolean(item.thumbnail?.url)),
@@ -58,6 +64,10 @@ export function GalleryYoutubeSection({
   const canLoadMore = visibleCount < feedItems.length;
 
   useEffect(() => {
+    if (!shouldLoadFeed) {
+      return;
+    }
+
     const controller = new AbortController();
 
     async function loadFeed() {
@@ -93,7 +103,7 @@ export function GalleryYoutubeSection({
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [shouldLoadFeed]);
 
   useEffect(() => {
     if (!selectedItem) {
@@ -120,7 +130,27 @@ export function GalleryYoutubeSection({
   }, [selectedItem]);
 
   if (!loaded || feedItems.length === 0) {
-    return null;
+    return (
+      <section
+        aria-labelledby="gallery-youtube-title"
+        className="gallery-youtube-section"
+        ref={feedSectionRef}
+      >
+        <div className="gallery-youtube-head">
+          <h2 id="gallery-youtube-title">공방 스케치</h2>
+          <div className="gallery-feed-actions">
+            <a href={channelUrl} rel="noopener noreferrer" target="_blank">
+              @consepot
+            </a>
+          </div>
+        </div>
+        <p className="gallery-feed-placeholder">
+          {isFeedActive && loaded
+            ? "YouTube 피드를 불러오지 못했습니다."
+            : "공방의 영상 기록을 준비하고 있습니다."}
+        </p>
+      </section>
+    );
   }
 
   function showMore() {
@@ -184,6 +214,7 @@ export function GalleryYoutubeSection({
       <section
         aria-labelledby="gallery-youtube-title"
         className="gallery-youtube-section"
+        ref={feedSectionRef}
       >
         <div className="gallery-youtube-head">
           <h2 id="gallery-youtube-title">공방 스케치</h2>
@@ -211,7 +242,7 @@ export function GalleryYoutubeSection({
                     aria-hidden="true"
                     fill
                     loading="lazy"
-                    sizes="(max-width: 640px) 28vw, (max-width: 1180px) 15vw, 180px"
+                    sizes={mediaImageSizes.galleryYoutubeThumbnail}
                     src={item.thumbnail.url}
                   />
                   <span className="gallery-youtube-play" aria-hidden="true" />

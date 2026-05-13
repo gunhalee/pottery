@@ -1,0 +1,50 @@
+{
+  "defaults": {
+    "cssBytes": 280000,
+    "eagerImageCount": 2,
+    "highPriorityImageCount": 1,
+    "imageBytes": 140000,
+    "imagePreloadCount": 1,
+    "jsBytes": 640000,
+    "routeJsBytes": 40000,
+    "sharedJsBytes": 610000,
+    "totalFetchedBytes": 1050000,
+    "variants": {
+      "master": 0
+    }
+  },
+  "routePatterns": [
+    {
+      "pattern": "^/shop/[^/]+$",
+      "budget": {
+      "cssBytes": 290000,
+      "imageBytes": 260000,
+      "jsBytes": 650000,
+      "totalFetchedBytes": 1350000,
+      "variants": {
+        "master": 0
+      }
+      }
+    }
+  ],
+  "routes": {
+    "/shop": {
+      "cssBytes": 290000,
+      "imageBytes": 170000,
+      "jsBytes": 640000,
+      "totalFetchedBytes": 1200000,
+      "variants": {
+        "detail": 0,
+        "master": 0,
+        "thumbnail": 0
+      }
+    },
+    "/gallery": {
+      "variants": {
+        "detail": 0,
+        "master": 0,
+        "thumbnail": 0
+      }
+    }
+  }
+}

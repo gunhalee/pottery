@@ -1,10 +1,6 @@
 import "server-only";
 
-import { randomUUID } from "node:crypto";
-import {
-  getSupabaseAdminClient,
-  isSupabaseConfigured,
-} from "@/lib/supabase/server";
+import { getSupabaseAdminClient } from "@/lib/supabase/server";
 
 export type CronJobName =
   | "daily_maintenance"
@@ -41,7 +37,6 @@ type CronRunRow = {
 type CronRunHandle = {
   id: string;
   jobName: CronJobName;
-  persisted: boolean;
   startedAt: string;
 };
 
@@ -56,12 +51,6 @@ export async function startCronRun({
   summary,
   triggerSource = "http",
 }: StartCronRunInput): Promise<CronRunHandle> {
-  const fallback = createFallbackHandle(jobName);
-
-  if (!isSupabaseConfigured()) {
-    return fallback;
-  }
-
   const supabase = getSupabaseAdminClient();
   const startedAt = new Date().toISOString();
   const { data, error } = await supabase
@@ -77,17 +66,12 @@ export async function startCronRun({
     .single();
 
   if (error) {
-    if (!isMissingCronRunLogTableError(error)) {
-      console.error(`Failed to start cron run log: ${error.message}`);
-    }
-
-    return fallback;
+    throw new Error(`Failed to start cron run log: ${error.message}`);
   }
 
   return {
     id: data.id,
     jobName,
-    persisted: true,
     startedAt: data.started_at,
   };
 }
@@ -116,10 +100,6 @@ export async function failCronRun(
 }
 
 export async function readCronRunLogs(limit = 30): Promise<CronRunLog[]> {
-  if (!isSupabaseConfigured()) {
-    return [];
-  }
-
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("cron_run_logs")
@@ -130,10 +110,6 @@ export async function readCronRunLogs(limit = 30): Promise<CronRunLog[]> {
     .limit(limit);
 
   if (error) {
-    if (isMissingCronRunLogTableError(error)) {
-      return [];
-    }
-
     throw new Error(`Failed to read cron run logs: ${error.message}`);
   }
 
@@ -152,10 +128,6 @@ async function updateCronRun(
     summary?: Record<string, unknown>;
   },
 ) {
-  if (!handle.persisted || !isSupabaseConfigured()) {
-    return;
-  }
-
   const finishedAt = new Date();
   const durationMs = Math.max(
     0,
@@ -173,18 +145,9 @@ async function updateCronRun(
     })
     .eq("id", handle.id);
 
-  if (error && !isMissingCronRunLogTableError(error)) {
+  if (error) {
     console.error(`Failed to finish cron run log: ${error.message}`);
   }
-}
-
-function createFallbackHandle(jobName: CronJobName): CronRunHandle {
-  return {
-    id: randomUUID(),
-    jobName,
-    persisted: false,
-    startedAt: new Date().toISOString(),
-  };
 }
 
 function mapCronRunRow(row: CronRunRow): CronRunLog {
@@ -209,12 +172,4 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error
     ? error.message
     : "Unknown cron execution error.";
-}
-
-function isMissingCronRunLogTableError(error: { message?: string }) {
-  const message = error.message ?? "";
-  return (
-    message.includes("cron_run_logs") &&
-    (message.includes("schema cache") || message.includes("does not exist"))
-  );
 }

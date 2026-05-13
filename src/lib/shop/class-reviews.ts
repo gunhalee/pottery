@@ -6,6 +6,7 @@ import {
 } from "@/lib/media/media-variant-policy";
 import { readMediaAssetsByIds } from "@/lib/media/media-store";
 import type { MediaAsset, MediaVariantSourceMap } from "@/lib/media/media-model";
+import { getClassSessionById } from "@/lib/shop/class-sessions";
 import {
   getSupabaseAdminClient,
   isSupabaseConfigured,
@@ -28,6 +29,7 @@ export type ClassReviewImage = {
 
 export type ClassReviewEntry = {
   body: string;
+  classSessionId: string | null;
   classTitle: string | null;
   createdAt: string;
   displayName: string;
@@ -37,6 +39,7 @@ export type ClassReviewEntry = {
 
 export type ClassReviewInput = {
   body: string;
+  classSessionId?: string | null;
   classTitle?: string | null;
   contact?: string | null;
   marketingConsent?: boolean;
@@ -45,6 +48,7 @@ export type ClassReviewInput = {
 
 type ClassReviewRow = {
   body: string;
+  class_session_id: string | null;
   class_title: string | null;
   created_at: string;
   display_name: string | null;
@@ -60,7 +64,7 @@ type ClassReviewImageRow = {
 };
 
 const classReviewColumns =
-  "id, participant_name, display_name, class_title, body, created_at";
+  "id, participant_name, display_name, class_session_id, class_title, body, created_at";
 
 export async function getPublishedClassReviews() {
   if (!isSupabaseConfigured()) {
@@ -99,11 +103,16 @@ export async function createClassReview(input: ClassReviewInput) {
   const now = new Date().toISOString();
   const marketingConsent = Boolean(input.marketingConsent);
   const supabase = getSupabaseAdminClient();
+  const classSession = input.classSessionId
+    ? await getClassSessionById(input.classSessionId)
+    : null;
+  const classTitle = input.classTitle || classSession?.title || null;
   const { data, error } = await supabase
     .from("class_reviews")
     .insert({
       body: input.body,
-      class_title: input.classTitle || null,
+      class_session_id: classSession?.id ?? null,
+      class_title: classTitle,
       consent_text: marketingConsent ? classReviewMarketingConsentText : null,
       contact: input.contact || null,
       display_name: input.participantName,
@@ -127,7 +136,8 @@ export async function createClassReview(input: ClassReviewInput) {
   if (marketingConsent) {
     await supabase.from("class_review_consents").insert({
       class_review_id: review.id,
-      class_title: input.classTitle || null,
+      class_session_id: classSession?.id ?? null,
+      class_title: classTitle,
       consent_text: classReviewMarketingConsentText,
       contact: input.contact || null,
       display_name: input.participantName,
@@ -199,8 +209,14 @@ export async function readClassReviewImagesByReviewIds(reviewIds: string[]) {
       continue;
     }
 
+    const image = fromClassReviewImageRow(row, asset);
+
+    if (!image) {
+      continue;
+    }
+
     const images = imageMap.get(row.class_review_id) ?? [];
-    images.push(fromClassReviewImageRow(row, asset));
+    images.push(image);
     imageMap.set(row.class_review_id, images);
   }
 
@@ -213,6 +229,7 @@ function fromClassReviewRow(
 ): ClassReviewEntry {
   return {
     body: row.body,
+    classSessionId: row.class_session_id,
     classTitle: row.class_title,
     createdAt: row.created_at,
     displayName: row.display_name ?? row.participant_name,
@@ -224,18 +241,22 @@ function fromClassReviewRow(
 function fromClassReviewImageRow(
   row: ClassReviewImageRow,
   asset: MediaAsset,
-): ClassReviewImage {
+): ClassReviewImage | null {
   const listVariant = pickMediaVariantForSurface(asset, "list");
+
+  if (!listVariant) {
+    return null;
+  }
 
   return {
     alt: asset.alt,
     assetId: asset.id,
-    height: listVariant?.height ?? asset.height,
+    height: listVariant.height,
     id: row.id,
     sortOrder: row.sort_order,
-    src: listVariant?.src ?? asset.src,
+    src: listVariant.src,
     variants: buildMediaVariantSources(asset),
-    width: listVariant?.width ?? asset.width,
+    width: listVariant.width,
   };
 }
 

@@ -1,13 +1,17 @@
 import { redirect } from "next/navigation";
 import { regenerateMediaAssetVariantsAction } from "@/app/admin/actions";
+import { AdminEmptyText } from "@/components/admin/admin-actions";
+import { AdminMediaAssetThumbnail } from "@/components/admin/admin-media-thumbnail";
 import { AdminNav } from "@/components/admin/admin-nav";
+import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { MediaVariantRegenerateSubmit } from "@/components/admin/media-variant-regenerate-submit";
 import { isAdminAuthenticated } from "@/lib/admin/auth";
 import {
   getMediaDiagnostics,
   type MediaAssetDiagnostic,
+  type MediaDiagnosticIssue,
 } from "@/lib/media/media-maintenance";
-import { pickMediaVariantForSurface } from "@/lib/media/media-variant-policy";
+import type { MediaVariantName } from "@/lib/media/media-model";
 
 type AdminMediaPageProps = {
   searchParams: Promise<{
@@ -36,6 +40,7 @@ export default async function AdminMediaPage({
   const problemAssets = diagnostics.assets.filter(
     (item) => item.health !== "ok",
   );
+  const libraryAssets = diagnostics.assets.filter((item) => !item.asset.reserved);
 
   return (
     <main className="admin-page admin-media-page">
@@ -65,32 +70,96 @@ export default async function AdminMediaPage({
       ) : null}
 
       <section className="admin-ops-stats" aria-label="미디어 진단 요약">
-        <StatCard label="전체 asset" value={diagnostics.stats.totalAssets} />
-        <StatCard
+        <AdminStatCard label="전체 asset" value={diagnostics.stats.totalAssets} />
+        <AdminStatCard
           label="정상"
           tone="neutral"
           value={diagnostics.stats.okAssets}
         />
-        <StatCard
+        <AdminStatCard
           label="주의"
           tone={diagnostics.stats.warningAssets > 0 ? "warning" : "neutral"}
           value={diagnostics.stats.warningAssets}
         />
-        <StatCard
+        <AdminStatCard
           label="오류"
           tone={diagnostics.stats.errorAssets > 0 ? "danger" : "neutral"}
           value={diagnostics.stats.errorAssets}
         />
-        <StatCard
+        <AdminStatCard
           label="fallback usage"
           tone={diagnostics.stats.fallbackUsages > 0 ? "warning" : "neutral"}
           value={diagnostics.stats.fallbackUsages}
         />
-        <StatCard
+        <AdminStatCard
+          label="fallback detail"
+          tone={
+            diagnostics.stats.fallbackTargets.detail > 0 ? "warning" : "neutral"
+          }
+          value={diagnostics.stats.fallbackTargets.detail}
+        />
+        <AdminStatCard
+          label="fallback list"
+          tone={
+            diagnostics.stats.fallbackTargets.list > 0 ? "warning" : "neutral"
+          }
+          value={diagnostics.stats.fallbackTargets.list}
+        />
+        <AdminStatCard
           label="cleanup 후보"
           tone={diagnostics.stats.orphanAssets > 0 ? "warning" : "neutral"}
           value={diagnostics.stats.orphanAssets}
         />
+        <AdminStatCard
+          label="broken usage"
+          tone={diagnostics.stats.brokenUsages > 0 ? "danger" : "neutral"}
+          value={diagnostics.stats.brokenUsages}
+        />
+        <AdminStatCard
+          label="missing owner"
+          tone={diagnostics.stats.ownerMissingUsages > 0 ? "danger" : "neutral"}
+          value={diagnostics.stats.ownerMissingUsages}
+        />
+        <AdminStatCard
+          label="shared path"
+          tone={
+            diagnostics.stats.sharedStoragePathAssets > 0
+              ? "danger"
+              : "neutral"
+          }
+          value={diagnostics.stats.sharedStoragePathAssets}
+        />
+      </section>
+
+      <section className="admin-panel admin-media-integrity-list">
+        <div className="admin-panel-head">
+          <h2>Media usage integrity</h2>
+          <span>{diagnostics.brokenUsages.length} rows</span>
+        </div>
+        {diagnostics.brokenUsages.length > 0 ? (
+          <div className="admin-ops-table">
+            {diagnostics.brokenUsages.map((usage) => (
+              <article
+                className="admin-ops-row admin-ops-row-danger"
+                key={`${usage.id}-${usage.issue.code}`}
+              >
+                <div>
+                  <strong>{usage.issue.title}</strong>
+                  <span>{usage.issue.description}</span>
+                </div>
+                <code>{usage.assetId}</code>
+                <span>
+                  {usage.ownerType}:{usage.role}
+                </span>
+                <small>{usage.ownerId}</small>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <AdminEmptyText>
+            media usage와 owner/asset 연결 문제가 없습니다.
+          </AdminEmptyText>
+        )}
       </section>
 
       <section className="admin-panel">
@@ -105,27 +174,27 @@ export default async function AdminMediaPage({
             ))}
           </div>
         ) : (
-          <p className="admin-empty-text">
+          <AdminEmptyText>
             현재 진단 가능한 미디어 문제는 없습니다.
-          </p>
+          </AdminEmptyText>
         )}
       </section>
 
       <section className="admin-panel">
         <div className="admin-panel-head">
           <h2>라이브러리</h2>
-          <span>{diagnostics.assets.length} assets</span>
+          <span>{libraryAssets.length} assets</span>
         </div>
-        {diagnostics.assets.length > 0 ? (
+        {libraryAssets.length > 0 ? (
           <div className="admin-media-library-grid">
-            {diagnostics.assets.map((item) => (
+            {libraryAssets.map((item) => (
               <MediaLibraryItem item={item} key={item.asset.id} />
             ))}
           </div>
         ) : (
-          <p className="admin-empty-text">
+          <AdminEmptyText>
             아직 등록된 미디어가 없습니다.
-          </p>
+          </AdminEmptyText>
         )}
       </section>
     </main>
@@ -133,15 +202,12 @@ export default async function AdminMediaPage({
 }
 
 function MediaDiagnosticCard({ item }: { item: MediaAssetDiagnostic }) {
-  const thumbnail = pickMediaVariantForSurface(item.asset, "thumbnail");
-
   return (
     <article
       className={`admin-media-diagnostic-card admin-media-health-${item.health}`}
       id={`asset-${item.asset.id}`}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img alt={item.asset.alt} src={thumbnail?.src ?? item.asset.src} />
+      <AdminMediaAssetThumbnail asset={item.asset} />
       <div>
         <strong>{item.asset.artworkTitle ?? item.asset.alt}</strong>
         <span>
@@ -152,9 +218,45 @@ function MediaDiagnosticCard({ item }: { item: MediaAssetDiagnostic }) {
             <li key={`${item.asset.id}-${issue.code}`}>
               <b>{issue.title}</b>
               <span>{issue.description}</span>
+              <small>{getIssueActionHint(issue)}</small>
             </li>
           ))}
         </ul>
+        <div className="admin-media-variant-grid">
+          {getVariantRows(item).map((variant) => (
+            <div
+              className={`admin-media-variant-row ${
+                variant.ready
+                  ? "admin-media-variant-row-ok"
+                  : "admin-media-variant-row-missing"
+              }`}
+              key={`${item.asset.id}-${variant.name}`}
+            >
+              <span>{variant.label}</span>
+              <strong>{variant.ready ? "준비됨" : "누락"}</strong>
+              <code>{variant.path ?? "storage path 없음"}</code>
+            </div>
+          ))}
+        </div>
+        {item.fallbackUsages.length > 0 ? (
+          <div className="admin-media-fallback-list">
+            <strong>role fallback details</strong>
+            {item.fallbackUsages.map((usage) => (
+              <div
+                className="admin-media-fallback-row"
+                key={`${item.asset.id}-${usage.usageId}`}
+              >
+                <span>
+                  {usage.ownerType}:{usage.role}
+                </span>
+                <code>
+                  {usage.expectedSurface} -&gt; {usage.selectedVariant}
+                </code>
+                <small>{usage.ownerId}</small>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
       <RegenerateForm
         assetId={item.asset.id}
@@ -167,15 +269,12 @@ function MediaDiagnosticCard({ item }: { item: MediaAssetDiagnostic }) {
 }
 
 function MediaLibraryItem({ item }: { item: MediaAssetDiagnostic }) {
-  const thumbnail = pickMediaVariantForSurface(item.asset, "thumbnail");
-
   return (
     <article
       className={`admin-media-library-item admin-media-health-${item.health}`}
       id={`library-asset-${item.asset.id}`}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img alt={item.asset.alt} src={thumbnail?.src ?? item.asset.src} />
+      <AdminMediaAssetThumbnail asset={item.asset} />
       <div>
         <strong>{item.asset.artworkTitle ?? item.asset.alt}</strong>
         <span>{item.asset.usageCount} usages</span>
@@ -237,21 +336,49 @@ function getRegenerateDisabledReason(item: MediaAssetDiagnostic) {
   return "이 asset은 현재 variant 재생성을 실행할 수 없습니다.";
 }
 
-function StatCard({
-  label,
-  tone = "neutral",
-  value,
-}: {
-  label: string;
-  tone?: "danger" | "neutral" | "warning";
-  value: number;
-}) {
-  return (
-    <article className={`admin-ops-stat admin-ops-stat-${tone}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </article>
-  );
+function getIssueActionHint(issue: MediaDiagnosticIssue) {
+  return {
+    broken_usage:
+      "연결 정보만 남은 상태입니다. 원본 asset을 복구하거나 연결을 정리해야 합니다.",
+    duplicate_variant_path:
+      "예상 master mirror가 아니라면 DB variant path를 확인한 뒤 재생성하세요.",
+    master_missing:
+      "원본 파일이 없는 asset입니다. 실제 이미지를 다시 업로드해야 합니다.",
+    orphan_asset:
+      "어디에도 연결되지 않은 asset입니다. 필요 없으면 cleanup 대상으로 처리할 수 있습니다.",
+    role_variant_fallback:
+      "공개 화면에서 역할에 맞는 list/detail variant를 쓰도록 재생성하세요.",
+    owner_missing:
+      "media usage만 남아 있는 상태입니다. owner row를 복구하거나 usage를 정리해야 합니다.",
+    shared_storage_path:
+      "여러 asset이 같은 storage path를 공유합니다. asset별 원본/variant 경로를 분리해야 합니다.",
+    variant_missing:
+      "재생성 버튼으로 master/detail/list/thumbnail webp를 다시 만들 수 있습니다.",
+  }[issue.code];
+}
+
+function getVariantRows(item: MediaAssetDiagnostic) {
+  const variants: Array<{ label: string; name: MediaVariantName }> = [
+    { label: "master", name: "master" },
+    { label: "detail", name: "detail" },
+    { label: "list", name: "list" },
+    { label: "thumbnail", name: "thumbnail" },
+  ];
+
+  return variants.map(({ label, name }) => {
+    const variant = item.asset.variants.find((entry) => entry.variant === name);
+    const path =
+      name === "master"
+        ? item.asset.masterPath || variant?.storagePath
+        : variant?.storagePath;
+
+    return {
+      label,
+      name,
+      path,
+      ready: Boolean(path),
+    };
+  });
 }
 
 function mediaHealthLabel(health: MediaAssetDiagnostic["health"]) {

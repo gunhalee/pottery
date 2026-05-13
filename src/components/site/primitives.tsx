@@ -1,5 +1,12 @@
 import type { ReactNode } from "react";
 import { SiteLink } from "@/components/navigation/site-link";
+import {
+  SiteActionLink,
+  SiteArrowLink,
+  SiteArrowText,
+  SiteExternalActionLink,
+  SiteExternalArrowLink,
+} from "@/components/site/actions";
 import type { AppHref } from "@/lib/routing/types";
 import type { FeatureSection, WorkItem } from "@/lib/content/site-content";
 
@@ -17,9 +24,9 @@ export function ButtonLink({
   href: LinkHref;
 }) {
   return (
-    <SiteLink href={href} className="button-primary">
+    <SiteActionLink href={href}>
       {children}
-    </SiteLink>
+    </SiteActionLink>
   );
 }
 
@@ -31,14 +38,9 @@ export function ExternalButtonLink({
   href: string;
 }) {
   return (
-    <a
-      className="button-primary"
-      href={href}
-      rel="noopener noreferrer"
-      target="_blank"
-    >
+    <SiteExternalActionLink href={href}>
       {children}
-    </a>
+    </SiteExternalActionLink>
   );
 }
 
@@ -50,9 +52,9 @@ export function ArrowLink({
   href: LinkHref;
 }) {
   return (
-    <SiteLink href={href} className="link-arrow">
+    <SiteArrowLink href={href}>
       {children}
-    </SiteLink>
+    </SiteArrowLink>
   );
 }
 
@@ -68,7 +70,7 @@ export function CtaCardLink({
   return (
     <SiteLink href={href} className="intro-cta-card">
       {children}
-      <span className="link-arrow">{label}</span>
+      <SiteArrowText>{label}</SiteArrowText>
     </SiteLink>
   );
 }
@@ -90,7 +92,7 @@ export function ExternalCtaCardLink({
       target="_blank"
     >
       {children}
-      <span className="link-arrow">{label}</span>
+      <SiteArrowText>{label}</SiteArrowText>
     </a>
   );
 }
@@ -112,14 +114,19 @@ export function PageShell({
 export function Section({
   children,
   className,
+  deferred = false,
   id,
 }: {
   children: ReactNode;
   className?: string;
+  deferred?: boolean;
   id?: string;
 }) {
   return (
-    <section className={cx("section", className)} id={id}>
+    <section
+      className={cx("section", deferred && "deferred-section", className)}
+      id={id}
+    >
       {children}
     </section>
   );
@@ -250,14 +257,12 @@ export function WorkGrid({
             <div className="work-sub">{item.description}</div>
             {item.price ? <div className="work-price">{item.price}</div> : null}
             {inquiryHref ? (
-              <a
-                className="work-inquiry link-arrow"
+              <SiteExternalArrowLink
+                className="work-inquiry"
                 href={inquiryHref}
-                rel="noopener noreferrer"
-                target="_blank"
               >
                 문의하기
-              </a>
+              </SiteExternalArrowLink>
             ) : null}
           </>
         );
@@ -297,7 +302,7 @@ export function PageLinkCards({
           <div className="small-caps">{card.label}</div>
           <h2 className="card-title">{card.title}</h2>
           <p className="body-copy">{card.description}</p>
-          <span className="link-arrow">{card.label}하기</span>
+          <SiteArrowText>{card.label}하기</SiteArrowText>
         </SiteLink>
       ))}
     </div>

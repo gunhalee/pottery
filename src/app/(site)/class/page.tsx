@@ -5,10 +5,14 @@ import { PageShell } from "@/components/site/primitives";
 import { pageBottomCtas } from "@/lib/content/page-ctas";
 import { classItems, classReviews } from "@/lib/content/site-content";
 import { siteConfig } from "@/lib/config/site";
+import { getPublishedClassSessions } from "@/lib/shop/class-sessions";
 import { getPublishedClassReviews } from "@/lib/shop/class-reviews";
 
 export default async function ClassPage() {
-  const publishedClassReviews = await getPublishedClassReviews();
+  const [publishedClassReviews, classSessions] = await Promise.all([
+    getPublishedClassReviews(),
+    getPublishedClassSessions(),
+  ]);
 
   return (
     <>
@@ -58,6 +62,7 @@ export default async function ClassPage() {
         </section>
 
         <ClassReviewPanel
+          classSessions={classSessions}
           reviews={publishedClassReviews}
           staticReviews={classReviews}
         />

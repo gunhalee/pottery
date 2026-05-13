@@ -6,6 +6,7 @@ import { z } from "zod";
 import { assertAdmin } from "@/lib/admin/auth";
 import {
   revokeAdminClassReviewConsent,
+  updateAdminClassReviewSession,
   updateAdminClassReviewStatus,
 } from "@/lib/admin/class-reviews";
 import { updateAdminProductFeedbackStatus } from "@/lib/admin/product-feedback";
@@ -19,6 +20,10 @@ const classReviewStatusUpdateSchema = z.object({
   status: z.enum(["pending", "published", "hidden"]),
 });
 const classReviewRevokeSchema = z.object({
+  reviewId: z.uuid(),
+});
+const classReviewSessionUpdateSchema = z.object({
+  classSessionId: z.uuid().optional().or(z.literal("")),
   reviewId: z.uuid(),
 });
 
@@ -83,6 +88,30 @@ export async function revokeAdminClassReviewConsentAction(formData: FormData) {
   } catch (error) {
     console.error(error);
     redirect("/admin/reviews?error=class-revoke");
+  }
+
+  redirect("/admin/reviews?saved=1");
+}
+
+export async function updateAdminClassReviewSessionAction(formData: FormData) {
+  await assertAdmin();
+
+  const parsed = classReviewSessionUpdateSchema.parse({
+    classSessionId: formData.get("classSessionId") || "",
+    reviewId: formData.get("reviewId"),
+  });
+
+  try {
+    await updateAdminClassReviewSession({
+      classSessionId: parsed.classSessionId || null,
+      reviewId: parsed.reviewId,
+    });
+
+    revalidatePath("/admin/reviews");
+    revalidatePath("/class");
+  } catch (error) {
+    console.error(error);
+    redirect("/admin/reviews?error=class-session");
   }
 
   redirect("/admin/reviews?saved=1");

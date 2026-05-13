@@ -36,6 +36,7 @@ export type MediaImageUploadInput = {
   filename: string;
   ownerId?: string;
   ownerType?: MediaOwnerType;
+  reserved?: boolean;
 };
 
 let ensureMediaAssetBucketPromise: Promise<void> | null = null;
@@ -102,6 +103,7 @@ export async function uploadMediaImage(
       height: master.height,
       id: assetId,
       masterPath: master.storagePath,
+      reserved: input.reserved,
       sizeBytes: master.data.length,
       src: getPublicUrl(master.storagePath),
       variants: variants.map((variant) => ({

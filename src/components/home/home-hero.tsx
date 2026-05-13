@@ -1,6 +1,7 @@
 import Image from "next/image";
 import heroPoster from "../../../public/asset/hero-image.jpg";
 import type { HomeHeroTagline } from "@/lib/content/site-content";
+import { mediaImageSizes } from "@/lib/media/media-image-sizes";
 
 export function HomeHero({
   taglines,
@@ -18,10 +19,10 @@ export function HomeHero({
           src={heroPoster}
           alt=""
           fill
-          preload
+          fetchPriority="high"
           quality={70}
           placeholder="blur"
-          sizes="100vw"
+          sizes={mediaImageSizes.homeHero}
           className="hero-poster"
         />
         {videoSrc ? (

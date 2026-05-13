@@ -6,9 +6,11 @@ import type {
   CashReceiptIdentifierType,
   CashReceiptType,
   DepositAccount,
+  OrderStatus,
   PaymentMethod,
   PaymentStatus,
 } from "@/lib/orders/order-model";
+import { assertPaymentTransitionAllowed } from "@/lib/orders/order-state";
 import { ensureGiftRecipientAddressRequest } from "@/lib/orders/gift-recipient";
 import {
   enqueueAdminNotificationJob,
@@ -37,7 +39,7 @@ type OrderPaymentRow = {
   is_gift: boolean;
   is_made_to_order: boolean;
   order_number: string;
-  order_status: string;
+  order_status: OrderStatus;
   orderer_email: string;
   orderer_name: string;
   orderer_phone: string;
@@ -291,6 +293,11 @@ export async function syncPortOnePayment({
   const normalizedStatus = normalizePortOnePaymentStatus(payment.status);
   const syncedPaymentMethod = inferOrderPaymentMethod(order.payment_method, payment);
   const depositAccount = readVirtualAccountInfo(payment);
+  assertPaymentTransitionAllowed({
+    currentPaymentStatus: order.payment_status,
+    nextPaymentStatus: normalizedStatus,
+    orderStatus: order.order_status,
+  });
 
   if (normalizedStatus === "paid") {
     const transactionId = getPortOneTransactionId(payment);

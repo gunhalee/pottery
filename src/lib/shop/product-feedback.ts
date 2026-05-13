@@ -179,8 +179,14 @@ export async function readFeedbackImagesByFeedbackIds(feedbackIds: string[]) {
       continue;
     }
 
+    const image = fromFeedbackImageRow(row, asset);
+
+    if (!image) {
+      continue;
+    }
+
     const images = imageMap.get(row.feedback_id) ?? [];
-    images.push(fromFeedbackImageRow(row, asset));
+    images.push(image);
     imageMap.set(row.feedback_id, images);
   }
 
@@ -238,18 +244,22 @@ function fromProductFeedbackRow(
 function fromFeedbackImageRow(
   row: ProductFeedbackImageRow,
   asset: MediaAsset,
-): ProductFeedbackImage {
+): ProductFeedbackImage | null {
   const listVariant = pickMediaVariantForSurface(asset, "list");
+
+  if (!listVariant) {
+    return null;
+  }
 
   return {
     alt: asset.alt,
     assetId: asset.id,
-    height: listVariant?.height ?? asset.height,
+    height: listVariant.height,
     id: row.id,
     sortOrder: row.sort_order,
-    src: listVariant?.src ?? asset.src,
+    src: listVariant.src,
     variants: buildMediaVariantSources(asset),
-    width: listVariant?.width ?? asset.width,
+    width: listVariant.width,
   };
 }
 

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { mediaImageSizes } from "@/lib/media/media-image-sizes";
 
 type NaverPlaceMapProps = {
   address: string;
@@ -40,6 +41,7 @@ export function NaverPlaceMap({
           alt={`${name} 위치 지도. 주소: ${address}`}
           className="naver-place-map-image"
           height={height}
+          sizes={mediaImageSizes.naverMapPreview}
           src={`/api/studio-map?${mapImageUrl.toString()}`}
           unoptimized
           width={width}

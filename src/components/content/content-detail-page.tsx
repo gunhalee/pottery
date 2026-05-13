@@ -1,11 +1,12 @@
-import Link from "next/link";
 import { ArtworkImage } from "@/components/media/artwork-image";
+import { SiteArrowLink } from "@/components/site/actions";
 import { MetaLabel, PageShell } from "@/components/site/primitives";
 import { RichTextRenderer } from "@/components/content/rich-text-renderer";
 import {
   getContentCoverImage,
   getContentDetailImages,
 } from "@/lib/content-manager/content-images";
+import { mediaImageSizes } from "@/lib/media/media-image-sizes";
 import type { ContentEntry } from "@/lib/content-manager/content-model";
 
 type ContentDetailPageProps = {
@@ -43,8 +44,8 @@ export function ContentDetailPage({
               height={coverImage.height}
               loading="eager"
               preload
-              quality={75}
-              sizes="(max-width: 900px) 100vw, 1180px"
+              quality={70}
+              sizes={mediaImageSizes.contentCover}
               src={coverImage.src}
               width={coverImage.width}
             />
@@ -72,7 +73,8 @@ export function ContentDetailPage({
                   alt={image.alt}
                   height={image.height}
                   loading="lazy"
-                  sizes="(max-width: 760px) 100vw, 50vw"
+                  quality={70}
+                  sizes={mediaImageSizes.contentDetailStrip}
                   src={image.src}
                   width={image.width}
                 />
@@ -89,9 +91,9 @@ export function ContentDetailPage({
               <h2>{relatedProduct.titleKo}</h2>
               <p>{relatedProduct.shortDescription}</p>
             </div>
-            <Link className="link-arrow" href={`/shop/${relatedProduct.slug}`}>
+            <SiteArrowLink href={`/shop/${relatedProduct.slug}`}>
               작업물 보기
-            </Link>
+            </SiteArrowLink>
           </aside>
         ) : null}
       </article>

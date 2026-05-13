@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { useLazyFeedActivation } from "./use-lazy-feed-activation";
 import { useGalleryFeedColumns } from "./use-gallery-feed-columns";
 
 type InstagramFeedItem = {
@@ -27,13 +28,17 @@ const initialVisibleRows = 2;
 const rowsPerLoad = 2;
 
 export function GalleryInstagramSection({
+  activateImmediately = false,
   profileUrl,
 }: {
+  activateImmediately?: boolean;
   profileUrl: string;
 }) {
   const [items, setItems] = useState<InstagramFeedItem[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [visibleRows, setVisibleRows] = useState(initialVisibleRows);
+  const { active: isFeedActive, ref: feedSectionRef } = useLazyFeedActivation();
+  const shouldLoadFeed = activateImmediately || isFeedActive;
   const columns = useGalleryFeedColumns();
   const feedItems = useMemo(
     () =>
@@ -48,6 +53,10 @@ export function GalleryInstagramSection({
   const canLoadMore = visibleCount < feedItems.length;
 
   useEffect(() => {
+    if (!shouldLoadFeed) {
+      return;
+    }
+
     const controller = new AbortController();
 
     async function loadFeed() {
@@ -83,10 +92,30 @@ export function GalleryInstagramSection({
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [shouldLoadFeed]);
 
   if (!loaded || feedItems.length === 0) {
-    return null;
+    return (
+      <section
+        aria-labelledby="gallery-instagram-title"
+        className="gallery-instagram-section"
+        ref={feedSectionRef}
+      >
+        <div className="gallery-instagram-head">
+          <h2 id="gallery-instagram-title">공방 피드</h2>
+          <div className="gallery-feed-actions">
+            <a href={profileUrl} rel="noopener noreferrer" target="_blank">
+              @pottery_conse
+            </a>
+          </div>
+        </div>
+        <p className="gallery-feed-placeholder">
+          {isFeedActive && loaded
+            ? "인스타그램 피드를 불러오지 못했습니다."
+            : "공방의 최근 기록을 준비하고 있습니다."}
+        </p>
+      </section>
+    );
   }
 
   function showMore() {
@@ -97,6 +126,7 @@ export function GalleryInstagramSection({
     <section
       aria-labelledby="gallery-instagram-title"
       className="gallery-instagram-section"
+      ref={feedSectionRef}
     >
       <div className="gallery-instagram-head">
         <h2 id="gallery-instagram-title">공방 한컷</h2>

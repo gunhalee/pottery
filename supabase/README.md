@@ -13,11 +13,11 @@ SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 ```
 
-`SUPABASE_SERVICE_ROLE_KEY`는 서버 전용이다. 현재 앱은 브라우저에서 Supabase를 직접 호출하지 않으므로 `SUPABASE_ANON_KEY`는 상품 관리 흐름에 필요하지 않다.
+`SUPABASE_SERVICE_ROLE_KEY`는 서버 전용이다. 공개 페이지에서 public read client를 사용할 수 있도록 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` 또는 `NEXT_PUBLIC_SUPABASE_ANON_KEY`도 함께 설정할 수 있다.
 
 `SUPABASE_URL`이 없으면 `NEXT_PUBLIC_SUPABASE_URL`을 대신 사용한다. service role 키는 `SUPABASE_SERVICE_ROLE_KEY` 또는 Vercel/Supabase 통합에서 제공하는 `NEXT_SECRET_SUPABASE_SERVICE_ROLE_KEY` 중 하나가 있으면 된다.
 
-환경 변수가 없으면 앱은 `data/shop-products.json` fallback 원장을 사용한다.
+환경 변수가 없으면 운영 데이터 저장소를 사용할 수 없으므로 앱이 명시적으로 실패한다. 샘플 JSON 원장과 로컬 파일 fallback은 사용하지 않는다.
 
 익명 찜 기능은 서버에서 발급하는 `consepot_wishlist` httpOnly 쿠키로 브라우저를
 구분한다. 계정 가입 없이 동작하지만, 브라우저/기기가 바뀌면 같은 찜 목록으로

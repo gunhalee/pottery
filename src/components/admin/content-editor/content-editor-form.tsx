@@ -1,7 +1,5 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
 import { useEffect, useMemo, useState } from "react";
 import { CodeHighlightNode, CodeNode, $createCodeNode } from "@lexical/code";
 import { LinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
@@ -40,6 +38,13 @@ import {
   deleteContentImageAction,
   updateContentEntryAction,
 } from "@/app/admin/actions";
+import {
+  AdminActionButton,
+  AdminEmptyText,
+  AdminExternalActionLink,
+} from "@/components/admin/admin-actions";
+import { AdminImageRoleStatus } from "@/components/admin/admin-image-role-status";
+import { AdminMediaThumbnail } from "@/components/admin/admin-media-thumbnail";
 import { AdminUploadFeedbackMessage } from "@/components/admin/admin-upload-feedback-message";
 import {
   MediaPicker,
@@ -54,8 +59,12 @@ import {
   type AdminUploadFeedback,
   type AdminUploadPayload,
 } from "@/lib/admin/upload-feedback";
-import { withContentImageVariant } from "@/lib/content-manager/content-images";
-import { buildMediaVariantSources } from "@/lib/media/media-variant-policy";
+import {
+  createContentImageFromMediaAsset,
+  getContentAdminPreviewImage,
+  getContentEditorInsertImage,
+} from "@/lib/content-manager/content-images";
+import { mediaImageSizes } from "@/lib/media/media-image-sizes";
 import {
   getContentImageEditorStatus,
   getContentImagesPublishIssues,
@@ -157,8 +166,17 @@ export function ContentEditorForm({
     () => getContentImageIds(previewBody),
     [previewBody],
   );
-  const coverImage = images.find((image) => image.isCover) ?? null;
-  const listImage = images.find((image) => image.isListImage) ?? null;
+  const reservedImageIds = useMemo(
+    () => images.filter((image) => image.isReserved).map((image) => image.id),
+    [images],
+  );
+  const coverImage =
+    images.find((image) => image.isCover && !image.isReserved) ?? null;
+  const coverPreviewImage = coverImage
+    ? getContentEditorInsertImage(coverImage)
+    : null;
+  const listImage =
+    images.find((image) => image.isListImage && !image.isReserved) ?? null;
   const hasRoleGaps = images.length > 0 && (!coverImage || !listImage);
   const publishIssues = useMemo(
     () => getContentImagesPublishIssues(images, bodyImageIds),
@@ -257,14 +275,9 @@ export function ContentEditorForm({
         <section className="admin-panel">
           <div className="admin-panel-head">
             <h2>기본 정보</h2>
-            <a
-              className="admin-text-button"
-              href={previewHref}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
+            <AdminExternalActionLink href={previewHref} target="_blank">
               미리보기
-            </a>
+            </AdminExternalActionLink>
           </div>
           <div className="admin-form admin-content-meta-form">
             <div className="admin-form-grid">
@@ -380,9 +393,13 @@ export function ContentEditorForm({
               />
             </div>
           </LexicalComposer>
-          <button className="button-primary admin-save-button" type="submit">
+          <AdminActionButton
+            className="admin-save-button"
+            type="submit"
+            variant="primary"
+          >
             저장
-          </button>
+          </AdminActionButton>
         </section>
 
         <section className="admin-panel">
@@ -416,9 +433,9 @@ export function ContentEditorForm({
               ))}
             </div>
           ) : (
-            <p className="admin-empty-text">
+            <AdminEmptyText>
               본문 툴바의 이미지 버튼으로 업로드하면 여기에 표시됩니다.
-            </p>
+            </AdminEmptyText>
           )}
         </section>
       </div>
@@ -429,18 +446,25 @@ export function ContentEditorForm({
           <span>{entry.kind === "news" ? "소식" : "작업물"}</span>
         </div>
         <article className="admin-live-preview">
-          {coverImage ? (
+          {coverPreviewImage ? (
             <figure className="admin-live-preview-cover">
-              <img
-                alt={coverImage.alt}
-                src={withContentImageVariant(coverImage, "detail").src}
+              <AdminMediaThumbnail
+                alt={coverPreviewImage.alt}
+                height={coverPreviewImage.height}
+                sizes={mediaImageSizes.adminPreviewCover}
+                src={coverPreviewImage.src}
+                width={coverPreviewImage.width}
               />
             </figure>
           ) : null}
           <p className="admin-preview-date">{displayDate}</p>
           <h1>{title || "제목 없음"}</h1>
           {summary ? <p className="admin-preview-summary">{summary}</p> : null}
-          <RichTextRenderer body={previewBody} images={images} />
+          <RichTextRenderer
+            body={previewBody}
+            hiddenImageIds={reservedImageIds}
+            images={images}
+          />
         </article>
       </aside>
     </form>
@@ -719,6 +743,7 @@ function EditorToolbar({
         <MediaPicker
           assets={mediaAssets}
           onSelect={insertLibraryImage}
+          requiredVariants={["detail", "list", "thumbnail"]}
           title="본문 이미지로 재사용"
         />
       ) : null}
@@ -730,33 +755,10 @@ function mediaAssetToContentImage(
   asset: MediaPickerAsset,
   layout: ContentImageLayout,
 ): ContentImage {
-  const variants = buildMediaVariantSources(asset);
-  const detail = withContentImageVariant(
-    {
-      alt: asset.alt,
-      caption: asset.caption,
-      createdAt: asset.createdAt,
-      height: asset.height,
-      id: asset.id,
-      isCover: false,
-      isDetail: false,
-      isListImage: false,
-      isReserved: asset.reserved,
-      layout,
-      sortOrder: 0,
-      src: asset.src,
-      storagePath: asset.masterPath,
-      updatedAt: asset.updatedAt,
-      variants,
-      width: asset.width,
-    },
-    "detail",
-  );
-
-  return {
-    ...detail,
-    variants,
-  };
+  return createContentImageFromMediaAsset({
+    asset,
+    layout,
+  });
 }
 
 function ImageSettings({
@@ -769,33 +771,18 @@ function ImageSettings({
   onChange: (patch: Partial<ContentImage>) => void;
 }) {
   const imageStatus = getContentImageEditorStatus(image, imageInBody);
-  const previewImage = withContentImageVariant(image, "thumbnail");
+  const previewImage = getContentAdminPreviewImage(image);
 
   return (
     <article className="admin-image-item">
-      <img alt={image.alt} src={previewImage.src} />
+      <AdminMediaThumbnail
+        alt={previewImage.alt}
+        height={previewImage.height}
+        src={previewImage.src}
+        width={previewImage.width}
+      />
       <div className="admin-form">
-        <div className="admin-image-role-summary">
-          <span>노출 위치</span>
-          <strong>{imageStatus.exposureLabel}</strong>
-        </div>
-        <div className="admin-media-status-strip">
-          <span
-            className={`admin-media-status-pill admin-media-status-${imageStatus.variantTone}`}
-          >
-            {imageStatus.variantLabel}
-          </span>
-          {imageStatus.requiredVariants.length > 0 ? (
-            <span>필요: {imageStatus.requiredVariants.join(" / ")}</span>
-          ) : (
-            <span>발행 필수 variant 없음</span>
-          )}
-        </div>
-        {imageStatus.publishIssues.length > 0 ? (
-          <p className="admin-image-role-note admin-image-role-note-danger">
-            발행 차단: {imageStatus.publishIssues.join(" · ")}
-          </p>
-        ) : null}
+        <AdminImageRoleStatus status={imageStatus} />
         <label>
           <span>대체 텍스트</span>
           <input
@@ -874,15 +861,15 @@ function ImageSettings({
             본문에 삽입된 이미지는 저장 시 보관 상태가 해제됩니다.
           </p>
         ) : null}
-        <button
-          className="admin-danger-inline-button"
+        <AdminActionButton
           formAction={deleteContentImageAction}
           name="imageId"
           type="submit"
+          variant="danger-inline"
           value={image.id}
         >
           이미지 삭제
-        </button>
+        </AdminActionButton>
       </div>
     </article>
   );

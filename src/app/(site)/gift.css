@@ -1,0 +1,102 @@
+/* Gift recipient route styles. */
+
+.gift-address-head,
+.gift-address-field-wide,
+.gift-address-note,
+.gift-address-form .button-primary,
+.gift-address-form .checkout-error {
+  grid-column: 1 / -1;
+}
+
+.gift-address-form {
+  border-top: 0.5px solid var(--line-subtle);
+  border-bottom: 0.5px solid var(--line-subtle);
+  padding: 20px 0;
+}
+
+.gift-address-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.gift-address-head strong {
+  display: block;
+  margin: 0;
+  color: var(--tx);
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.gift-address-note {
+  margin: 0;
+  color: var(--tx2);
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.gift-address-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--tx3);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.gift-address-form input,
+.gift-address-form textarea {
+  width: 100%;
+  border: 0;
+  border-bottom: 0.5px solid var(--brd);
+  background: transparent;
+  color: var(--tx);
+  font: inherit;
+  min-height: 42px;
+  padding: 8px 0;
+}
+
+.gift-address-form textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+@media (max-width: 720px) {
+  .gift-address-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+.gift-address-page-shell {
+  max-width: 760px;
+}
+
+.gift-address-result {
+  display: grid;
+  gap: 16px;
+  padding: 24px 0;
+  border-top: 0.5px solid var(--line-subtle);
+  border-bottom: 0.5px solid var(--line-subtle);
+}
+
+.gift-address-result span {
+  color: var(--tx3);
+  font-size: 11px;
+}
+
+.gift-address-result strong {
+  color: var(--tx);
+  font-size: 22px;
+  font-weight: 300;
+  line-height: 1.45;
+}
+
+.gift-address-result p {
+  margin: 0;
+  color: var(--tx2);
+  font-size: 12px;
+  line-height: 1.85;
+}
+
+.checkout-error {
+  color: #7e2f24;
+}

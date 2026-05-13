@@ -1,14 +1,11 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
 import { useMemo, useState } from "react";
-import {
-  buildMediaVariantSources,
-  pickMediaVariantForSurface,
-} from "@/lib/media/media-variant-policy";
+import { AdminMediaAssetThumbnail } from "@/components/admin/admin-media-thumbnail";
+import { AdminEmptyText } from "@/components/admin/admin-actions";
+import { buildMediaVariantSources } from "@/lib/media/media-variant-policy";
 import { getVariantStatusLabel } from "@/lib/media/media-editor-status";
-import type { MediaAsset } from "@/lib/media/media-model";
+import type { MediaAsset, MediaVariantName } from "@/lib/media/media-model";
 
 export type MediaPickerAsset = MediaAsset & {
   usageCount?: number;
@@ -19,16 +16,23 @@ type MediaPickerProps = {
   disabledAssetIds?: string[];
   emptyText?: string;
   onSelect: (asset: MediaPickerAsset) => void;
+  requiredVariants?: readonly MediaVariantName[];
   title?: string;
 };
 
-const requiredVariants = ["detail", "list", "master", "thumbnail"] as const;
+const defaultRequiredVariants = [
+  "detail",
+  "list",
+  "master",
+  "thumbnail",
+] as const satisfies readonly MediaVariantName[];
 
 export function MediaPicker({
   assets,
   disabledAssetIds = [],
   emptyText = "선택할 수 있는 미디어가 없습니다.",
   onSelect,
+  requiredVariants = defaultRequiredVariants,
   title = "라이브러리에서 선택",
 }: MediaPickerProps) {
   const [query, setQuery] = useState("");
@@ -41,7 +45,7 @@ export function MediaPicker({
     const normalizedQuery = query.trim().toLowerCase();
 
     return assets.filter((asset) => {
-      const missingVariants = getMissingVariants(asset);
+      const missingVariants = getMissingVariants(asset, requiredVariants);
       const searchable = [
         asset.alt,
         asset.artworkTitle,
@@ -60,7 +64,7 @@ export function MediaPicker({
 
       return matchesQuery && matchesFilter;
     });
-  }, [assets, filter, query]);
+  }, [assets, filter, query, requiredVariants]);
 
   return (
     <section className="admin-media-picker">
@@ -90,8 +94,7 @@ export function MediaPicker({
       {filteredAssets.length > 0 ? (
         <div className="admin-media-picker-grid">
           {filteredAssets.map((asset) => {
-            const thumbnail = pickMediaVariantForSurface(asset, "thumbnail");
-            const missingVariants = getMissingVariants(asset);
+            const missingVariants = getMissingVariants(asset, requiredVariants);
             const variantLabel = getVariantStatusLabel(
               buildMediaVariantSources(asset),
             );
@@ -105,27 +108,30 @@ export function MediaPicker({
                 onClick={() => onSelect(asset)}
                 type="button"
               >
-                <img alt={asset.alt} src={thumbnail?.src ?? asset.src} />
+                <AdminMediaAssetThumbnail asset={asset} />
                 <span>{asset.artworkTitle ?? asset.alt}</span>
                 <small>
                   {disabled
                     ? "이미 연결됨"
                     : missingVariants.length > 0
-                      ? variantLabel
-                      : `${variantLabel} · ${asset.usageCount ?? 0} usages`}
+                      ? `${variantLabel} / missing ${missingVariants.join(", ")}`
+                      : `${variantLabel} / ${asset.usageCount ?? 0} usages`}
                 </small>
               </button>
             );
           })}
         </div>
       ) : (
-        <p className="admin-empty-text">{emptyText}</p>
+        <AdminEmptyText>{emptyText}</AdminEmptyText>
       )}
     </section>
   );
 }
 
-function getMissingVariants(asset: MediaPickerAsset) {
+function getMissingVariants(
+  asset: MediaPickerAsset,
+  requiredVariants: readonly MediaVariantName[],
+) {
   const sources = buildMediaVariantSources(asset);
   return requiredVariants.filter((variant) => !sources[variant]?.src);
 }

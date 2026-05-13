@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { GiftRecipientAddressForm } from "@/components/shop/gift-recipient-address-form";
+import { SiteActionLink } from "@/components/site/actions";
 import { PageShell } from "@/components/site/primitives";
 import { readGiftRecipientAddressState } from "@/lib/orders/gift-recipient";
 
@@ -34,9 +34,9 @@ export default async function GiftRecipientAddressPage({
           <span>선물 배송 정보</span>
           <strong>{state.kind === "submitted" ? state.orderNumber : "확인 필요"}</strong>
           <p>{state.message}</p>
-          <Link className="button-primary" href="/" prefetch={false}>
+          <SiteActionLink href="/">
             홈으로 이동
-          </Link>
+          </SiteActionLink>
         </div>
       )}
     </PageShell>

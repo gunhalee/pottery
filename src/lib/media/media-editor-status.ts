@@ -3,6 +3,12 @@ import type {
   MediaVariantName,
   MediaVariantSourceMap,
 } from "@/lib/media/media-model";
+import {
+  getContentImageRequiredVariantSurfaces,
+  getContentImageRoleLabels,
+  getProductImageRequiredVariantSurfaces,
+  getProductImageRoleLabels,
+} from "@/lib/media/media-role-requirements";
 import type { MediaVariantSurface } from "@/lib/media/media-variant-policy";
 import type { ProductImage } from "@/lib/shop/product-model";
 
@@ -23,22 +29,13 @@ const supportVariants: MediaVariantName[] = ["master", "thumbnail"];
 export function getProductImageEditorStatus(
   image: ProductImage,
 ): MediaEditorStatus {
-  const roles = [
-    image.isPrimary ? "대표" : null,
-    image.isListImage ? "목록" : null,
-    image.isDetail ? "상세" : null,
-    image.isDescription ? "설명" : null,
-  ].filter((role): role is string => Boolean(role));
-  const requiredVariants = [
-    image.isPrimary || image.isDetail || image.isDescription ? "detail" : null,
-    image.isListImage ? "list" : null,
-  ].filter((variant): variant is MediaVariantSurface => Boolean(variant));
+  const roles = getProductImageRoleLabels(image);
 
   return buildMediaEditorStatus({
     exposureLabel: roles.length > 0 ? roles.join(" + ") : "노출 없음",
     imageLabel: image.alt,
     isManagedMedia: isManagedMedia(image.storagePath, image.variants),
-    requiredVariants,
+    requiredVariants: getProductImageRequiredVariantSurfaces(image),
     variants: image.variants,
   });
 }
@@ -71,23 +68,16 @@ export function getContentImageEditorStatus(
   image: ContentImage,
   imageInBody: boolean,
 ): MediaEditorStatus {
-  const roles = [
-    imageInBody ? "본문" : null,
-    image.isCover ? "대표" : null,
-    image.isListImage ? "목록" : null,
-    image.isDetail ? "상세" : null,
-    image.isReserved ? "보관" : null,
-  ].filter((role): role is string => Boolean(role));
-  const requiredVariants = [
-    imageInBody || image.isCover || image.isDetail ? "detail" : null,
-    image.isListImage ? "list" : null,
-  ].filter((variant): variant is MediaVariantSurface => Boolean(variant));
+  const roles = getContentImageRoleLabels(image, imageInBody);
 
   return buildMediaEditorStatus({
     exposureLabel: roles.length > 0 ? roles.join(" + ") : "노출 없음",
     imageLabel: image.alt,
     isManagedMedia: isManagedMedia(image.storagePath, image.variants),
-    requiredVariants: image.isReserved ? [] : requiredVariants,
+    requiredVariants: getContentImageRequiredVariantSurfaces(
+      image,
+      imageInBody,
+    ),
     variants: image.variants,
   });
 }

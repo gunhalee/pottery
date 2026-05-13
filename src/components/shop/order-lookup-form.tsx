@@ -1,6 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import {
+  SiteActionButton,
+  SiteEmptyState,
+} from "@/components/site/actions";
+import {
+  CommerceFormField,
+  CommerceFormStatus,
+  CommerceFormStatusMessage,
+  CommerceSummaryList,
+} from "@/components/site/commerce-form-primitives";
 import type { OrderLookupResult } from "@/lib/orders/order-model";
 
 type LookupCredentials = {
@@ -109,9 +119,9 @@ export function OrderLookupForm() {
             type="password"
           />
         </label>
-        <button className="button-primary" disabled={state.kind === "loading"}>
+        <SiteActionButton disabled={state.kind === "loading"} type="submit">
           {state.kind === "loading" ? "조회 중" : "주문 조회"}
-        </button>
+        </SiteActionButton>
       </form>
 
       <OrderLookupResultPanel state={state} />
@@ -135,25 +145,31 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
 
   if (state.kind === "idle") {
     return (
-      <aside className="order-lookup-empty">
-        <strong>주문조회를 위해 정보를 입력해 주세요.</strong>
-      </aside>
+      <SiteEmptyState
+        as="aside"
+        className="order-lookup-empty"
+        title="주문조회를 위해 정보를 입력해 주세요."
+      />
     );
   }
 
   if (state.kind === "loading") {
     return (
-      <aside className="order-lookup-empty">
-        <strong>주문 정보를 확인하고 있습니다.</strong>
-      </aside>
+      <SiteEmptyState
+        as="aside"
+        className="order-lookup-empty"
+        title="주문 정보를 확인하고 있습니다."
+      />
     );
   }
 
   if (state.kind === "error") {
     return (
-      <aside className="order-lookup-empty order-lookup-error">
-        <strong>{state.message}</strong>
-      </aside>
+      <SiteEmptyState
+        as="aside"
+        className="order-lookup-empty order-lookup-error"
+        title={state.message}
+      />
     );
   }
 
@@ -293,39 +309,42 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
         <span>{result.orderNumber}</span>
         <strong>{result.shippingSummary}</strong>
       </div>
-      <dl>
-        <div>
-          <dt>주문일</dt>
-          <dd>{formatDate(result.createdAt)}</dd>
-        </div>
-        <div>
-          <dt>주문 상태</dt>
-          <dd>{orderStatusLabel(result.orderStatus)}</dd>
-        </div>
-        <div>
-          <dt>결제 상태</dt>
-          <dd>{paymentStatusLabel(result.paymentStatus)}</dd>
-        </div>
-        <div>
-          <dt>결제수단</dt>
-          <dd>{paymentMethodLabel(result.paymentMethod)}</dd>
-        </div>
-        <div>
-          <dt>받는 분</dt>
-          <dd>{result.recipientName ?? "확인 중"}</dd>
-        </div>
-        {result.isGift ? (
-          <div>
-            <dt>선물 배송정보</dt>
-            <dd>
-              {giftAddressStatusLabel(result.giftAddressStatus)}
-              {result.giftAddressExpiresAt
-                ? ` · ${formatDate(result.giftAddressExpiresAt)}까지`
-                : ""}
-            </dd>
-          </div>
-        ) : null}
-      </dl>
+      <CommerceSummaryList
+        items={[
+          {
+            label: "주문일",
+            value: formatDate(result.createdAt),
+          },
+          {
+            label: "주문 상태",
+            value: orderStatusLabel(result.orderStatus),
+          },
+          {
+            label: "결제 상태",
+            value: paymentStatusLabel(result.paymentStatus),
+          },
+          {
+            label: "결제수단",
+            value: paymentMethodLabel(result.paymentMethod),
+          },
+          {
+            label: "받는 분",
+            value: result.recipientName ?? "확인 중",
+          },
+          ...(result.isGift
+            ? [
+                {
+                  label: "선물 배송정보",
+                  value: `${giftAddressStatusLabel(result.giftAddressStatus)}${
+                    result.giftAddressExpiresAt
+                      ? ` · ${formatDate(result.giftAddressExpiresAt)}까지`
+                      : ""
+                  }`,
+                },
+              ]
+            : []),
+        ]}
+      />
       <p className="order-lookup-privacy-note">
         개인정보 보호를 위해 주문 조회 화면에는 일부 주문자·수령인 정보만
         표시됩니다.
@@ -348,46 +367,42 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
               required
             />
           </label>
-          <button
-            className="button-quiet"
+          <SiteActionButton
             disabled={giftResendState.kind === "submitting"}
+            type="submit"
+            variant="quiet"
           >
             {giftResendState.kind === "submitting" ? "재발송 중" : "재발송"}
-          </button>
-          {giftResendState.kind === "success" ||
-          giftResendState.kind === "error" ? (
-            <p className={giftResendState.kind === "error" ? "checkout-error" : ""}>
-              {giftResendState.message}
-            </p>
-          ) : null}
+          </SiteActionButton>
+          <CommerceFormStatusMessage status={toFormStatus(giftResendState)} />
         </form>
       ) : null}
 
       {result.paymentMethod === "portone_virtual_account" ? (
         <div className="order-lookup-bank">
           <strong>가상계좌 입금 안내</strong>
-          <dl>
-            <div>
-              <dt>입금 계좌</dt>
-              <dd>
-                {result.depositAccount
+          <CommerceSummaryList
+            items={[
+              {
+                label: "입금 계좌",
+                value: result.depositAccount
                   ? `${result.depositAccount.bankName} ${result.depositAccount.accountNumber} / ${result.depositAccount.accountHolder}`
-                  : "확인 중"}
-              </dd>
-            </div>
-            <div>
-              <dt>입금 기한</dt>
-              <dd>{formatDate(result.depositDueAt)}</dd>
-            </div>
-            <div>
-              <dt>입금 확인</dt>
-              <dd>{formatDate(result.depositConfirmedAt)}</dd>
-            </div>
-            <div>
-              <dt>현금영수증</dt>
-              <dd>{cashReceiptStatusLabel(result.cashReceiptStatus)}</dd>
-            </div>
-          </dl>
+                  : "확인 중",
+              },
+              {
+                label: "입금 기한",
+                value: formatDate(result.depositDueAt),
+              },
+              {
+                label: "입금 확인",
+                value: formatDate(result.depositConfirmedAt),
+              },
+              {
+                label: "현금영수증",
+                value: cashReceiptStatusLabel(result.cashReceiptStatus),
+              },
+            ]}
+          />
         </div>
       ) : null}
 
@@ -455,13 +470,12 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
       </div>
 
       <div className="order-lookup-action-panel">
-        <button
-          className="button-quiet"
+        <SiteActionButton
           onClick={() => setIsReturnRequestOpen((open) => !open)}
-          type="button"
+          variant="quiet"
         >
           교환·반품 문의하기
-        </button>
+        </SiteActionButton>
         {isReturnRequestOpen ? (
           <form action={submitReturnRequest} className="order-return-request-form">
             <strong>교환·반품 문의 접수</strong>
@@ -497,7 +511,7 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
               <span>사유</span>
               <input name="reason" required maxLength={80} />
             </label>
-            <label className="order-refund-field-wide">
+            <CommerceFormField scope="order-refund" wide>
               <span>상세 내용</span>
               <textarea
                 maxLength={1200}
@@ -505,8 +519,8 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
                 name="detail"
                 required
               />
-            </label>
-            <label className="order-refund-field-wide">
+            </CommerceFormField>
+            <CommerceFormField scope="order-refund" wide>
               <span>사진</span>
               <input
                 accept="image/jpeg,image/png,image/webp"
@@ -514,28 +528,21 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
                 name="photos"
                 type="file"
               />
-            </label>
+            </CommerceFormField>
             <p>
               고객이 직접 선불 발송하는 경우 최초 배송 시와 같은 수준의 완충 포장을
               해주세요. 부적절한 포장 또는 임의 발송 과정에서 발생한 파손은 고객
               책임으로 처리될 수 있습니다.
             </p>
-            <button
-              className="button-primary"
+            <SiteActionButton
               disabled={returnRequestState.kind === "submitting"}
+              type="submit"
             >
               {returnRequestState.kind === "submitting" ? "접수 중" : "문의 접수"}
-            </button>
-            {returnRequestState.kind === "success" ||
-            returnRequestState.kind === "error" ? (
-              <p
-                className={
-                  returnRequestState.kind === "error" ? "checkout-error" : ""
-                }
-              >
-                {returnRequestState.message}
-              </p>
-            ) : null}
+            </SiteActionButton>
+            <CommerceFormStatusMessage
+              status={toFormStatus(returnRequestState)}
+            />
           </form>
         ) : null}
       </div>
@@ -544,14 +551,13 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
         <form action={submitRefundAccount} className="order-refund-form">
           <div className="order-refund-form-head">
             <strong>환불계좌 등록</strong>
-            <button
-              className="button-quiet"
+            <SiteActionButton
               disabled={isRefundAccountActive}
               onClick={() => setIsRefundAccountActive(true)}
-              type="button"
+              variant="quiet"
             >
               환불계좌 등록
-            </button>
+            </SiteActionButton>
           </div>
           <fieldset
             className="order-refund-fieldset"
@@ -577,24 +583,20 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
               <span>환불 요청 금액</span>
               <input inputMode="numeric" name="refundAmount" />
             </label>
-            <label className="order-refund-field-wide">
+            <CommerceFormField scope="order-refund" wide>
               <span>환불 사유</span>
               <textarea maxLength={300} name="refundReason" />
-            </label>
+            </CommerceFormField>
             <p>
               환불계좌는 주문자 또는 결제자 명의 계좌를 원칙으로 합니다. 다른
               명의 계좌는 운영자 추가 확인 후 처리될 수 있습니다. 현재 상태:{" "}
               {refundAccountStatusLabel(result.refundAccountStatus)}
             </p>
-            <button className="button-primary">
+            <SiteActionButton type="submit">
               {refundState.kind === "submitting" ? "접수 중" : "환불계좌 접수"}
-            </button>
+            </SiteActionButton>
           </fieldset>
-          {refundState.kind === "success" || refundState.kind === "error" ? (
-            <p className={refundState.kind === "error" ? "checkout-error" : ""}>
-              {refundState.message}
-            </p>
-          ) : null}
+          <CommerceFormStatusMessage status={toFormStatus(refundState)} />
         </form>
       ) : null}
     </aside>
@@ -629,6 +631,12 @@ function normalizeNumber(value: FormDataEntryValue | null) {
   const parsed = Number(normalized);
 
   return Number.isFinite(parsed) && normalized ? parsed : undefined;
+}
+
+function toFormStatus(state: RefundState): CommerceFormStatus {
+  return state.kind === "success" || state.kind === "error"
+    ? { kind: state.kind, message: state.message }
+    : null;
 }
 
 function orderStatusLabel(status: OrderLookupResult["orderStatus"]) {

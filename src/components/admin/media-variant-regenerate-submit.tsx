@@ -1,6 +1,7 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
+import { AdminActionButton } from "@/components/admin/admin-actions";
 
 type MediaVariantRegenerateSubmitProps = {
   disabled?: boolean;
@@ -13,14 +14,13 @@ export function MediaVariantRegenerateSubmit({
   const blocked = disabled || pending;
 
   return (
-    <button
+    <AdminActionButton
       aria-busy={pending}
-      className="admin-secondary-button"
       data-pending={pending ? "true" : undefined}
       disabled={blocked}
       type="submit"
     >
       {pending ? "재생성 중..." : "variant 재생성"}
-    </button>
+    </AdminActionButton>
   );
 }

@@ -1,8 +1,20 @@
 "use client";
 
-import Link from "next/link";
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
+import { SiteLink } from "@/components/navigation/site-link";
+import {
+  SiteActionButton,
+  SiteActionLink,
+} from "@/components/site/actions";
+import {
+  CommerceFormActions,
+  CommerceFormCheckbox,
+  CommerceFormField,
+  CommerceFormNote,
+  CommerceFormStatusMessage,
+  CommerceSummaryList,
+} from "@/components/site/commerce-form-primitives";
 import type {
   CashReceiptIdentifierType,
   CashReceiptType,
@@ -300,9 +312,9 @@ export function CheckoutForm({
           결제가 완료되어 주문이 접수되었습니다. 주문 및 배송 안내는 이메일과
           카카오 알림톡으로 발송됩니다.
         </p>
-        <Link className="button-primary" href="/order/lookup" prefetch={false}>
+        <SiteActionLink href="/order/lookup">
           주문 조회하기
-        </Link>
+        </SiteActionLink>
       </div>
     );
   }
@@ -318,27 +330,27 @@ export function CheckoutForm({
           PortOne을 통해 전용 입금계좌가 발급되었습니다. 입금기한 내 결제가
           확인되면 주문이 확정되고 배송 준비가 시작됩니다.
         </p>
-        <dl>
-          <div>
-            <dt>입금 계좌</dt>
-            <dd>
-              {account
+        <CommerceSummaryList
+          items={[
+            {
+              label: "입금 계좌",
+              value: account
                 ? `${account.bankName} ${account.accountNumber} / ${account.accountHolder}`
-                : "주문 조회에서 확인해 주세요"}
-            </dd>
-          </div>
-          <div>
-            <dt>입금 금액</dt>
-            <dd>{formatCurrency(state.order.total)}</dd>
-          </div>
-          <div>
-            <dt>입금 기한</dt>
-            <dd>{formatDate(state.order.depositDueAt)}</dd>
-          </div>
-        </dl>
-        <Link className="button-primary" href="/order/lookup" prefetch={false}>
+                : "주문 조회에서 확인해 주세요",
+            },
+            {
+              label: "입금 금액",
+              value: formatCurrency(state.order.total),
+            },
+            {
+              label: "입금 기한",
+              value: formatDate(state.order.depositDueAt),
+            },
+          ]}
+        />
+        <SiteActionLink href="/order/lookup">
           주문 조회하기
-        </Link>
+        </SiteActionLink>
       </div>
     );
   }
@@ -353,18 +365,16 @@ export function CheckoutForm({
             ? "PortOne 결제창을 준비하고 있습니다."
             : "주문 기록은 생성되었습니다. 결제 설정을 확인한 뒤 다시 결제할 수 있습니다."}
         </p>
-        {state.error ? <p className="checkout-error">{state.error}</p> : null}
-        <button
-          className="button-primary"
+        <CommerceFormStatusMessage status={toErrorStatus(state.error)} />
+        <SiteActionButton
           disabled={state.status === "payment"}
           onClick={() => requestPayment(state.order)}
-          type="button"
         >
           {state.status === "payment" ? "결제 준비 중" : "결제 다시 시도"}
-        </button>
-        <Link className="button-quiet" href="/order/lookup" prefetch={false}>
+        </SiteActionButton>
+        <SiteActionLink href="/order/lookup" variant="quiet">
           주문 조회하기
-        </Link>
+        </SiteActionLink>
       </div>
     );
   }
@@ -376,30 +386,31 @@ export function CheckoutForm({
           <span>{modeLabel}</span>
           <strong>{productTitle}</strong>
         </div>
-        <dl className="checkout-summary-list">
-          <div>
-            <dt>상품 금액</dt>
-            <dd>
-              {formatCurrency(unitPrice)} x {quantity}
-            </dd>
-          </div>
-          <div>
-            <dt>상품 옵션</dt>
-            <dd>{productOptionLabel(productOption)}</dd>
-          </div>
-          <div>
-            <dt>배송 방법</dt>
-            <dd>{shippingMethod === "pickup" ? "방문수령" : "택배"}</dd>
-          </div>
-          <div>
-            <dt>배송비</dt>
-            <dd>{formatCurrency(shippingFee)}</dd>
-          </div>
-          <div>
-            <dt>합계</dt>
-            <dd>{formatCurrency(total)}</dd>
-          </div>
-        </dl>
+        <CommerceSummaryList
+          className="checkout-summary-list"
+          items={[
+            {
+              label: "상품 금액",
+              value: `${formatCurrency(unitPrice)} x ${quantity}`,
+            },
+            {
+              label: "상품 옵션",
+              value: productOptionLabel(productOption),
+            },
+            {
+              label: "배송 방법",
+              value: shippingMethod === "pickup" ? "방문수령" : "택배",
+            },
+            {
+              label: "배송비",
+              value: formatCurrency(shippingFee),
+            },
+            {
+              label: "합계",
+              value: formatCurrency(total),
+            },
+          ]}
+        />
         <p>
           상품 {formatCurrency(subtotal)} · 배송비 {formatCurrency(shippingFee)}
         </p>
@@ -483,17 +494,17 @@ export function CheckoutForm({
               </label>
             </div>
             {isVirtualAccount ? (
-              <p className="checkout-note">
+              <CommerceFormNote>
                 PortOne 결제창에서 주문별 전용 입금계좌가 발급됩니다. 입금
                 확인은 PG사를 통해 자동 반영되며, 발급 후 24시간 내 미입금 시
                 주문이 자동 취소될 수 있습니다.
-              </p>
+              </CommerceFormNote>
             ) : null}
             {isAccountTransfer ? (
-              <p className="checkout-note">
+              <CommerceFormNote>
                 계좌이체는 PortOne 결제창에서 즉시 결제와 현금영수증 신청이
                 함께 진행됩니다.
-              </p>
+              </CommerceFormNote>
             ) : null}
           </fieldset>
         ) : null}
@@ -575,46 +586,46 @@ export function CheckoutForm({
                 </label>
               </>
             ) : null}
-            <p className="checkout-note">
+            <CommerceFormNote>
               입력한 발급 정보는 PortOne 결제 요청에 전달되며, 발급 상태는
               결제대행사 처리 결과를 기준으로 반영됩니다.
-            </p>
+            </CommerceFormNote>
           </fieldset>
         ) : null}
 
         {isMadeToOrder ? (
           <fieldset>
             <legend>추가 제작 주문</legend>
-            <p className="checkout-note">
+            <CommerceFormNote>
               추가 제작은 결제 또는 입금 확인일 기준 약{" "}
               {madeToOrderDaysMin ?? 30}~{madeToOrderDaysMax ?? 45}일이
               소요될 수 있으며, 제작 착수 후 취소 시 실제 발생 비용이 차감될
               수 있습니다.
-            </p>
+            </CommerceFormNote>
             {madeToOrderNotice ? (
-              <p className="checkout-note">{madeToOrderNotice}</p>
+              <CommerceFormNote>{madeToOrderNotice}</CommerceFormNote>
             ) : null}
-            <label className="checkout-checkbox">
+            <CommerceFormCheckbox>
               <input name="madeToOrderAcknowledged" required type="checkbox" />
               <span>추가 제작 기간과 취소 기준을 확인했습니다.</span>
-            </label>
+            </CommerceFormCheckbox>
           </fieldset>
         ) : null}
 
         {isGift ? (
           <fieldset>
             <legend>선물하기</legend>
-            <p className="checkout-note">
+            <CommerceFormNote>
               선물하기 주문은 결제 후 수령인이 배송 정보를 입력하는 방식으로
               진행됩니다. 수령인이 결제 완료일 다음 날부터 7일 이내 배송 정보를
               입력하지 않으면 주문이 취소될 수 있고, 환불은 결제자인 주문자에게
               진행됩니다.
-            </p>
+            </CommerceFormNote>
             {isVirtualAccount ? (
-              <p className="checkout-note">
+              <CommerceFormNote>
                 무통장입금(가상계좌) 주문은 입금 확인 후 수령인에게 배송 정보
                 입력 안내가 발송됩니다.
-              </p>
+              </CommerceFormNote>
             ) : null}
             <div className="checkout-choice-row">
               <label>
@@ -652,27 +663,27 @@ export function CheckoutForm({
                   <span>우편번호</span>
                   <input name="shippingPostcode" required />
                 </label>
-                <label className="checkout-field-wide">
+                <CommerceFormField wide>
                   <span>주소</span>
                   <input name="shippingAddress1" required />
-                </label>
-                <label className="checkout-field-wide">
+                </CommerceFormField>
+                <CommerceFormField wide>
                   <span>상세 주소</span>
                   <input name="shippingAddress2" />
-                </label>
-                <label className="checkout-field-wide">
+                </CommerceFormField>
+                <CommerceFormField wide>
                   <span>배송 메모</span>
                   <input name="shippingMemo" />
-                </label>
+                </CommerceFormField>
               </>
             ) : null}
-            <label className="checkout-field-wide">
+            <CommerceFormField wide>
               <span>선물 메모</span>
               <textarea maxLength={200} name="giftMessage" />
-            </label>
-            <p className="checkout-note">
+            </CommerceFormField>
+            <CommerceFormNote>
               식물 포함 상품은 수령인 배송정보 입력 기한이 24시간으로 적용됩니다.
-            </p>
+            </CommerceFormNote>
           </fieldset>
         ) : null}
 
@@ -691,94 +702,93 @@ export function CheckoutForm({
               <span>우편번호</span>
               <input name="shippingPostcode" required />
             </label>
-            <label className="checkout-field-wide">
+            <CommerceFormField wide>
               <span>주소</span>
               <input name="shippingAddress1" required />
-            </label>
-            <label className="checkout-field-wide">
+            </CommerceFormField>
+            <CommerceFormField wide>
               <span>상세 주소</span>
               <input name="shippingAddress2" />
-            </label>
-            <label className="checkout-field-wide">
+            </CommerceFormField>
+            <CommerceFormField wide>
               <span>배송 메모</span>
               <input name="shippingMemo" />
-            </label>
+            </CommerceFormField>
           </fieldset>
         ) : null}
 
         {!isGift && !isParcel ? (
-          <p className="checkout-note">
+          <CommerceFormNote>
             방문수령 장소는 경기도 광주시 수레실길 25-10 1층입니다.
             방문수령은 결제 후 15일 이내 수령을 원칙으로 합니다.
-          </p>
+          </CommerceFormNote>
         ) : null}
 
         {isNaverPay ? (
-          <p className="checkout-note">
+          <CommerceFormNote>
             N pay 버튼으로 들어온 주문은 PortOne 결제 요청 후 간편결제
             방식으로 진행됩니다.
-          </p>
+          </CommerceFormNote>
         ) : null}
 
         {containsLivePlant ? (
           <fieldset>
             <legend>생화·식물 포함 상품</legend>
-            <p className="checkout-note">
+            <CommerceFormNote>
               식물은 생물 특성상 계절, 생육 상태, 배송 환경, 수령 지연, 관리
               상태에 따라 상태가 달라질 수 있습니다.
-            </p>
-            <p className="checkout-note">
+            </CommerceFormNote>
+            <CommerceFormNote>
               수령 후 가능한 빠르게 개봉하고 상품별 안내에 따라 통풍, 물주기,
               햇빛 조건을 확인해 주세요. 수령 지연·개봉 후 관리 부주의·생육
               변화에 따른 교환·반품은 제한될 수 있습니다.
-            </p>
+            </CommerceFormNote>
           </fieldset>
         ) : null}
 
         <fieldset>
           <legend>필수 확인</legend>
-          <label className="checkout-checkbox">
+          <CommerceFormCheckbox>
             <input name="termsAgreed" required type="checkbox" />
             <span>
-              <Link href="/terms" prefetch={false} target="_blank">
+              <SiteLink href="/terms" target="_blank">
                 이용약관
-              </Link>
+              </SiteLink>
               에 동의합니다.
             </span>
-          </label>
-          <label className="checkout-checkbox">
+          </CommerceFormCheckbox>
+          <CommerceFormCheckbox>
             <input name="privacyAgreed" required type="checkbox" />
             <span>
-              <Link href="/privacy" prefetch={false} target="_blank">
+              <SiteLink href="/privacy" target="_blank">
                 개인정보 수집 및 이용
-              </Link>
+              </SiteLink>
               에 동의합니다.
             </span>
-          </label>
+          </CommerceFormCheckbox>
         </fieldset>
 
         <fieldset>
           <legend>알림 옵션</legend>
-          <label className="checkout-checkbox">
+          <CommerceFormCheckbox>
             <input defaultChecked name="notifyByKakao" type="checkbox" />
             <span>카카오 알림톡으로 받기</span>
-          </label>
-          <label className="checkout-checkbox">
+          </CommerceFormCheckbox>
+          <CommerceFormCheckbox>
             <input defaultChecked name="notifyByEmail" type="checkbox" />
             <span>이메일로 받기</span>
-          </label>
+          </CommerceFormCheckbox>
         </fieldset>
 
-        <div className="checkout-actions">
-          <button
-            className="button-primary"
+        <CommerceFormActions>
+          <SiteActionButton
             disabled={state.status === "submitting"}
             type="submit"
           >
             {state.status === "submitting" ? "접수 중" : submitLabel}
-          </button>
-          {state.error ? <p className="checkout-error">{state.error}</p> : null}
-        </div>
+          </SiteActionButton>
+          <CommerceFormStatusMessage status={toErrorStatus(state.error)} />
+        </CommerceFormActions>
       </form>
     </div>
   );
@@ -831,4 +841,8 @@ function getShippingPeriodNotice({
 
 function productOptionLabel(option: ProductOption) {
   return option === "plant_included" ? "식물 포함" : "식물 제외";
+}
+
+function toErrorStatus(message: string | null) {
+  return message ? { kind: "error" as const, message } : null;
 }

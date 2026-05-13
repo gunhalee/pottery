@@ -1,5 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
-
 import type { JSX } from "react";
 import {
   DecoratorNode,
@@ -12,6 +10,8 @@ import type {
   ContentImage,
   ContentImageLayout,
 } from "@/lib/content-manager/content-model";
+import { ArtworkImage } from "@/components/media/artwork-image";
+import { mediaImageSizes } from "@/lib/media/media-image-sizes";
 
 export type ContentImageNodePayload = Pick<
   ContentImage,
@@ -108,9 +108,11 @@ export class ContentImageNode extends DecoratorNode<JSX.Element> {
   decorate() {
     return (
       <figure className={`editor-image-node editor-image-node-${this.__layout}`}>
-        <img
+        <ArtworkImage
           alt={this.__alt}
           height={this.__height}
+          loading="lazy"
+          sizes={mediaImageSizes.adminEditorImage}
           src={this.__src}
           width={this.__width}
         />

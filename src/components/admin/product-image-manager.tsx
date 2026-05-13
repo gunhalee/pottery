@@ -1,7 +1,5 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
 import {
   useEffect,
   useMemo,
@@ -11,6 +9,13 @@ import {
   type SetStateAction,
 } from "react";
 import { deleteProductImageAction } from "@/app/admin/actions";
+import {
+  AdminActionButton,
+  AdminActionLabel,
+  AdminEmptyText,
+} from "@/components/admin/admin-actions";
+import { AdminImageRoleStatus } from "@/components/admin/admin-image-role-status";
+import { AdminMediaThumbnail } from "@/components/admin/admin-media-thumbnail";
 import { AdminUploadFeedbackMessage } from "@/components/admin/admin-upload-feedback-message";
 import {
   MediaPicker,
@@ -25,14 +30,13 @@ import {
   type AdminUploadPayload,
 } from "@/lib/admin/upload-feedback";
 import {
-  buildMediaVariantSources,
-  pickMediaVariantForSurface,
-  pickVariantSource,
-} from "@/lib/media/media-variant-policy";
-import {
   getProductImageEditorStatus,
   getProductImagesPublishIssues,
 } from "@/lib/media/media-editor-status";
+import {
+  createProductImageFromMediaAsset,
+  getProductAdminPreviewSource,
+} from "@/lib/shop/product-images";
 import type { ProductImage } from "@/lib/shop/product-model";
 
 type EditableProductImage = ProductImage & {
@@ -304,7 +308,7 @@ export function ProductImageManager({
       const retainedImages = current.filter(hasRealImageSource);
       const shouldBecomePrimary = !retainedImages.some((image) => image.src);
       const nextImage = normalizeEditableImage(
-        mediaAssetToProductImage(asset),
+        createProductImageFromMediaAsset(asset),
         current.length,
       );
 
@@ -372,7 +376,7 @@ export function ProductImageManager({
           <h3>상품 이미지</h3>
           <p>jpg, png, webp를 업로드하면 자동으로 webp로 변환됩니다.</p>
         </div>
-        <label className="admin-secondary-button admin-upload-button">
+        <AdminActionLabel className="admin-upload-button">
           <input
             accept="image/jpeg,image/png,image/webp"
             disabled={isUploading}
@@ -387,22 +391,21 @@ export function ProductImageManager({
             type="file"
           />
           {isUploading ? "업로드 중" : "이미지 추가"}
-        </label>
+        </AdminActionLabel>
       </div>
 
       {status ? <AdminUploadFeedbackMessage feedback={status} /> : null}
       {pendingStoragePaths.length > 0 ? (
         <div className="admin-pending-upload-actions">
           <span>{pendingStoragePaths.length}개 이미지가 아직 저장되지 않았습니다.</span>
-          <button
-            className="admin-danger-inline-button"
+          <AdminActionButton
             onClick={() => {
               void discardPendingUploads();
             }}
-            type="button"
+            variant="danger-inline"
           >
             저장 전 업로드 취소
-          </button>
+          </AdminActionButton>
         </div>
       ) : null}
 
@@ -413,6 +416,7 @@ export function ProductImageManager({
             .map((image) => image.id)
             .filter((id): id is string => Boolean(id))}
           onSelect={addLibraryImage}
+          requiredVariants={["detail", "list", "thumbnail"]}
           title="상품 이미지로 재사용"
         />
       ) : null}
@@ -425,43 +429,22 @@ export function ProductImageManager({
       {images.length > 0 ? (
         <div className="admin-product-image-list">
           {images.map((image, index) => {
-            const previewSrc =
-              pickVariantSource(image.variants, "thumbnail")?.src ?? image.src;
+            const previewSource = getProductAdminPreviewSource(image);
             const imageStatus = getProductImageEditorStatus(image);
 
             return (
               <article className="admin-product-image-item" key={image.id}>
-              {previewSrc ? (
-                <img alt={image.alt} src={previewSrc} />
-              ) : (
-                <div className="admin-product-image-placeholder">
-                  {image.placeholderLabel ?? "이미지 없음"}
-                </div>
-              )}
+              <AdminMediaThumbnail
+                alt={image.alt}
+                height={image.height}
+                placeholder={image.placeholderLabel ?? "이미지 없음"}
+                placeholderClassName="admin-product-image-placeholder"
+                source={previewSource}
+                src={image.src}
+                width={image.width}
+              />
               <div className="admin-product-image-fields">
-                <div className="admin-image-role-summary">
-                  <span>노출 위치</span>
-                  <strong>{imageStatus.exposureLabel}</strong>
-                </div>
-                <div className="admin-media-status-strip">
-                  <span
-                    className={`admin-media-status-pill admin-media-status-${imageStatus.variantTone}`}
-                  >
-                    {imageStatus.variantLabel}
-                  </span>
-                  {imageStatus.requiredVariants.length > 0 ? (
-                    <span>
-                      필요: {imageStatus.requiredVariants.join(" / ")}
-                    </span>
-                  ) : (
-                    <span>발행 필수 variant 없음</span>
-                  )}
-                </div>
-                {imageStatus.publishIssues.length > 0 ? (
-                  <p className="admin-image-role-note admin-image-role-note-danger">
-                    발행 차단: {imageStatus.publishIssues.join(" · ")}
-                  </p>
-                ) : null}
+                <AdminImageRoleStatus status={imageStatus} />
                 <label>
                   <span>대체 텍스트</span>
                   <input
@@ -526,47 +509,44 @@ export function ProductImageManager({
                     />
                     <span>설명</span>
                   </label>
-                  <button
-                    className="admin-text-button"
+                  <AdminActionButton
                     disabled={index === 0}
                     onClick={() =>
                       setImages((current) => moveImage(current, index, -1))
                     }
-                    type="button"
+                    variant="text"
                   >
                     위로
-                  </button>
-                  <button
-                    className="admin-text-button"
+                  </AdminActionButton>
+                  <AdminActionButton
                     disabled={index === images.length - 1}
                     onClick={() =>
                       setImages((current) => moveImage(current, index, 1))
                     }
-                    type="button"
+                    variant="text"
                   >
                     아래로
-                  </button>
+                  </AdminActionButton>
                   {image.storagePath && !initialStoragePaths.has(image.storagePath) ? (
-                    <button
-                      className="admin-danger-inline-button"
+                    <AdminActionButton
                       onClick={() => {
                         void cancelPendingImage(image);
                       }}
-                      type="button"
+                      variant="danger-inline"
                     >
                       업로드 취소
-                    </button>
+                    </AdminActionButton>
                   ) : (
-                    <button
-                      className="admin-danger-inline-button"
+                    <AdminActionButton
                       form={formId}
                       formAction={deleteProductImageAction}
                       name="imageId"
                       type="submit"
+                      variant="danger-inline"
                       value={image.id}
                     >
                       삭제
-                    </button>
+                    </AdminActionButton>
                   )}
                 </div>
               </div>
@@ -575,29 +555,10 @@ export function ProductImageManager({
           })}
         </div>
       ) : (
-        <p className="admin-empty-text">아직 등록된 상품 이미지가 없습니다.</p>
+        <AdminEmptyText>아직 등록된 상품 이미지가 없습니다.</AdminEmptyText>
       )}
     </section>
   );
-}
-
-function mediaAssetToProductImage(asset: MediaPickerAsset): ProductImage {
-  const detail = pickMediaVariantForSurface(asset, "detail");
-  const variants = buildMediaVariantSources(asset);
-
-  return {
-    alt: asset.alt,
-    caption: asset.caption,
-    height: detail?.height ?? asset.height,
-    id: asset.id,
-    isDetail: true,
-    isListImage: false,
-    isPrimary: false,
-    src: detail?.src ?? asset.src,
-    storagePath: asset.masterPath,
-    variants,
-    width: detail?.width ?? asset.width,
-  };
 }
 
 function normalizeEditableImage(
