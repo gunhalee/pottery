@@ -6,6 +6,7 @@ import { PageBottomCtaSection } from "@/components/site/page-bottom-cta-section"
 import { PageShell } from "@/components/site/primitives";
 import { siteConfig } from "@/lib/config/site";
 import { pageBottomCtas } from "@/lib/content/page-ctas";
+import { galleryFallbackItems } from "@/lib/content/site-content";
 import { getContentListImage } from "@/lib/content-manager/content-images";
 import { getPublishedContentListEntries } from "@/lib/content-manager/content-store";
 import { mediaImageSizes } from "@/lib/media/media-image-sizes";
@@ -46,9 +47,29 @@ export default async function GalleryPage() {
                 </Link>
               );
             })
+          ) : galleryFallbackItems.length > 0 ? (
+            galleryFallbackItems.map((item, index) => (
+              <Link
+                className="gallery-item gallery-content-item"
+                href="/shop"
+                key={item.title}
+                prefetch={false}
+              >
+                <ArtworkImage
+                  alt={item.imageAlt}
+                  fetchPriority={index === 0 ? "high" : "auto"}
+                  fill
+                  loading={index < 2 ? "eager" : "lazy"}
+                  quality={70}
+                  sizes={mediaImageSizes.galleryCard}
+                  src={item.imageSrc}
+                />
+                <span>{item.title}</span>
+              </Link>
+            ))
           ) : (
             <div className="gallery-item gallery-content-empty">
-              <span>공개된 초록과 도자기가 아직 없습니다.</span>
+              <span>공개된 작업물이 아직 없습니다.</span>
             </div>
           )}
         </div>

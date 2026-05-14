@@ -3,6 +3,7 @@ import { ArtworkImage } from "@/components/media/artwork-image";
 import { SiteLink } from "@/components/navigation/site-link";
 import { getContentListImage } from "@/lib/content-manager/content-images";
 import type { ContentEntryListItem } from "@/lib/content-manager/content-model";
+import { homeRecentWorkFallbacks } from "@/lib/content/site-content";
 import { mediaImageSizes } from "@/lib/media/media-image-sizes";
 
 export function HomeRecentWorksSection({
@@ -57,9 +58,29 @@ export function HomeRecentWorksSection({
           })}
         </div>
       ) : (
-        <p className="home-recent-work-empty">
-          공개된 작업물 포스트가 아직 없습니다.
-        </p>
+        <div className="grid-3 home-recent-work-grid">
+          {homeRecentWorkFallbacks.map((entry) => (
+            <SiteLink
+              className="work-card home-recent-work-card"
+              href="/gallery"
+              key={entry.title}
+            >
+              <span className="home-recent-work-image">
+                <ArtworkImage
+                  alt={entry.imageAlt}
+                  className="home-recent-work-img"
+                  fill
+                  loading="lazy"
+                  quality={70}
+                  sizes={mediaImageSizes.galleryCard}
+                  src={entry.imageSrc}
+                />
+              </span>
+              <div className="work-name">{entry.title}</div>
+              <div className="work-sub">{entry.summary}</div>
+            </SiteLink>
+          ))}
+        </div>
       )}
     </Section>
   );

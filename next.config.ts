@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
 const supabaseImageHostname = getSupabaseImageHostname();
+const supabaseImageHostnames = [
+  ...new Set(
+    ["qcvkeizmywxxkqomiljy.supabase.co", supabaseImageHostname].filter(
+      (hostname): hostname is string => Boolean(hostname),
+    ),
+  ),
+];
 const securityHeaders = [
   {
     key: "Content-Security-Policy",
@@ -37,15 +44,11 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 31536000,
     qualities: [70, 75],
     remotePatterns: [
-      ...(supabaseImageHostname
-        ? [
-            {
-              hostname: supabaseImageHostname,
-              pathname: "/storage/v1/object/public/media-assets/**",
-              protocol: "https" as const,
-            },
-          ]
-        : []),
+      ...supabaseImageHostnames.map((hostname) => ({
+        hostname,
+        pathname: "/storage/v1/object/public/media-assets/**",
+        protocol: "https" as const,
+      })),
       {
         hostname: "i.ytimg.com",
         pathname: "/vi/**",

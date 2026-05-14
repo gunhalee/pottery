@@ -4,15 +4,15 @@ import {
   Section,
   SectionTitle,
 } from "@/components/site/primitives";
+import { ArtworkImage } from "@/components/media/artwork-image";
 import type { HomeStoryContent } from "@/lib/content/site-content";
+
+const homeStoryImageSizes = "(max-width: 900px) calc(100vw - 48px), 560px";
 
 export function HomeStorySection({ content }: { content: HomeStoryContent }) {
   return (
     <Section className="split home-story-section" deferred>
-      <PlaceholderFrame
-        className="story-image home-story-image-desktop"
-        label={content.imageLabel}
-      />
+      <StoryImage className="home-story-image-desktop" content={content} />
       <div className="home-story-copy">
         <div className="home-story-head">
           <SectionTitle emphasis={content.titleEmphasis}>
@@ -20,12 +20,39 @@ export function HomeStorySection({ content }: { content: HomeStoryContent }) {
           </SectionTitle>
           <ArrowLink href={content.ctaHref}>{content.ctaLabel}</ArrowLink>
         </div>
-        <PlaceholderFrame
-          className="story-image home-story-image-mobile"
-          label={content.imageLabel}
-        />
+        <StoryImage className="home-story-image-mobile" content={content} />
         <p className="body-copy">{content.description}</p>
       </div>
     </Section>
+  );
+}
+
+function StoryImage({
+  className,
+  content,
+}: {
+  className: string;
+  content: HomeStoryContent;
+}) {
+  if (!content.imageSrc) {
+    return (
+      <PlaceholderFrame
+        className={`story-image ${className}`}
+        label={content.imageLabel}
+      />
+    );
+  }
+
+  return (
+    <span className={`story-image home-story-artwork ${className}`}>
+      <ArtworkImage
+        alt={content.imageAlt ?? content.imageLabel}
+        className="home-story-artwork-img"
+        fill
+        quality={70}
+        sizes={homeStoryImageSizes}
+        src={content.imageSrc}
+      />
+    </span>
   );
 }

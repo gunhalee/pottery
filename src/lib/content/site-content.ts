@@ -48,14 +48,30 @@ export type HomeStoryContent = {
   ctaHref: LinkHref;
   ctaLabel: string;
   description: string;
+  imageAlt?: string;
   imageLabel: string;
+  imageSrc?: string;
   title: string;
   titleEmphasis: string;
 };
 
+export type WorkPreview = {
+  imageAlt: string;
+  imageSrc: string;
+  summary: string;
+  title: string;
+};
+
+export type TogetherRecord = {
+  course: string;
+  made: string;
+  note: string;
+  title: string;
+};
+
 export const homeHero = {
-  taglines: ["흙의 결을 따라 천천히 빚고", "일상에 오래 머무는 쓰임을 만듭니다"],
-  title: "조용한 쓰임을 위한 도자",
+  taglines: ["화분, 그릇, 작은 기물 속에 사람과 식물, 동물의 이야기를 녹여냅니다."],
+  title: "초록을 담은 흙의 형태를 빚어냅니다.",
 } as const satisfies {
   taglines: ReadonlyArray<HomeHeroTagline>;
   title: string;
@@ -92,11 +108,34 @@ export const homeStory = {
   ctaHref: "/intro",
   ctaLabel: "소개 보기",
   description:
-    "오래 곁에 두고 쓰는 형태를 만듭니다.",
-  imageLabel: "공방 이미지",
-  title: "공방 소개",
+    "화분과 그릇, 작은 기물은 같은 세계에서 출발합니다. 흙으로 만든 형태가 식물과 사람 곁에 오래 놓일 수 있도록, 수레실길의 공방에서 초록과 도자의 관계를 천천히 살핍니다.",
+  imageAlt: "햇빛이 드는 창가에 놓인 흰 도자 화분과 초록 식물",
+  imageLabel: "초록과 도자",
+  imageSrc: "/asset/green-pot.webp",
+  title: "초록과 도자",
   titleEmphasis: "",
 } as const satisfies HomeStoryContent;
+
+export const homeRecentWorkFallbacks = [
+  {
+    imageAlt: "햇빛이 드는 창가에 놓인 흰 도자 화분과 초록 식물",
+    imageSrc: "/asset/green-pot.webp",
+    summary: "초록을 담는 흙의 형태",
+    title: "초록을 위한 도자",
+  },
+  {
+    imageAlt: "흙색 도자 화분의 가장자리와 표면 질감",
+    imageSrc: "/asset/hero-poster.webp",
+    summary: "손의 흔적이 남은 생활 기물",
+    title: "흙의 결을 남긴 기물",
+  },
+  {
+    imageAlt: "넓게 클로즈업된 흙색 도자 화분",
+    imageSrc: "/asset/hero-image.jpg",
+    summary: "식물과 오래 놓이는 형태",
+    title: "수레실길의 화분",
+  },
+] as const satisfies readonly WorkPreview[];
 
 export const homeWorks: WorkItem[] = [
   {
@@ -143,34 +182,36 @@ export const homeQuickLinks = [
 
 export const introFeatures: FeatureSection[] = [
   {
-    eyebrow: "소개",
-    imageLabel: "공방",
+    eyebrow: "공간",
+    imageLabel: "수레실길",
     paragraphs: [
-      "매일의 식탁 위에서 오래 머무는 형태를 고민합니다. 과한 장식보다 균형, 무게감, 손끝에 닿는 감각을 중요하게 여깁니다.",
-      "계절에 따라 달라지는 흙과 유약의 표정을 기록하며 공방의 이야기를 이어갑니다.",
+      "경기도 광주 수레실길 안쪽의 작은 공방에서 흙의 형태를 빚습니다. 이곳의 작업은 완성된 물건만이 아니라, 창가의 초록과 작업대의 흙, 다녀간 사람들의 시간이 함께 놓이는 방식으로 이어집니다.",
+      "처음에는 두 사람이 열었던 공간이었고, 지금은 그때 시작된 흙과 초록의 시간을 현재의 작업으로 이어가고 있습니다.",
     ],
-    title: "오래 쓰는 형태",
+    title: "수레실길의 작업 공간",
     titleEmphasis: "",
   },
   {
-    eyebrow: "작업",
-    imageLabel: "작업물",
+    eyebrow: "작업관",
+    imageLabel: "초록과 도자",
     imageTone: "dark",
     paragraphs: [
-      "물레 성형부터 건조, 초벌, 시유, 재벌까지 모든 과정을 천천히 살핍니다. 같은 형태라도 손의 흔적이 남아 각기 다른 분위기를 가집니다.",
+      "초록을 담는 도자는 단순한 화분이 아니라 식물이 머물 자리를 함께 생각하는 일입니다. 흙의 무게, 물이 지나가는 길, 손으로 만졌을 때의 질감까지 식물과 사람이 오래 곁에 둘 수 있는 형태를 살핍니다.",
+      "화분, 그릇, 작은 기물은 서로 다른 용도를 갖지만 같은 태도에서 출발합니다. 쓰임과 생명이 함께 놓일 수 있는 도자를 천천히 만듭니다.",
     ],
     reverse: true,
-    title: "천천히 살피는 과정",
+    title: "초록과 도자",
     titleEmphasis: "",
   },
   {
-    eyebrow: "방문",
-    imageLabel: "공방",
+    eyebrow: "공방",
+    imageLabel: "함께 머무는 곳",
     imageVariant: "wide",
     paragraphs: [
-      "공방 방문과 수업 상담은 예약제로 운영합니다. 조용히 작업물을 보고 직접 손으로 만져볼 수 있는 시간을 준비합니다.",
+      "이 공방에는 사람과 식물, 동물의 시간이 함께 머뭅니다. 반려동물과 함께 오는 방문을 환영하고, 흙으로 만든 작은 친구들은 화분 위의 풍경처럼 놓입니다.",
+      "작업물을 보거나 수업을 상담하는 방문은 예약제로 운영합니다. 조용히 둘러보고 직접 손으로 만져볼 수 있는 시간을 준비합니다.",
     ],
-    title: "예약제로 운영하는 공방",
+    title: "사람과 식물, 동물이 함께 머무는 곳",
     titleEmphasis: "",
   },
 ];
@@ -205,8 +246,8 @@ export const newsItems = [
 ] as const;
 
 export const scheduleItems = [
-  { date: "05.12", place: "서울 공방", title: "오픈 스튜디오" },
-  { date: "05.19", place: "도자 체험", title: "원데이 클래스" },
+  { date: "05.12", place: "수레실길 공방", title: "공방 작업일" },
+  { date: "05.19", place: "수레실길 공방", title: "원데이 클래스" },
   { date: "06.02", place: "온라인 스토어", title: "작업물 입고" },
 ] as const;
 
@@ -225,44 +266,126 @@ export const classItems = [
   {
     action: "예약 문의",
     description:
-      "처음 흙을 만지는 분도 차분히 따라올 수 있는 기초 클래스입니다.",
+      "처음 흙을 만지는 분도 괜찮습니다. 속도에 맞춰 작은 기물부터 함께 만들어갑니다.",
     details: [
-      { label: "구성", value: "물레 성형" },
-      { label: "시간", value: "120분" },
-      { label: "비용", value: "80,000원" },
-      { label: "인원", value: "1-3명" },
+      { label: "구성", value: "기초 체험" },
+      { label: "시간", value: "예약 시 안내" },
+      { label: "비용", value: "60,000원" },
+      { label: "인원", value: "1명부터" },
     ],
     eyebrow: "원데이",
-    title: "물레 성형",
+    title: "원데이클래스",
+  },
+  {
+    action: "예약 문의",
+    description:
+      "기념일이나 조용한 데이트를 위해 함께 접시나 컵을 만듭니다. 시간이 지나도 그날을 기억하게 해줄 물건을 남깁니다.",
+    details: [
+      { label: "구성", value: "2인 체험" },
+      { label: "시간", value: "예약 시 안내" },
+      { label: "비용", value: "100,000원" },
+      { label: "인원", value: "2명" },
+    ],
+    eyebrow: "커플",
+    title: "커플 원데이클래스",
   },
   {
     action: "상담 문의",
-    description: "원하는 형태와 쓰임을 함께 정해 제작하는 맞춤형 수업입니다.",
+    description:
+      "핀칭, 코일링, 판성형, 가압성형과 장식기법을 익히며 작은 기물부터 차근히 제작합니다.",
     details: [
-      { label: "구성", value: "핸드빌딩" },
-      { label: "시간", value: "150분" },
-      { label: "비용", value: "상담 후 안내" },
-      { label: "인원", value: "개인/그룹" },
+      { label: "구성", value: "주 1회 x 4주" },
+      { label: "과정", value: "기초 성형" },
+      { label: "비용", value: "150,000원" },
+      { label: "예시", value: "찻잔 · 공기 · 사발 · 머그" },
     ],
-    eyebrow: "맞춤",
-    title: "핸드빌딩",
+    eyebrow: "익힘반",
+    title: "익힘반",
+  },
+  {
+    action: "상담 문의",
+    description:
+      "성형기법을 손에 익히며 원하는 형태와 기능을 구현합니다. 자유 제작을 중심으로 완성도를 높입니다.",
+    details: [
+      { label: "구성", value: "주 2회 x 4주" },
+      { label: "과정", value: "자유 제작" },
+      { label: "비용", value: "190,000원" },
+      { label: "예시", value: "원형접시 · 사각판접시 · 드립퍼" },
+    ],
+    eyebrow: "익숙반",
+    title: "익숙반",
+  },
+  {
+    action: "상담 문의",
+    description:
+      "자신만의 디자인을 개발하고 창의적인 기물을 제작하고 싶은 분께 추천합니다.",
+    details: [
+      { label: "구성", value: "주 3회 x 4주" },
+      { label: "과정", value: "개인 작업" },
+      { label: "비용", value: "240,000원" },
+      { label: "재료", value: "소지 · 유약 · 도구 협의" },
+    ],
+    eyebrow: "야심반",
+    title: "야심반",
   },
 ] as const satisfies readonly ClassItem[];
 
 export const classReviews = [
   {
-    cite: "이름 / 원데이 클래스",
-    quote: "천천히 설명해주셔서 처음인데도 편안하게 만들 수 있었어요.",
+    cite: "결혼기념일 / 커플 원데이",
+    quote: "함께 만든 접시가 그날을 오래 기억하게 해줄 물건으로 남았습니다.",
   },
   {
-    cite: "이름 / 정규 클래스",
-    quote: "공방 분위기가 조용하고 작업물을 기다리는 시간까지 좋았습니다.",
+    cite: "친구와 함께 / 원데이",
+    quote: "따뜻한 대화를 나누며 컵을 만들고, 완성될 시간을 함께 기다렸습니다.",
   },
   {
-    cite: "이름 / 커스텀 클래스",
-    quote: "선물용 그릇을 직접 만들 수 있어 특별한 경험이었습니다.",
+    cite: "수레실길 공방 / 원데이",
+    quote: "처음 만지는 흙도 천천히 다루면 각자의 모양으로 남습니다.",
   },
 ] as const;
+
+export const togetherRecords = [
+  {
+    course: "익힘반",
+    made: "찻잔 · 공기 · 작은 접시",
+    note: "기초 성형기법을 익히며 흙의 두께와 손의 압력을 천천히 맞춰간 기록입니다.",
+    title: "작은 기물에서 시작한 시간",
+  },
+  {
+    course: "익숙반",
+    made: "원형접시 · 사각판접시 · 드립퍼",
+    note: "원하는 형태와 쓰임을 직접 정하고, 반복 제작을 통해 균형과 완성도를 살핀 기록입니다.",
+    title: "원하는 형태를 찾아가는 과정",
+  },
+  {
+    course: "회원님 작품",
+    made: "모빌 · 화분 · 생활 기물",
+    note: "공방에 다녀간 사람들의 손에서 각자의 취향과 시간이 담긴 작업이 남았습니다.",
+    title: "공방에 남은 손의 흔적",
+  },
+] as const satisfies readonly TogetherRecord[];
+
+export const galleryFallbackItems = [
+  {
+    imageAlt: "햇빛이 드는 창가에 놓인 흰 도자 화분과 초록 식물",
+    imageSrc: "/asset/green-pot.webp",
+    summary: "초록을 담는 흙의 형태",
+    title: "초록을 담은 도자",
+  },
+  {
+    imageAlt: "흙색 도자 화분의 가장자리와 표면 질감",
+    imageSrc: "/asset/hero-poster.webp",
+    summary: "흙의 질감과 손의 흔적",
+    title: "생활의 기물",
+  },
+  {
+    imageAlt: "넓게 클로즈업된 흙색 도자 화분",
+    imageSrc: "/asset/hero-image.jpg",
+    summary: "식물과 오래 놓이는 형태",
+    title: "화분의 형태",
+  },
+] as const satisfies readonly WorkPreview[];
 
 export const shopProducts: WorkItem[] = [
   {

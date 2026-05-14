@@ -186,6 +186,18 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   display: none;
 }
 
+.home-story-artwork {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg3);
+}
+
+.home-story-artwork-img {
+  display: block;
+  object-fit: cover;
+  filter: var(--image-treatment-artwork);
+}
+
 .home-story-section,
 .home-recent-works-section {
   border-top: 0.5px solid var(--brd);
