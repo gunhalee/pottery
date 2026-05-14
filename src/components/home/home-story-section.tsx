@@ -12,7 +12,11 @@ const homeStoryImageSizes = "(max-width: 900px) calc(100vw - 48px), 560px";
 export function HomeStorySection({ content }: { content: HomeStoryContent }) {
   return (
     <Section className="split home-story-section" deferred>
-      <StoryImage className="home-story-image-desktop" content={content} />
+      <StoryImage
+        className="home-story-image-desktop"
+        content={content}
+        eager
+      />
       <div className="home-story-copy">
         <div className="home-story-head">
           <SectionTitle emphasis={content.titleEmphasis}>
@@ -30,9 +34,11 @@ export function HomeStorySection({ content }: { content: HomeStoryContent }) {
 function StoryImage({
   className,
   content,
+  eager = false,
 }: {
   className: string;
   content: HomeStoryContent;
+  eager?: boolean;
 }) {
   if (!content.imageSrc) {
     return (
@@ -48,7 +54,9 @@ function StoryImage({
       <ArtworkImage
         alt={content.imageAlt ?? content.imageLabel}
         className="home-story-artwork-img"
+        fetchPriority={eager ? "low" : "auto"}
         fill
+        loading={eager ? "eager" : "lazy"}
         quality={70}
         sizes={homeStoryImageSizes}
         src={content.imageSrc}

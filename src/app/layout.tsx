@@ -32,6 +32,7 @@ export default function RootLayout({
   return (
     <html
       lang="ko"
+      data-scroll-behavior="smooth"
       className={`${gothicA1.variable} ${gowunBatang.variable} h-full`}
     >
       <body className="min-h-full">

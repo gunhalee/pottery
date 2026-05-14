@@ -32,11 +32,12 @@ export default function IntroPage() {
       <Section className="split">
         <IntroImage
           alt={potOnForestFourthImage.alt}
+          priority
           src={potOnForestFourthImage.src}
           variant="portrait"
         />
         <div>
-          <MetaLabel>작품관</MetaLabel>
+          <MetaLabel>작업관</MetaLabel>
           <SectionTitle>흙으로 만든 작은 생태</SectionTitle>
           <p className="body-copy">
             이곳의 작업은 기물을 하나의 물건으로만 보지 않습니다. 흙은
@@ -164,10 +165,12 @@ export default function IntroPage() {
 
 function IntroImage({
   alt,
+  priority = false,
   src,
   variant,
 }: {
   alt: string;
+  priority?: boolean;
   src: IntroImageSource;
   variant: "portrait" | "wide";
 }) {
@@ -183,6 +186,8 @@ function IntroImage({
       <Image
         alt={alt}
         fill
+        fetchPriority={priority ? "high" : "auto"}
+        loading={priority ? "eager" : "lazy"}
         quality={70}
         sizes="(max-width: 900px) calc(100vw - 48px), 560px"
         src={src}

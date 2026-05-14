@@ -1427,8 +1427,7 @@ a {
   color: rgba(255, 255, 255, 0.82);
 }
 
-.footer-social-link svg,
-.footer-social-image {
+.footer-social-link svg {
   width: 18px;
   height: 18px;
 }
@@ -1441,6 +1440,8 @@ a {
 }
 
 .footer-social-image {
+  width: 18px;
+  height: auto;
   filter: invert(1);
   opacity: 0.48;
   transition: opacity 0.2s ease;
@@ -1452,12 +1453,12 @@ a {
 
 .footer-social-image-youtube {
   width: 37px;
-  height: 32px;
+  height: auto;
 }
 
 .footer-social-image-naverblog {
   width: 24px;
-  height: 13px;
+  height: auto;
 }
 
 .footer-info {
@@ -1842,7 +1843,7 @@ a {
 
   .floating-quick-actions {
     right: 18px;
-    bottom: 18px;
+    bottom: calc(env(safe-area-inset-bottom) + 72px);
   }
 
   .floating-action-button {

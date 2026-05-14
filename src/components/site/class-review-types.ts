@@ -16,11 +16,6 @@ export type ClassReviewEntry = {
   images: ClassReviewImage[];
 };
 
-export type StaticClassReview = {
-  cite: string;
-  quote: string;
-};
-
 export type ClassReviewSession = {
   dateLabel: string | null;
   id: string;

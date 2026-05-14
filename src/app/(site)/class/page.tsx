@@ -125,7 +125,6 @@ export default async function ClassPage() {
           <ClassReviewPanel
             classSessions={classSessions}
             reviews={publishedClassReviews}
-            staticReviews={[]}
           />
           {publishedClassReviews.length > 0 ? (
             <div className="together-record-grid" aria-label="정규반 작업 기록">

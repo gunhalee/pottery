@@ -1,16 +1,11 @@
 import { ArtworkImage } from "@/components/media/artwork-image";
 import { mediaImageSizes } from "@/lib/media/media-image-sizes";
-import type {
-  ClassReviewEntry,
-  StaticClassReview,
-} from "./class-review-types";
+import type { ClassReviewEntry } from "./class-review-types";
 
 export function ClassReviewList({
   reviews,
-  staticReviews,
 }: {
   reviews: ClassReviewEntry[];
-  staticReviews: readonly StaticClassReview[];
 }) {
   return (
     <div className="review-grid class-review-grid">
@@ -43,12 +38,6 @@ export function ClassReviewList({
               ))}
             </div>
           ) : null}
-        </figure>
-      ))}
-      {staticReviews.map((review) => (
-        <figure className="review" key={review.quote}>
-          <q>{review.quote}</q>
-          <cite>{review.cite}</cite>
         </figure>
       ))}
     </div>

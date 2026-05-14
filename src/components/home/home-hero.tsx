@@ -20,6 +20,7 @@ export function HomeHero({
           alt=""
           fill
           fetchPriority="high"
+          loading="eager"
           quality={70}
           sizes={mediaImageSizes.homeHero}
           className="hero-poster"
