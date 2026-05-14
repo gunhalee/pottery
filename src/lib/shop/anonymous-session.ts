@@ -59,10 +59,6 @@ export async function getAnonymousSessionFromCookieValue(
     .maybeSingle();
 
   if (error) {
-    if (isMissingAnonymousSessionStorageError(error)) {
-      return null;
-    }
-
     throw new Error(`Anonymous session query failed: ${error.message}`);
   }
 
@@ -172,13 +168,17 @@ function hashSessionToken(token: string) {
 }
 
 function getSessionSecret() {
-  return (
-    process.env.ANONYMOUS_SESSION_SECRET ||
-    process.env.ADMIN_SESSION_SECRET ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.NEXT_SECRET_SUPABASE_SERVICE_ROLE_KEY ||
-    "consepot-local-unconfigured-anonymous-session-secret"
-  );
+  const secret = process.env.ANONYMOUS_SESSION_SECRET?.trim();
+
+  if (secret) {
+    return secret;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("ANONYMOUS_SESSION_SECRET is required for anonymous sessions.");
+  }
+
+  return "consepot-local-unconfigured-anonymous-session-secret";
 }
 
 function getSessionExpiry() {
@@ -187,20 +187,4 @@ function getSessionExpiry() {
 
 function isValidSessionToken(token?: string): token is string {
   return Boolean(token && tokenPattern.test(token));
-}
-
-function isMissingAnonymousSessionStorageError(error: {
-  code?: string;
-  message?: string;
-}) {
-  const message = error.message ?? "";
-
-  return (
-    error.code === "42P01" ||
-    error.code === "PGRST205" ||
-    (message.includes("anonymous_sessions") &&
-      (message.includes("schema cache") ||
-        message.includes("does not exist") ||
-        message.includes("relation")))
-  );
 }

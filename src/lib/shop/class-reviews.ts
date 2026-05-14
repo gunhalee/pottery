@@ -80,10 +80,6 @@ export async function getPublishedClassReviews() {
     .limit(20);
 
   if (error) {
-    if (isMissingClassReviewStorageError(error)) {
-      return [] satisfies ClassReviewEntry[];
-    }
-
     throw new Error(`Class review query failed: ${error.message}`);
   }
 
@@ -191,10 +187,6 @@ export async function readClassReviewImagesByReviewIds(reviewIds: string[]) {
     .order("sort_order", { ascending: true });
 
   if (error) {
-    if (isMissingClassReviewStorageError(error)) {
-      return imageMap;
-    }
-
     throw new Error(`Class review image query failed: ${error.message}`);
   }
 
@@ -258,21 +250,4 @@ function fromClassReviewImageRow(
     variants: buildMediaVariantSources(asset),
     width: listVariant.width,
   };
-}
-
-function isMissingClassReviewStorageError(error: {
-  code?: string;
-  message?: string;
-}) {
-  const message = error.message ?? "";
-
-  return (
-    error.code === "42P01" ||
-    error.code === "PGRST205" ||
-    ((message.includes("class_reviews") ||
-      message.includes("class_review_images")) &&
-      (message.includes("schema cache") ||
-        message.includes("does not exist") ||
-        message.includes("relation")))
-  );
 }

@@ -63,10 +63,6 @@ export async function getWishlistProductIds(
     .order("created_at", { ascending: false });
 
   if (error) {
-    if (isMissingWishlistStorageError(error)) {
-      return [];
-    }
-
     throw new Error(`Supabase wishlist list query failed: ${error.message}`);
   }
 
@@ -88,10 +84,6 @@ async function getWishlistIdForSession(sessionId: string) {
     .maybeSingle();
 
   if (error) {
-    if (isMissingWishlistStorageError(error)) {
-      return null;
-    }
-
     throw new Error(`Supabase wishlist session query failed: ${error.message}`);
   }
 
@@ -141,10 +133,6 @@ export async function getWishlistItemState(
     .maybeSingle();
 
   if (error) {
-    if (isMissingWishlistStorageError(error)) {
-      return { wished: false };
-    }
-
     throw new Error(`Supabase wishlist query failed: ${error.message}`);
   }
 
@@ -207,17 +195,4 @@ export async function setWishlistItem({
   }
 
   return { wished: false };
-}
-
-function isMissingWishlistStorageError(error: { code?: string; message?: string }) {
-  const message = error.message ?? "";
-
-  return (
-    error.code === "42P01" ||
-    error.code === "PGRST205" ||
-    (message.includes("shop_wishlist") &&
-      (message.includes("schema cache") ||
-        message.includes("does not exist") ||
-        message.includes("relation")))
-  );
 }

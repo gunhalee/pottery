@@ -5,14 +5,12 @@ import { createClient } from "@supabase/supabase-js";
 loadEnvFile(".env.local");
 loadEnvFile(".env");
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.NEXT_SECRET_SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !serviceRoleKey) {
   console.error(
-    "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required to seed orders.",
+    "NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required to seed orders.",
   );
   process.exit(1);
 }
@@ -384,14 +382,7 @@ async function insertNotificationJobs({
 
   const { error } = await supabase.from("shop_notification_jobs").insert(rows);
 
-  if (
-    error &&
-    !(
-      error.code === "42P01" ||
-      error.message?.includes("shop_notification_jobs") ||
-      error.message?.includes("schema cache")
-    )
-  ) {
+  if (error) {
     throw new Error(`Failed to insert notification jobs: ${error.message}`);
   }
 }

@@ -406,16 +406,6 @@ export async function getAdminOrderDashboard({
     .limit(120);
 
   if (error) {
-    if (isOrderStorageMissingError(error)) {
-      return {
-        activeView,
-        orders: [],
-        query: normalizedQuery,
-        stats: emptyAdminOrderStats,
-        storageReady: false,
-      };
-    }
-
     throw new Error(`주문 목록을 불러오지 못했습니다: ${error.message}`);
   }
 
@@ -463,10 +453,6 @@ export async function getAdminOrderDetail(
     .maybeSingle();
 
   if (error) {
-    if (isOrderStorageMissingError(error)) {
-      return null;
-    }
-
     throw new Error(`주문을 불러오지 못했습니다: ${error.message}`);
   }
 
@@ -886,10 +872,6 @@ async function readCashReceipts(orderId: string) {
     .order("created_at", { ascending: false });
 
   if (error) {
-    if (isOptionalCommerceTableMissingError(error, "shop_cash_receipts")) {
-      return [];
-    }
-
     throw new Error(`현금영수증 기록을 불러오지 못했습니다: ${error.message}`);
   }
 
@@ -917,10 +899,6 @@ async function readRefundAccounts(orderId: string) {
     .order("created_at", { ascending: false });
 
   if (error) {
-    if (isOptionalCommerceTableMissingError(error, "shop_refund_accounts")) {
-      return [];
-    }
-
     throw new Error(`환불계좌 기록을 불러오지 못했습니다: ${error.message}`);
   }
 
@@ -952,10 +930,6 @@ async function readOrderNotifications(orderId: string) {
     .order("created_at", { ascending: false });
 
   if (error) {
-    if (isNotificationStorageMissingError(error)) {
-      return [];
-    }
-
     throw new Error(`알림 작업을 불러오지 못했습니다: ${error.message}`);
   }
 
@@ -1229,44 +1203,6 @@ function shipmentStatusFromFulfillment(
   }
 
   return null;
-}
-
-function isOrderStorageMissingError(error: { code?: string; message?: string }) {
-  const message = error.message ?? "";
-
-  return (
-    error.code === "42P01" ||
-    message.includes("shop_orders") ||
-    message.includes("shop_order_items") ||
-    message.includes("shop_shipments") ||
-    message.includes("schema cache")
-  );
-}
-
-function isNotificationStorageMissingError(error: {
-  code?: string;
-  message?: string;
-}) {
-  const message = error.message ?? "";
-
-  return (
-    error.code === "42P01" ||
-    message.includes("shop_notification_jobs") ||
-    message.includes("schema cache")
-  );
-}
-
-function isOptionalCommerceTableMissingError(
-  error: { code?: string; message?: string },
-  tableName: string,
-) {
-  const message = error.message ?? "";
-
-  return (
-    error.code === "42P01" ||
-    (message.includes(tableName) &&
-      (message.includes("schema cache") || message.includes("does not exist")))
-  );
 }
 
 function formatAgeLabel(value: string) {

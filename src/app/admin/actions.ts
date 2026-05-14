@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -51,6 +52,7 @@ import {
   getContentImageVariantRequirements,
   getProductImageVariantRequirements,
 } from "@/lib/media/media-role-requirements";
+import { consumeRateLimit, getClientIp } from "@/lib/security/rate-limit";
 
 const draftSchema = z.object({
   slug: z.string(),
@@ -172,9 +174,25 @@ const mediaAssetActionSchema = z.object({
   returnTo: z.string().optional(),
 });
 
+const adminLoginRateLimit = {
+  limit: 5,
+  windowMs: 10 * 60 * 1000,
+};
+
 export async function loginAdminAction(formData: FormData) {
   const password = String(formData.get("password") ?? "");
   const next = safeNextPath(String(formData.get("next") ?? "/admin/products"));
+  const requestHeaders = await headers();
+  const rateLimit = await consumeRateLimit({
+    key: getClientIp(requestHeaders),
+    limit: adminLoginRateLimit.limit,
+    namespace: "admin-login",
+    windowMs: adminLoginRateLimit.windowMs,
+  });
+
+  if (!rateLimit.allowed) {
+    redirect(`/admin/login?rate_limit=1&next=${encodeURIComponent(next)}`);
+  }
 
   if (!verifyAdminPassword(password)) {
     redirect(`/admin/login?error=1&next=${encodeURIComponent(next)}`);

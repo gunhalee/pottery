@@ -7,11 +7,13 @@ import {
   getClientIp,
   rateLimitHeaders,
 } from "@/lib/security/rate-limit";
+import { validateRequestBodySize } from "@/lib/security/request-size";
 
 const giftResendRateLimit = {
   limit: 4,
   windowMs: 10 * 60 * 1000,
 };
+const maxGiftResendBodyBytes = 2 * 1024;
 
 const giftResendSchema = z.object({
   orderNumber: z.string().trim().min(1).max(40),
@@ -34,6 +36,21 @@ export async function POST(request: Request) {
       {
         headers: rateLimitHeaders(rateLimit),
         status: 429,
+      },
+    );
+  }
+
+  const sizeCheck = validateRequestBodySize(
+    request.headers,
+    maxGiftResendBodyBytes,
+    { requireContentLength: true },
+  );
+  if (!sizeCheck.ok) {
+    return NextResponse.json(
+      { error: sizeCheck.error },
+      {
+        headers: rateLimitHeaders(rateLimit),
+        status: sizeCheck.status,
       },
     );
   }

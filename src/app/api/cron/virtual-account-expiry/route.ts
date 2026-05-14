@@ -5,10 +5,17 @@ import { failCronRun, finishCronRun, startCronRun } from "@/lib/ops/cron-run-log
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
+  const secret = process.env.CRON_SECRET?.trim();
   const auth = request.headers.get("authorization");
 
-  if (secret && auth !== `Bearer ${secret}`) {
+  if (!secret) {
+    return NextResponse.json(
+      { error: "CRON_SECRET is required.", ok: false },
+      { status: 500 },
+    );
+  }
+
+  if (auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -4,6 +4,7 @@ import {
   syncPortOnePayment,
 } from "@/lib/payments";
 import {
+  PortOneWebhookConfigurationError,
   PortOneWebhookVerificationError,
   verifyPortOneWebhookBody,
 } from "@/lib/payments/portone-webhook";
@@ -20,6 +21,11 @@ export async function POST(request: Request) {
     });
     return await handlePortOneWebhook(verifiedPayload);
   } catch (error) {
+    if (error instanceof PortOneWebhookConfigurationError) {
+      console.error(error);
+      return NextResponse.json({ ok: false }, { status: 503 });
+    }
+
     if (error instanceof PortOneWebhookVerificationError) {
       return NextResponse.json({ ok: false }, { status: 400 });
     }

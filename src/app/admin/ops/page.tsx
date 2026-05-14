@@ -392,7 +392,6 @@ function healthStatusLabel(status: "danger" | "neutral" | "warning") {
 
 function cronJobLabel(jobName: CronRunLogJobName) {
   return {
-    cafe24_inventory: "Cafe24 재고 동기화",
     daily_maintenance: "일일 유지보수",
     order_notifications: "주문 알림",
     portone_payment_reconcile: "PortOne 결제 상태 보정",

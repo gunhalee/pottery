@@ -10,6 +10,7 @@ import {
   getClientIp,
   rateLimitHeaders,
 } from "@/lib/security/rate-limit";
+import { validateRequestBodySize } from "@/lib/security/request-size";
 
 const refundAccountSchema = z.object({
   accountHolder: z.string().trim().min(1).max(60),
@@ -32,6 +33,7 @@ const refundAccountRateLimit = {
   limit: 6,
   windowMs: 10 * 60 * 1000,
 };
+const maxRefundAccountBodyBytes = 4 * 1024;
 
 export async function POST(request: Request) {
   const rateLimit = await consumeRateLimit({
@@ -47,6 +49,21 @@ export async function POST(request: Request) {
       {
         headers: rateLimitHeaders(rateLimit),
         status: 429,
+      },
+    );
+  }
+
+  const sizeCheck = validateRequestBodySize(
+    request.headers,
+    maxRefundAccountBodyBytes,
+    { requireContentLength: true },
+  );
+  if (!sizeCheck.ok) {
+    return NextResponse.json(
+      { error: sizeCheck.error },
+      {
+        headers: rateLimitHeaders(rateLimit),
+        status: sizeCheck.status,
       },
     );
   }

@@ -57,10 +57,6 @@ export async function getPublishedClassSessions() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    if (isMissingClassSessionStorageError(error)) {
-      return [] satisfies ClassSessionSummary[];
-    }
-
     throw new Error(`Class sessions query failed: ${error.message}`);
   }
 
@@ -81,10 +77,6 @@ export async function getAdminClassSessions() {
     .limit(200);
 
   if (error) {
-    if (isMissingClassSessionStorageError(error)) {
-      return [] satisfies ClassSessionSummary[];
-    }
-
     throw new Error(`Admin class sessions query failed: ${error.message}`);
   }
 
@@ -104,10 +96,6 @@ export async function getClassSessionById(id: string) {
     .maybeSingle();
 
   if (error) {
-    if (isMissingClassSessionStorageError(error)) {
-      return null;
-    }
-
     throw new Error(`Class session query failed: ${error.message}`);
   }
 
@@ -207,20 +195,4 @@ function fromClassSessionRow(row: ClassSessionRow): ClassSessionSummary {
 function emptyToNull(value: string | undefined | null) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
-}
-
-function isMissingClassSessionStorageError(error: {
-  code?: string;
-  message?: string;
-}) {
-  const message = error.message ?? "";
-
-  return (
-    error.code === "42P01" ||
-    error.code === "PGRST205" ||
-    (message.includes("class_sessions") &&
-      (message.includes("schema cache") ||
-        message.includes("does not exist") ||
-        message.includes("relation")))
-  );
 }

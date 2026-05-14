@@ -29,14 +29,9 @@ const env = {
   ...process.env,
 };
 
-const supabaseUrl = requireEnv("NEXT_PUBLIC_SUPABASE_URL", ["SUPABASE_URL"]);
-const serviceRoleKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY", [
-  "NEXT_SECRET_SUPABASE_SERVICE_ROLE_KEY",
-]);
-const publishableKey = requireEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", [
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-  "SUPABASE_ANON_KEY",
-]);
+const supabaseUrl = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
+const serviceRoleKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
+const publishableKey = requireEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
 
 const service = createSupabaseClient(serviceRoleKey);
 const publicClient = createSupabaseClient(publishableKey);
@@ -704,13 +699,11 @@ function loadEnvFile(path) {
   );
 }
 
-function requireEnv(name, fallbacks = []) {
-  for (const key of [name, ...fallbacks]) {
-    const value = env[key];
+function requireEnv(name) {
+  const value = env[name];
 
-    if (value) {
-      return value;
-    }
+  if (value) {
+    return value;
   }
 
   throw new Error(`Missing required environment variable: ${name}`);

@@ -10,6 +10,7 @@ type AdminLoginPageProps = {
   searchParams: Promise<{
     error?: string;
     next?: string;
+    rate_limit?: string;
   }>;
 };
 
@@ -53,6 +54,12 @@ export default async function AdminLoginPage({
         {params.error ? (
           <div className="admin-alert admin-alert-danger">
             비밀번호를 다시 확인해 주세요.
+          </div>
+        ) : null}
+
+        {params.rate_limit ? (
+          <div className="admin-alert admin-alert-danger">
+            Too many login attempts. Please try again later.
           </div>
         ) : null}
 

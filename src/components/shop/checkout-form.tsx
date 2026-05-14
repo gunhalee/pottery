@@ -78,8 +78,6 @@ type StoredCheckoutRecovery = {
   orderId?: string;
   orderNumber?: string;
   paymentId?: string;
-  recoveryToken?: string;
-  recoveryTokenExpiresAt?: string | null;
   signature: string;
   updatedAt: number;
 };
@@ -306,8 +304,11 @@ export function CheckoutForm({
     let shouldAutoRecover = false;
 
     try {
+      const stored = readStoredCheckoutRecovery(checkoutSignature);
+      const checkoutAttemptId = order.checkoutAttemptId ?? stored?.checkoutAttemptId;
       const prepareResponse = await fetch("/api/payments/portone/prepare", {
         body: JSON.stringify({
+          checkoutAttemptId,
           forceNewPaymentId: options.forceNewPaymentId,
           orderId: order.orderId,
         }),
@@ -362,6 +363,7 @@ export function CheckoutForm({
 
       const completeResponse = await fetch("/api/payments/portone/complete", {
         body: JSON.stringify({
+          checkoutAttemptId,
           orderId: preparedOrder.orderId,
           paymentId: paymentResponse.paymentId,
         }),
@@ -459,6 +461,15 @@ export function CheckoutForm({
       return;
     }
 
+    if (recovery?.action === "sync_payment") {
+      setState({
+        error: recovery.message,
+        order,
+        status: "created",
+      });
+      return;
+    }
+
     if (!recovery && order.paymentId) {
       setState({
         error: "결제 상태를 확인하는 중 오류가 발생했습니다. 잠시 후 다시 확인해 주세요.",
@@ -506,7 +517,6 @@ export function CheckoutForm({
   ): Promise<CheckoutRecoveryResponse | null> {
     const stored = readStoredCheckoutRecovery(checkoutSignature);
     const attemptId = order.checkoutAttemptId ?? stored?.checkoutAttemptId;
-    const recoveryToken = order.recoveryToken ?? stored?.recoveryToken;
     const paymentId = options.paymentId ?? order.paymentId ?? stored?.paymentId;
 
     if (!attemptId && !paymentId) {
@@ -538,7 +548,6 @@ export function CheckoutForm({
             attemptId,
             orderId: order.orderId,
             paymentId,
-            recoveryToken,
             sync: options.sync,
           }),
           headers: {
@@ -562,9 +571,6 @@ export function CheckoutForm({
             orderId: recovery.order.orderId,
             orderNumber: recovery.order.orderNumber,
             paymentId: recovery.payment?.paymentId ?? paymentId,
-            recoveryToken,
-            recoveryTokenExpiresAt:
-              order.recoveryTokenExpiresAt ?? stored?.recoveryTokenExpiresAt,
           });
         }
 
@@ -1161,9 +1167,6 @@ function mergeCheckoutRecovery(
     ...order,
     checkoutAttemptId: order.checkoutAttemptId ?? recovery.checkoutAttemptId,
     paymentId: recovery.paymentId,
-    recoveryToken: order.recoveryToken ?? recovery.recoveryToken,
-    recoveryTokenExpiresAt:
-      order.recoveryTokenExpiresAt ?? recovery.recoveryTokenExpiresAt,
   };
 }
 
@@ -1211,9 +1214,6 @@ function persistCheckoutRecovery(
     orderId: order.orderId,
     orderNumber: order.orderNumber,
     paymentId: order.paymentId ?? stored?.paymentId,
-    recoveryToken: order.recoveryToken ?? stored?.recoveryToken,
-    recoveryTokenExpiresAt:
-      order.recoveryTokenExpiresAt ?? stored?.recoveryTokenExpiresAt,
     signature,
     updatedAt: Date.now(),
   });

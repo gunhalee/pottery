@@ -16,7 +16,7 @@ export function isSupabasePublicReadConfigured() {
 export function getSupabaseAdminClient() {
   if (!isSupabaseConfigured()) {
     throw new Error(
-      "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables are required.",
+      "NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables are required.",
     );
   }
 
@@ -60,20 +60,13 @@ export function getSupabasePublicClient() {
 }
 
 function getSupabaseUrl() {
-  return process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  return process.env.NEXT_PUBLIC_SUPABASE_URL;
 }
 
 function getSupabaseServiceRoleKey() {
-  return (
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.NEXT_SECRET_SUPABASE_SERVICE_ROLE_KEY
-  );
+  return process.env.SUPABASE_SERVICE_ROLE_KEY;
 }
 
 function getSupabasePublishableKey() {
-  return (
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.SUPABASE_ANON_KEY
-  );
+  return process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 }

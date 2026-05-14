@@ -19,14 +19,20 @@ type LookupCredentials = {
   phoneLast4: string;
 };
 
+type LookupRequestCredentials = {
+  ordererName: string;
+  password: string;
+  phoneLast4: string;
+};
+
 type LookupState =
   | { kind: "idle" }
   | { kind: "loading" }
   | { kind: "error"; message: string }
   | {
-      credentials: LookupCredentials;
+      credentials: Pick<LookupCredentials, "password" | "phoneLast4">;
       kind: "success";
-      result: OrderLookupResult;
+      results: OrderLookupResult[];
     };
 
 type RefundState =
@@ -44,8 +50,8 @@ export function OrderLookupForm() {
   async function lookupOrder(formData: FormData) {
     setState({ kind: "loading" });
 
-    const credentials = {
-      orderNumber: String(formData.get("orderNumber") ?? ""),
+    const credentials: LookupRequestCredentials = {
+      ordererName: String(formData.get("ordererName") ?? ""),
       password: String(formData.get("password") ?? ""),
       phoneLast4: String(formData.get("phoneLast4") ?? ""),
     };
@@ -68,10 +74,21 @@ export function OrderLookupForm() {
         );
       }
 
+      const results = Array.isArray(payload)
+        ? (payload as OrderLookupResult[])
+        : [];
+
+      if (results.length === 0) {
+        throw new Error("조회된 주문이 없습니다.");
+      }
+
       setState({
-        credentials,
+        credentials: {
+          password: credentials.password,
+          phoneLast4: credentials.phoneLast4,
+        },
         kind: "success",
-        result: payload as OrderLookupResult,
+        results,
       });
     } catch (error) {
       setState({
@@ -88,10 +105,12 @@ export function OrderLookupForm() {
     <div className="order-lookup-layout">
       <form action={lookupOrder} className="order-lookup-form">
         <label>
-          <span>주문번호</span>
+          <span>주문자 이름</span>
           <input
-            name="orderNumber"
-            placeholder="CP-20260510-123456"
+            autoComplete="name"
+            maxLength={40}
+            name="ordererName"
+            placeholder="홍길동"
             required
           />
         </label>
@@ -133,19 +152,6 @@ export function OrderLookupForm() {
 }
 
 function OrderLookupResultPanel({ state }: { state: LookupState }) {
-  const [refundState, setRefundState] = useState<RefundState>({
-    kind: "idle",
-  });
-  const [returnRequestState, setReturnRequestState] =
-    useState<ReturnRequestState>({
-      kind: "idle",
-    });
-  const [giftResendState, setGiftResendState] = useState<GiftResendState>({
-    kind: "idle",
-  });
-  const [isReturnRequestOpen, setIsReturnRequestOpen] = useState(false);
-  const [isRefundAccountActive, setIsRefundAccountActive] = useState(false);
-
   if (state.kind === "idle") {
     return (
       <SiteEmptyState
@@ -176,8 +182,42 @@ function OrderLookupResultPanel({ state }: { state: LookupState }) {
     );
   }
 
-  const result = state.result;
-  const credentials = state.credentials;
+  return (
+    <div className="order-lookup-results">
+      {state.results.map((result) => (
+        <OrderLookupResultCard
+          credentials={{
+            orderNumber: result.orderNumber,
+            password: state.credentials.password,
+            phoneLast4: state.credentials.phoneLast4,
+          }}
+          key={result.orderNumber}
+          result={result}
+        />
+      ))}
+    </div>
+  );
+}
+
+function OrderLookupResultCard({
+  credentials,
+  result,
+}: {
+  credentials: LookupCredentials;
+  result: OrderLookupResult;
+}) {
+  const [refundState, setRefundState] = useState<RefundState>({
+    kind: "idle",
+  });
+  const [returnRequestState, setReturnRequestState] =
+    useState<ReturnRequestState>({
+      kind: "idle",
+    });
+  const [giftResendState, setGiftResendState] = useState<GiftResendState>({
+    kind: "idle",
+  });
+  const [isReturnRequestOpen, setIsReturnRequestOpen] = useState(false);
+  const [isRefundAccountActive, setIsRefundAccountActive] = useState(false);
 
   async function submitRefundAccount(formData: FormData) {
     setRefundState({ kind: "submitting" });

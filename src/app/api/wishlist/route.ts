@@ -5,6 +5,7 @@ import {
   getClientIp,
   rateLimitHeaders,
 } from "@/lib/security/rate-limit";
+import { validateRequestBodySize } from "@/lib/security/request-size";
 import { getProductBySlug } from "@/lib/shop";
 import {
   getAnonymousSessionFromRequest,
@@ -93,6 +94,18 @@ export async function POST(request: NextRequest) {
         headers: rateLimitHeaders(rateLimit),
         status: 429,
       },
+    );
+  }
+
+  const sizeCheck = validateRequestBodySize(
+    request.headers,
+    maxWishlistBodyBytes,
+    { requireContentLength: true },
+  );
+  if (!sizeCheck.ok) {
+    return NextResponse.json(
+      { error: sizeCheck.error },
+      { status: sizeCheck.status },
     );
   }
 

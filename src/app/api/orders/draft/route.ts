@@ -4,11 +4,14 @@ import {
   createOrderDraft,
   OrderDraftError,
 } from "@/lib/orders/order-store";
+import type { OrderDraftResult } from "@/lib/orders/order-model";
+import { setCheckoutRecoveryCookie } from "@/lib/orders/checkout-recovery-cookie";
 import {
   consumeRateLimit,
   getClientIp,
   rateLimitHeaders,
 } from "@/lib/security/rate-limit";
+import { validateRequestBodySize } from "@/lib/security/request-size";
 
 const orderDraftSchema = z.object({
   cashReceiptIdentifier: z.string().trim().max(80).optional(),
@@ -53,6 +56,7 @@ const orderDraftRateLimit = {
   limit: 10,
   windowMs: 10 * 60 * 1000,
 };
+const maxOrderDraftBodyBytes = 16 * 1024;
 
 export async function POST(request: Request) {
   const rateLimit = await consumeRateLimit({
@@ -72,6 +76,21 @@ export async function POST(request: Request) {
     );
   }
 
+  const sizeCheck = validateRequestBodySize(
+    request.headers,
+    maxOrderDraftBodyBytes,
+    { requireContentLength: true },
+  );
+  if (!sizeCheck.ok) {
+    return NextResponse.json(
+      { error: sizeCheck.error },
+      {
+        headers: rateLimitHeaders(rateLimit),
+        status: sizeCheck.status,
+      },
+    );
+  }
+
   const payload = await request.json().catch(() => null);
   const parsed = orderDraftSchema.safeParse(payload);
 
@@ -84,15 +103,17 @@ export async function POST(request: Request) {
 
   try {
     const order = await createOrderDraft(parsed.data);
-
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
-        order,
+        order: toClientOrderDraft(order),
       },
       {
         headers: rateLimitHeaders(rateLimit),
       },
     );
+
+    setCheckoutRecoveryCookie(response, order);
+    return response;
   } catch (error) {
     if (error instanceof OrderDraftError) {
       return NextResponse.json(
@@ -108,4 +129,19 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+}
+
+function toClientOrderDraft(
+  order: OrderDraftResult,
+): Omit<OrderDraftResult, "recoveryToken" | "recoveryTokenExpiresAt"> {
+  return {
+    checkoutAttemptId: order.checkoutAttemptId,
+    depositAccount: order.depositAccount,
+    depositDueAt: order.depositDueAt,
+    orderId: order.orderId,
+    orderNumber: order.orderNumber,
+    paymentMethod: order.paymentMethod,
+    paymentStatus: order.paymentStatus,
+    total: order.total,
+  };
 }

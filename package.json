@@ -9,8 +9,6 @@
     "start": "next start",
     "lint": "eslint",
     "email:test": "node scripts/test-resend-email.mjs",
-    "media:migrate": "node scripts/migrate-media-assets.mjs",
-    "media:migrate:apply": "node scripts/migrate-media-assets.mjs --apply",
     "orders:seed": "node scripts/seed-shop-orders.mjs",
     "perf:assets": "node scripts/analyze-route-assets-with-server.mjs --fetch-images --output .next/route-asset-audit.json",
     "perf:assets:budget": "node scripts/analyze-route-assets-with-server.mjs --fetch-images --budget docs/performance-budgets.json --output .next/route-asset-audit.json",
@@ -37,7 +35,7 @@
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "lexical": "^0.44.0",
-    "next": "16.2.4",
+    "next": "^16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "sharp": "^0.34.5",
@@ -54,7 +52,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.4",
+    "eslint-config-next": "^16.2.6",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

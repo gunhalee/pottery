@@ -6,16 +6,19 @@ import type {
   PaymentMethod,
   PaymentStatus,
 } from "@/lib/orders/order-model";
+import { updateCheckoutAttemptPayment } from "@/lib/orders/checkout-attempt-store";
 import {
-  readCheckoutAttemptByRecovery,
-  updateCheckoutAttemptPayment,
-} from "@/lib/orders/checkout-attempt-store";
+  assertCheckoutOrderOwnershipForRequest,
+  CheckoutOwnershipError,
+} from "@/lib/orders/checkout-ownership";
+import { clearCheckoutRecoveryCookie } from "@/lib/orders/checkout-recovery-cookie";
 import { PortOnePaymentError, syncPortOnePayment } from "@/lib/payments";
 import {
   consumeRateLimit,
   getClientIp,
   rateLimitHeaders,
 } from "@/lib/security/rate-limit";
+import { validateRequestBodySize } from "@/lib/security/request-size";
 import {
   getSupabaseAdminClient,
   isSupabaseConfigured,
@@ -30,11 +33,9 @@ const checkoutRecoverySchema = z
     sync: z.boolean().optional(),
   })
   .refine(
-    (value) =>
-      Boolean(value.attemptId && value.recoveryToken) ||
-      Boolean(value.orderId && value.paymentId),
+    (value) => Boolean(value.attemptId || value.orderId || value.paymentId),
     {
-      message: "checkout recovery requires a recovery token or payment id",
+      message: "checkout recovery requires an order, payment, or attempt id",
     },
   );
 
@@ -42,6 +43,7 @@ const checkoutRecoveryRateLimit = {
   limit: 30,
   windowMs: 10 * 60 * 1000,
 };
+const maxCheckoutRecoveryBodyBytes = 2 * 1024;
 
 type RecoveryOrderRow = {
   deposit_due_at: string | null;
@@ -77,6 +79,21 @@ export async function POST(request: Request) {
     );
   }
 
+  const sizeCheck = validateRequestBodySize(
+    request.headers,
+    maxCheckoutRecoveryBodyBytes,
+    { requireContentLength: true },
+  );
+  if (!sizeCheck.ok) {
+    return NextResponse.json(
+      { error: sizeCheck.error },
+      {
+        headers: rateLimitHeaders(rateLimit),
+        status: sizeCheck.status,
+      },
+    );
+  }
+
   const payload = await request.json().catch(() => null);
   const parsed = checkoutRecoverySchema.safeParse(payload);
 
@@ -94,15 +111,22 @@ export async function POST(request: Request) {
     );
   }
 
-  const recoveryAttempt =
-    parsed.data.attemptId && parsed.data.recoveryToken
-      ? await readCheckoutAttemptByRecovery({
-          attemptId: parsed.data.attemptId,
-          recoveryToken: parsed.data.recoveryToken,
-        })
-      : null;
+  let recoveryAttempt: Awaited<
+    ReturnType<typeof assertCheckoutOrderOwnershipForRequest>
+  >;
+  try {
+    recoveryAttempt = await assertCheckoutOrderOwnershipForRequest({
+      checkoutAttemptId: parsed.data.attemptId,
+      orderId: parsed.data.orderId,
+      paymentId: parsed.data.paymentId,
+      recoveryToken: parsed.data.recoveryToken,
+      request,
+    });
+  } catch (error) {
+    if (!(error instanceof CheckoutOwnershipError)) {
+      throw error;
+    }
 
-  if (parsed.data.attemptId && parsed.data.recoveryToken && !recoveryAttempt) {
     return NextResponse.json(
       {
         action: "manual_review",
@@ -110,7 +134,7 @@ export async function POST(request: Request) {
         message: "주문 상태를 확인할 수 없습니다.",
         retryable: false,
       },
-      { status: 404 },
+      { status: error.status },
     );
   }
 
@@ -168,7 +192,7 @@ export async function POST(request: Request) {
   }
 
   if (order.payment_status === "paid") {
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         action: "none",
         code: "ORDER_PAID",
@@ -179,6 +203,8 @@ export async function POST(request: Request) {
       },
       { headers: rateLimitHeaders(rateLimit) },
     );
+    clearCheckoutRecoveryCookie(response);
+    return response;
   }
 
   if (!paymentId) {
@@ -201,7 +227,7 @@ export async function POST(request: Request) {
     (parsed.data.sync !== true && isRetryablePaymentStatus(order.payment_status))
   ) {
     const action = getActionForPaymentStatus(order.payment_status);
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         action,
         code: getCodeForPaymentStatus(order.payment_status),
@@ -212,6 +238,10 @@ export async function POST(request: Request) {
       },
       { headers: rateLimitHeaders(rateLimit) },
     );
+    if (isSuccessfulRecoveredPayment(order)) {
+      clearCheckoutRecoveryCookie(response);
+    }
+    return response;
   }
 
   if (shouldSyncWithProvider) {
@@ -223,7 +253,7 @@ export async function POST(request: Request) {
       });
 
       const action = getActionForPaymentStatus(synced.paymentStatus);
-      return NextResponse.json(
+      const response = NextResponse.json(
         {
           action,
           code: getCodeForPaymentStatus(synced.paymentStatus),
@@ -244,6 +274,10 @@ export async function POST(request: Request) {
         },
         { headers: rateLimitHeaders(rateLimit) },
       );
+      if (isSuccessfulRecoveredPayment(synced)) {
+        clearCheckoutRecoveryCookie(response);
+      }
+      return response;
     } catch (error) {
       if (error instanceof PortOnePaymentError) {
         const canRetryPayment =
@@ -292,7 +326,7 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json(
+  const response = NextResponse.json(
     {
       action: getActionForPaymentStatus(order.payment_status),
       code: getCodeForPaymentStatus(order.payment_status),
@@ -303,6 +337,10 @@ export async function POST(request: Request) {
     },
     { headers: rateLimitHeaders(rateLimit) },
   );
+  if (isSuccessfulRecoveredPayment(order)) {
+    clearCheckoutRecoveryCookie(response);
+  }
+  return response;
 }
 
 async function readRecoveryOrder(orderId: string): Promise<RecoveryOrderRow | null> {
@@ -413,6 +451,22 @@ function getMessageForPaymentStatus(status: PaymentStatus) {
 
 function isRetryablePaymentStatus(status: PaymentStatus) {
   return status === "failed" || status === "canceled" || status === "expired";
+}
+
+function isSuccessfulRecoveredPayment(input: {
+  payment_method?: PaymentMethod;
+  paymentMethod?: PaymentMethod;
+  payment_status?: PaymentStatus;
+  paymentStatus?: PaymentStatus;
+}) {
+  const paymentStatus = input.paymentStatus ?? input.payment_status;
+  const paymentMethod = input.paymentMethod ?? input.payment_method;
+
+  return (
+    paymentStatus === "paid" ||
+    (paymentStatus === "pending" &&
+      paymentMethod === "portone_virtual_account")
+  );
 }
 
 function getAttemptStatusForPaymentStatus(status: PaymentStatus) {

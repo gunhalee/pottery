@@ -431,19 +431,11 @@ async function readProductListItemsFromSupabaseQuery(
   client?: SupabaseClient,
 ) {
   const supabase = client ?? getSupabaseAdminClient();
-  const fullResult = await buildProductListQuery({
+  const { data, error } = await buildProductListQuery({
     client: supabase,
     options,
-    select: productListSelectWithCommerceExtensions,
+    select: productListSelect,
   });
-  const { data, error } =
-    fullResult.error && isMissingOptionalProductCommerceColumn(fullResult.error)
-      ? await buildProductListQuery({
-          client: supabase,
-          options,
-          select: productListSelectBase,
-        })
-      : fullResult;
 
   if (error) {
     throw new Error(`Supabase 상품 목록 조회 실패: ${error.message}`);
@@ -463,7 +455,7 @@ async function readProductListItemsFromSupabaseQuery(
   );
 }
 
-const productListSelectBase = `
+const productListSelect = `
   id,
   slug,
   title_ko,
@@ -481,11 +473,7 @@ const productListSelectBase = `
   published,
   published_at,
   created_at,
-  updated_at
-`;
-
-const productListSelectWithCommerceExtensions = `
-  ${productListSelectBase},
+  updated_at,
   purchase_limit_quantity,
   plant_option_enabled,
   plant_option_price_delta_krw,
@@ -758,16 +746,16 @@ function fromSupabaseRow(
     kind: row.kind,
     limitedType: row.limited_type,
     madeToOrder: {
-      available: row.made_to_order_available ?? false,
-      daysMax: row.made_to_order_days_max ?? 45,
-      daysMin: row.made_to_order_days_min ?? 30,
+      available: row.made_to_order_available,
+      daysMax: row.made_to_order_days_max,
+      daysMin: row.made_to_order_days_min,
       notice: row.made_to_order_notice ?? undefined,
     },
     material: row.material ?? undefined,
     plantOption: {
       careNotice: row.plant_care_notice ?? undefined,
-      enabled: row.plant_option_enabled ?? false,
-      priceDelta: row.plant_option_price_delta_krw ?? 0,
+      enabled: row.plant_option_enabled,
+      priceDelta: row.plant_option_price_delta_krw,
       returnNotice: row.plant_return_notice ?? undefined,
       shippingRestrictionNotice:
         row.plant_shipping_restriction_notice ?? undefined,
@@ -780,9 +768,9 @@ function fromSupabaseRow(
     shortDescription: row.short_description,
     size: row.size ?? undefined,
     slug: row.slug,
-    story: row.story_text ?? row.story ?? undefined,
-    storyBody: row.story_json ?? undefined,
-    storyText: row.story_text ?? row.story ?? undefined,
+    story: row.story_text,
+    storyBody: row.story_json,
+    storyText: row.story_text,
     titleKo: row.title_ko,
     updatedAt: row.updated_at,
     usageNote: row.usage_note ?? undefined,
@@ -811,15 +799,15 @@ function fromSupabaseProductListRow(
     kind: row.kind,
     limitedType: row.limited_type,
     madeToOrder: {
-      available: row.made_to_order_available ?? false,
-      daysMax: row.made_to_order_days_max ?? 45,
-      daysMin: row.made_to_order_days_min ?? 30,
+      available: row.made_to_order_available,
+      daysMax: row.made_to_order_days_max,
+      daysMin: row.made_to_order_days_min,
       notice: row.made_to_order_notice ?? undefined,
     },
     plantOption: {
       careNotice: row.plant_care_notice ?? undefined,
-      enabled: row.plant_option_enabled ?? false,
-      priceDelta: row.plant_option_price_delta_krw ?? 0,
+      enabled: row.plant_option_enabled,
+      priceDelta: row.plant_option_price_delta_krw,
       returnNotice: row.plant_return_notice ?? undefined,
       shippingRestrictionNotice:
         row.plant_shipping_restriction_notice ?? undefined,
@@ -953,15 +941,4 @@ function createParagraphStoryBody(text: string) {
       version: 1,
     },
   };
-}
-
-function isMissingOptionalProductCommerceColumn(error: { message?: string }) {
-  const message = error.message ?? "";
-
-  return (
-    message.includes("plant_option_") ||
-    message.includes("purchase_limit_quantity") ||
-    message.includes("made_to_order_") ||
-    message.includes("schema cache")
-  );
 }

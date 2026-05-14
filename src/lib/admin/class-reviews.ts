@@ -94,10 +94,6 @@ export async function getAdminClassReviews({
   const { data, error } = await query;
 
   if (error) {
-    if (isMissingClassReviewStorageError(error)) {
-      return [] satisfies AdminClassReviewEntry[];
-    }
-
     throw new Error(`Class review query failed: ${error.message}`);
   }
 
@@ -201,20 +197,4 @@ export async function revokeAdminClassReviewConsent(reviewId: string) {
     .eq("class_review_id", reviewId);
 
   return { reviewId, revokedAt };
-}
-
-function isMissingClassReviewStorageError(error: {
-  code?: string;
-  message?: string;
-}) {
-  const message = error.message ?? "";
-
-  return (
-    error.code === "42P01" ||
-    error.code === "PGRST205" ||
-    (message.includes("class_reviews") &&
-      (message.includes("schema cache") ||
-        message.includes("does not exist") ||
-        message.includes("relation")))
-  );
 }

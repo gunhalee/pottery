@@ -5,17 +5,25 @@ import {
   getClientIp,
   rateLimitHeaders,
 } from "@/lib/security/rate-limit";
+import {
+  assertCheckoutOrderOwnershipForRequest,
+  CheckoutOwnershipError,
+} from "@/lib/orders/checkout-ownership";
 import { PortOnePaymentError, preparePortOnePayment } from "@/lib/payments";
+import { validateRequestBodySize } from "@/lib/security/request-size";
 
 const preparePaymentSchema = z.object({
+  checkoutAttemptId: z.uuid().optional(),
   forceNewPaymentId: z.boolean().optional(),
   orderId: z.uuid(),
+  recoveryToken: z.string().trim().min(20).max(200).optional(),
 });
 
 const preparePaymentRateLimit = {
   limit: 15,
   windowMs: 10 * 60 * 1000,
 };
+const maxPreparePaymentBodyBytes = 2 * 1024;
 
 export const runtime = "nodejs";
 
@@ -37,6 +45,21 @@ export async function POST(request: Request) {
     );
   }
 
+  const sizeCheck = validateRequestBodySize(
+    request.headers,
+    maxPreparePaymentBodyBytes,
+    { requireContentLength: true },
+  );
+  if (!sizeCheck.ok) {
+    return NextResponse.json(
+      { error: sizeCheck.error },
+      {
+        headers: rateLimitHeaders(rateLimit),
+        status: sizeCheck.status,
+      },
+    );
+  }
+
   const payload = await request.json().catch(() => null);
   const parsed = preparePaymentSchema.safeParse(payload);
 
@@ -48,6 +71,13 @@ export async function POST(request: Request) {
   }
 
   try {
+    await assertCheckoutOrderOwnershipForRequest({
+      checkoutAttemptId: parsed.data.checkoutAttemptId,
+      orderId: parsed.data.orderId,
+      recoveryToken: parsed.data.recoveryToken,
+      request,
+    });
+
     const result = await preparePortOnePayment({
       forceNewPaymentId: parsed.data.forceNewPaymentId,
       orderId: parsed.data.orderId,
@@ -58,6 +88,13 @@ export async function POST(request: Request) {
       headers: rateLimitHeaders(rateLimit),
     });
   } catch (error) {
+    if (error instanceof CheckoutOwnershipError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
+
     if (error instanceof PortOnePaymentError) {
       return NextResponse.json(
         { error: error.message },

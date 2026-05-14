@@ -60,6 +60,11 @@
   min-width: 150px;
 }
 
+.order-lookup-results {
+  display: grid;
+  gap: 22px;
+}
+
 .order-lookup-empty,
 .order-lookup-result {
   display: grid;

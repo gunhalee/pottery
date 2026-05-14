@@ -9,6 +9,7 @@ import {
   getClientIp,
   rateLimitHeaders,
 } from "@/lib/security/rate-limit";
+import { validateRequestBodySize } from "@/lib/security/request-size";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -22,6 +23,7 @@ const cleanupRateLimit = {
   limit: 20,
   windowMs: 60_000,
 };
+const maxCleanupBodyBytes = 8 * 1024;
 
 export async function POST(request: Request) {
   const rateLimit = await consumeRateLimit({
@@ -63,6 +65,21 @@ export async function POST(request: Request) {
         ok: false,
       },
       { status: 503 },
+    );
+  }
+
+  const sizeCheck = validateRequestBodySize(
+    request.headers,
+    maxCleanupBodyBytes,
+    { requireContentLength: true },
+  );
+  if (!sizeCheck.ok) {
+    return NextResponse.json(
+      {
+        message: sizeCheck.error,
+        ok: false,
+      },
+      { status: sizeCheck.status },
     );
   }
 

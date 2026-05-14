@@ -46,10 +46,6 @@ export async function getCartSnapshotForSession(
     .order("added_at", { ascending: false });
 
   if (error) {
-    if (isMissingCartStorageError(error)) {
-      return emptyCartSnapshot;
-    }
-
     throw new Error(`Supabase cart query failed: ${error.message}`);
   }
 
@@ -219,17 +215,4 @@ function toCartSnapshot(rows: CartItemRow[]): CartSnapshot {
     updatedAt: items[0]?.updatedAt ?? "",
     version: 1,
   };
-}
-
-function isMissingCartStorageError(error: { code?: string; message?: string }) {
-  const message = error.message ?? "";
-
-  return (
-    error.code === "42P01" ||
-    error.code === "PGRST205" ||
-    (message.includes("shop_cart_items") &&
-      (message.includes("schema cache") ||
-        message.includes("does not exist") ||
-        message.includes("relation")))
-  );
 }

@@ -7,6 +7,10 @@ const cookieName = "consepot_admin_session";
 const sessionDurationMs = 12 * 60 * 60 * 1000;
 
 export async function isAdminAuthenticated() {
+  if (!isAdminSessionSecretConfigured()) {
+    return false;
+  }
+
   const cookieStore = await cookies();
   const value = cookieStore.get(cookieName)?.value;
 
@@ -44,6 +48,10 @@ export async function clearAdminSessionCookie() {
 }
 
 export function verifyAdminPassword(password: string) {
+  if (!isAdminPasswordConfigured()) {
+    return false;
+  }
+
   const expectedPassword = process.env.ADMIN_PASSWORD;
   const expectedHash = process.env.ADMIN_PASSWORD_SHA256;
 
@@ -59,7 +67,10 @@ export function verifyAdminPassword(password: string) {
 }
 
 export function isAdminPasswordConfigured() {
-  return Boolean(process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD_SHA256);
+  return (
+    Boolean(process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD_SHA256) &&
+    isAdminSessionSecretConfigured()
+  );
 }
 
 function createSessionCookieValue() {
@@ -89,16 +100,17 @@ function sign(payload: string) {
 }
 
 function getSessionSecret() {
-  const secret =
-    process.env.ADMIN_SESSION_SECRET ||
-    process.env.ADMIN_PASSWORD ||
-    process.env.ADMIN_PASSWORD_SHA256;
+  const secret = process.env.ADMIN_SESSION_SECRET?.trim();
 
   if (!secret) {
-    return "consepot-local-unconfigured-admin-secret";
+    throw new Error("ADMIN_SESSION_SECRET is required for admin sessions.");
   }
 
   return secret;
+}
+
+function isAdminSessionSecretConfigured() {
+  return Boolean(process.env.ADMIN_SESSION_SECRET?.trim());
 }
 
 function sha256(value: string) {

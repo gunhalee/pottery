@@ -380,10 +380,6 @@ async function listStorageFiles(bucket: string, prefix = "") {
     });
 
     if (error) {
-      if (isMissingBucketError(error)) {
-        return files;
-      }
-
       throw new Error(`Failed to list ${bucket}/${prefix}: ${error.message}`);
     }
 
@@ -634,10 +630,6 @@ function getFileTimestamp(file: StorageFile) {
   return file.createdAt ?? file.updatedAt ?? "";
 }
 
-function isMissingBucketError(error: { message?: string; statusCode?: string }) {
-  return error.statusCode === "404" || /not found/i.test(error.message ?? "");
-}
-
 async function readUsedMediaAssetIds() {
   const supabase = getSupabaseAdminClient();
   const tables = [
@@ -653,10 +645,6 @@ async function readUsedMediaAssetIds() {
         .select(table.column);
 
       if (error) {
-        if (isMissingUsageTableError(error)) {
-          return [] as string[];
-        }
-
         throw new Error(`Failed to read ${table.name}: ${error.message}`);
       }
 
@@ -667,16 +655,4 @@ async function readUsedMediaAssetIds() {
   );
 
   return new Set(rows.flat());
-}
-
-function isMissingUsageTableError(error: { code?: string; message?: string }) {
-  const message = error.message ?? "";
-
-  return (
-    error.code === "42P01" ||
-    error.code === "PGRST205" ||
-    message.includes("schema cache") ||
-    message.includes("does not exist") ||
-    message.includes("relation")
-  );
 }

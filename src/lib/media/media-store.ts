@@ -555,10 +555,6 @@ async function readMediaAssetUsageCounts(supabase: SupabaseClient) {
         .select(table.column);
 
       if (error) {
-        if (isMissingUsageTableError(error)) {
-          return [] as string[];
-        }
-
         throw new Error(`Failed to read ${table.name} usage counts: ${error.message}`);
       }
 
@@ -582,16 +578,4 @@ async function getMediaAssetUsageCount(
   const usageCounts = await readMediaAssetUsageCounts(supabase);
 
   return usageCounts.get(assetId) ?? 0;
-}
-
-function isMissingUsageTableError(error: { code?: string; message?: string }) {
-  const message = error.message ?? "";
-
-  return (
-    error.code === "42P01" ||
-    error.code === "PGRST205" ||
-    message.includes("schema cache") ||
-    message.includes("does not exist") ||
-    message.includes("relation")
-  );
 }

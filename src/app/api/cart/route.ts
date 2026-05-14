@@ -22,6 +22,7 @@ import {
   getClientIp,
   rateLimitHeaders,
 } from "@/lib/security/rate-limit";
+import { validateRequestBodySize } from "@/lib/security/request-size";
 
 export const runtime = "nodejs";
 
@@ -243,6 +244,18 @@ export async function DELETE(request: NextRequest) {
 }
 
 async function guardCartMutation(request: NextRequest) {
+  const sizeCheck = validateRequestBodySize(
+    request.headers,
+    maxCartBodyBytes,
+    { requireContentLength: true },
+  );
+  if (!sizeCheck.ok) {
+    return NextResponse.json(
+      { error: sizeCheck.error },
+      { status: sizeCheck.status },
+    );
+  }
+
   const contentLength = Number(request.headers.get("content-length") ?? 0);
 
   if (contentLength > maxCartBodyBytes) {

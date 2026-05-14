@@ -8,7 +8,7 @@ export type CronJobName =
   | "portone_payment_reconcile"
   | "upload_cleanup"
   | "virtual_account_expiry";
-export type CronRunLogJobName = CronJobName | "cafe24_inventory";
+export type CronRunLogJobName = CronJobName;
 export type CronRunStatus = "failed" | "running" | "success";
 
 export type CronRunLog = {

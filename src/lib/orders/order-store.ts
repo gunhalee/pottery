@@ -24,6 +24,7 @@ import type {
   FulfillmentStatus,
   OrderDraftInput,
   OrderDraftResult,
+  OrderLookupByNameInput,
   OrderLookupInput,
   OrderLookupItem,
   OrderLookupResult,
@@ -104,6 +105,35 @@ type CreatedOrderRow = {
   virtual_account_account_number?: string | null;
   virtual_account_bank_name?: string | null;
 };
+
+const orderLookupSelect = [
+  "id",
+  "order_number",
+  "order_status",
+  "payment_status",
+  "payment_method",
+  "fulfillment_status",
+  "is_gift",
+  "recipient_name",
+  "shipping_address1",
+  "shipping_method",
+  "subtotal_krw",
+  "shipping_fee_krw",
+  "total_krw",
+  "lookup_password_hash",
+  "created_at",
+  "deposit_due_at",
+  "deposit_confirmed_at",
+  "virtual_account_bank_name",
+  "virtual_account_account_number",
+  "virtual_account_account_holder",
+  "virtual_account_issued_at",
+  "cash_receipt_status",
+  "contains_live_plant",
+  "is_made_to_order",
+  "made_to_order_due_min_days",
+  "made_to_order_due_max_days",
+].join(", ");
 
 export class OrderDraftError extends Error {
   constructor(
@@ -483,9 +513,16 @@ export async function createOrderDraft(
 }
 
 export async function lookupOrder(
-  input: OrderLookupInput,
+  input: OrderLookupByNameInput,
+): Promise<OrderLookupResult[]> {
+  const orderRows = await readVerifiedOrdersByOrdererName(input);
+
+  return Promise.all(orderRows.map(readOrderLookupResult));
+}
+
+async function readOrderLookupResult(
+  orderRow: OrderRow,
 ): Promise<OrderLookupResult> {
-  const orderRow = await readVerifiedOrder(input);
   const [items, shipments, refundAccountStatus, giftAddress] = await Promise.all([
     readOrderItems(orderRow.id),
     readOrderShipments(orderRow.id),
@@ -597,36 +634,7 @@ async function readVerifiedOrder(input: OrderLookupInput): Promise<OrderRow> {
   const supabase = getSupabaseAdminClient();
   const { data: order, error } = await supabase
     .from("shop_orders")
-    .select(
-      [
-        "id",
-        "order_number",
-        "order_status",
-        "payment_status",
-        "payment_method",
-        "fulfillment_status",
-        "is_gift",
-        "recipient_name",
-        "shipping_address1",
-        "shipping_method",
-        "subtotal_krw",
-        "shipping_fee_krw",
-        "total_krw",
-        "lookup_password_hash",
-        "created_at",
-        "deposit_due_at",
-        "deposit_confirmed_at",
-        "virtual_account_bank_name",
-        "virtual_account_account_number",
-        "virtual_account_account_holder",
-        "virtual_account_issued_at",
-        "cash_receipt_status",
-        "contains_live_plant",
-        "is_made_to_order",
-        "made_to_order_due_min_days",
-        "made_to_order_due_max_days",
-      ].join(", "),
-    )
+    .select(orderLookupSelect)
     .eq("order_number", orderNumber)
     .eq("orderer_phone_last4", phoneLast4)
     .maybeSingle();
@@ -642,6 +650,47 @@ async function readVerifiedOrder(input: OrderLookupInput): Promise<OrderRow> {
   }
 
   return orderRow;
+}
+
+async function readVerifiedOrdersByOrdererName(
+  input: OrderLookupByNameInput,
+): Promise<OrderRow[]> {
+  if (!isSupabaseConfigured()) {
+    throw new OrderLookupVerificationError();
+  }
+
+  const ordererName = normalizeOrdererName(input.ordererName);
+  const phoneLast4 = normalizePhoneLast4(input.phoneLast4);
+
+  if (!ordererName || !/^[0-9]{4}$/.test(phoneLast4)) {
+    throw new OrderLookupVerificationError();
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data: orders, error } = await supabase
+    .from("shop_orders")
+    .select(orderLookupSelect)
+    .eq("orderer_name", ordererName)
+    .eq("orderer_phone_last4", phoneLast4)
+    .order("created_at", { ascending: false });
+
+  if (error || !orders?.length) {
+    throw new OrderLookupVerificationError();
+  }
+
+  const verifiedOrders: OrderRow[] = [];
+
+  for (const order of orders as unknown as OrderRow[]) {
+    if (verifyOrderLookupPassword(input.password, order.lookup_password_hash)) {
+      verifiedOrders.push(order);
+    }
+  }
+
+  if (!verifiedOrders.length) {
+    throw new OrderLookupVerificationError();
+  }
+
+  return verifiedOrders;
 }
 
 async function insertOrderWithRetry(
@@ -954,6 +1003,10 @@ function normalizePhone(phone: string) {
 function normalizePhoneLast4(phone: string) {
   const digits = phone.replace(/\D/g, "");
   return digits.slice(-4);
+}
+
+function normalizeOrdererName(name: string) {
+  return name.trim();
 }
 
 function emptyToNull(value: string | undefined) {

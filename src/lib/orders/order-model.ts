@@ -144,6 +144,12 @@ export type OrderLookupInput = {
   phoneLast4: string;
 };
 
+export type OrderLookupByNameInput = {
+  ordererName: string;
+  password: string;
+  phoneLast4: string;
+};
+
 export type OrderLookupItem = {
   lineTotal: number;
   name: string;

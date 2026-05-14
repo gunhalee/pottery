@@ -6,6 +6,7 @@ import {
   getClientIp,
   rateLimitHeaders,
 } from "@/lib/security/rate-limit";
+import { validateRequestBodySize } from "@/lib/security/request-size";
 import {
   getSupabaseAdminClient,
   isSupabaseConfigured,
@@ -15,6 +16,7 @@ const classConsentRateLimit = {
   limit: 6,
   windowMs: 10 * 60 * 1000,
 };
+const maxClassConsentBodyBytes = 4 * 1024;
 
 const classConsentSchema = z
   .object({
@@ -43,6 +45,21 @@ export async function POST(request: Request) {
       {
         headers: rateLimitHeaders(rateLimit),
         status: 429,
+      },
+    );
+  }
+
+  const sizeCheck = validateRequestBodySize(
+    request.headers,
+    maxClassConsentBodyBytes,
+    { requireContentLength: true },
+  );
+  if (!sizeCheck.ok) {
+    return NextResponse.json(
+      { error: sizeCheck.error },
+      {
+        headers: rateLimitHeaders(rateLimit),
+        status: sizeCheck.status,
       },
     );
   }

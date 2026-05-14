@@ -107,11 +107,6 @@ export async function claimCheckoutAttempt(input: {
     .single();
 
   if (error) {
-    if (isMissingAttemptStorageError(error)) {
-      console.warn("shop_checkout_attempts table is missing; checkout recovery is disabled.");
-      return { kind: "claimed", record: null };
-    }
-
     if (error.code === "23505") {
       const existing = await readCheckoutAttemptByAttemptId(input.attemptId);
       if (existing) {
@@ -151,11 +146,6 @@ export async function attachOrderToCheckoutAttempt(input: {
     .eq("attempt_id", input.attemptId);
 
   if (error) {
-    if (isMissingAttemptStorageError(error)) {
-      console.warn("shop_checkout_attempts table is missing; checkout recovery is disabled.");
-      return null;
-    }
-
     throw error;
   }
 
@@ -180,11 +170,6 @@ export async function refreshCheckoutRecoveryToken(
     .eq("attempt_id", attemptId);
 
   if (error) {
-    if (isMissingAttemptStorageError(error)) {
-      console.warn("shop_checkout_attempts table is missing; checkout recovery is disabled.");
-      return null;
-    }
-
     throw error;
   }
 
@@ -208,11 +193,6 @@ export async function readCheckoutAttemptByAttemptId(
     .maybeSingle();
 
   if (error) {
-    if (isMissingAttemptStorageError(error)) {
-      console.warn("shop_checkout_attempts table is missing; checkout recovery is disabled.");
-      return null;
-    }
-
     throw error;
   }
 
@@ -237,11 +217,6 @@ export async function readCheckoutAttemptByRecovery(input: {
     .maybeSingle();
 
   if (error) {
-    if (isMissingAttemptStorageError(error)) {
-      console.warn("shop_checkout_attempts table is missing; checkout recovery is disabled.");
-      return null;
-    }
-
     throw error;
   }
 
@@ -279,11 +254,6 @@ export async function readCheckoutAttemptByOrderId(
     .maybeSingle();
 
   if (error) {
-    if (isMissingAttemptStorageError(error)) {
-      console.warn("shop_checkout_attempts table is missing; checkout recovery is disabled.");
-      return null;
-    }
-
     throw error;
   }
 
@@ -324,11 +294,6 @@ export async function updateCheckoutAttemptPayment(input: {
 
   const { error } = await query;
   if (error) {
-    if (isMissingAttemptStorageError(error)) {
-      console.warn("shop_checkout_attempts table is missing; checkout recovery is disabled.");
-      return;
-    }
-
     throw error;
   }
 }
@@ -356,16 +321,6 @@ function mapCheckoutAttemptRow(row: CheckoutAttemptRow): CheckoutAttemptRecord {
     recoveryTokenExpiresAt: row.recovery_token_expires_at,
     status: row.status,
   };
-}
-
-function isMissingAttemptStorageError(error: { code?: string; message?: string }) {
-  const message = error.message ?? "";
-
-  return (
-    error.code === "42P01" ||
-    message.includes("shop_checkout_attempts") ||
-    (message.includes("relation") && message.includes("does not exist"))
-  );
 }
 
 function sha256(value: string) {

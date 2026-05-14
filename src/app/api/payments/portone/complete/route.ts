@@ -2,20 +2,29 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { completePortOnePayment, PortOnePaymentError } from "@/lib/payments";
 import {
+  assertCheckoutOrderOwnershipForRequest,
+  CheckoutOwnershipError,
+} from "@/lib/orders/checkout-ownership";
+import { clearCheckoutRecoveryCookie } from "@/lib/orders/checkout-recovery-cookie";
+import {
   consumeRateLimit,
   getClientIp,
   rateLimitHeaders,
 } from "@/lib/security/rate-limit";
+import { validateRequestBodySize } from "@/lib/security/request-size";
 
 const completePaymentSchema = z.object({
+  checkoutAttemptId: z.uuid().optional(),
   orderId: z.uuid().optional(),
   paymentId: z.string().trim().min(1).max(80),
+  recoveryToken: z.string().trim().min(20).max(200).optional(),
 });
 
 const completePaymentRateLimit = {
   limit: 20,
   windowMs: 10 * 60 * 1000,
 };
+const maxCompletePaymentBodyBytes = 2 * 1024;
 
 export const runtime = "nodejs";
 
@@ -37,6 +46,21 @@ export async function POST(request: Request) {
     );
   }
 
+  const sizeCheck = validateRequestBodySize(
+    request.headers,
+    maxCompletePaymentBodyBytes,
+    { requireContentLength: true },
+  );
+  if (!sizeCheck.ok) {
+    return NextResponse.json(
+      { error: sizeCheck.error },
+      {
+        headers: rateLimitHeaders(rateLimit),
+        status: sizeCheck.status,
+      },
+    );
+  }
+
   const payload = await request.json().catch(() => null);
   const parsed = completePaymentSchema.safeParse(payload);
 
@@ -48,12 +72,36 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await completePortOnePayment(parsed.data);
+    const attempt = await assertCheckoutOrderOwnershipForRequest({
+      checkoutAttemptId: parsed.data.checkoutAttemptId,
+      orderId: parsed.data.orderId,
+      paymentId: parsed.data.paymentId,
+      recoveryToken: parsed.data.recoveryToken,
+      request,
+    });
 
-    return NextResponse.json(result, {
+    const result = await completePortOnePayment({
+      orderId: parsed.data.orderId ?? attempt.orderId ?? undefined,
+      paymentId: parsed.data.paymentId,
+    });
+
+    const response = NextResponse.json(result, {
       headers: rateLimitHeaders(rateLimit),
     });
+
+    if (isSuccessfulCheckoutCompletion(result)) {
+      clearCheckoutRecoveryCookie(response);
+    }
+
+    return response;
   } catch (error) {
+    if (error instanceof CheckoutOwnershipError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
+
     if (error instanceof PortOnePaymentError) {
       return NextResponse.json(
         { error: error.message },
@@ -68,4 +116,14 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+}
+
+function isSuccessfulCheckoutCompletion(
+  result: Awaited<ReturnType<typeof completePortOnePayment>>,
+) {
+  return (
+    result.paymentStatus === "paid" ||
+    (result.paymentStatus === "pending" &&
+      result.paymentMethod === "portone_virtual_account")
+  );
 }

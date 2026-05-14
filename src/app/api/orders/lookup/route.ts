@@ -7,6 +7,7 @@ import {
   getClientIp,
   rateLimitHeaders,
 } from "@/lib/security/rate-limit";
+import { validateRequestBodySize } from "@/lib/security/request-size";
 
 const maxLookupBodyBytes = 4 * 1024;
 const lookupRateLimit = {
@@ -14,16 +15,13 @@ const lookupRateLimit = {
   windowMs: 60_000,
 };
 
-const lookupPayloadSchema = z.object({
-  orderNumber: z
-    .string()
-    .trim()
-    .min(1)
-    .max(64)
-    .regex(/^CP-[0-9]{8}-[0-9]{6}$/i),
-  password: z.string().trim().regex(/^[0-9]{4}$/),
-  phoneLast4: z.string().trim().regex(/^[0-9]{4}$/),
-});
+const lookupPayloadSchema = z
+  .object({
+    ordererName: z.string().trim().min(1).max(40),
+    password: z.string().trim().regex(/^[0-9]{4}$/),
+    phoneLast4: z.string().trim().regex(/^[0-9]{4}$/),
+  })
+  .strict();
 
 export async function POST(request: Request) {
   const rateLimit = await consumeRateLimit({
@@ -40,6 +38,18 @@ export async function POST(request: Request) {
         headers: rateLimitHeaders(rateLimit),
         status: 429,
       },
+    );
+  }
+
+  const sizeCheck = validateRequestBodySize(
+    request.headers,
+    maxLookupBodyBytes,
+    { requireContentLength: true },
+  );
+  if (!sizeCheck.ok) {
+    return NextResponse.json(
+      { error: sizeCheck.error },
+      { status: sizeCheck.status },
     );
   }
 
@@ -67,7 +77,7 @@ export async function POST(request: Request) {
 
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "주문번호, 연락처 끝 4자리, 주문 비밀번호 4자리를 입력해 주세요." },
+      { error: "주문자 이름, 연락처 끝 4자리, 주문 비밀번호 4자리를 입력해 주세요." },
       { status: 400 },
     );
   }

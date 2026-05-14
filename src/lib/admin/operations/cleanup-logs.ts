@@ -34,10 +34,6 @@ export async function readUploadCleanupLogs(
     .limit(limit);
 
   if (error) {
-    if (isMissingCleanupLogTableError(error)) {
-      return [];
-    }
-
     throw new Error(`Failed to read upload cleanup logs: ${error.message}`);
   }
 
@@ -51,12 +47,4 @@ export async function readUploadCleanupLogs(
     storagePath: row.storage_path,
     success: row.success,
   }));
-}
-
-function isMissingCleanupLogTableError(error: { message?: string }) {
-  const message = error.message ?? "";
-  return (
-    message.includes("upload_cleanup_logs") &&
-    (message.includes("schema cache") || message.includes("does not exist"))
-  );
 }

@@ -4,6 +4,7 @@ import {
   getSupabaseAdminClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
+import { refundGiftAddressNotificationFailure } from "@/lib/payments/portone-refund";
 
 export type OrderNotificationChannel = "email" | "kakao";
 
@@ -91,6 +92,17 @@ type NotificationSendResult =
       errorMessage: string;
       status: "skipped" | "unconfigured";
     };
+
+type GiftAddressFallbackOrderRow = {
+  notification_email_enabled: boolean | null;
+  notification_kakao_enabled: boolean | null;
+  order_number: string | null;
+  orderer_email: string | null;
+  orderer_phone: string | null;
+};
+
+const giftAddressFallbackOrderSelect =
+  "order_number, orderer_email, orderer_phone, notification_email_enabled, notification_kakao_enabled";
 
 export type ProcessOrderNotificationJobsSummary = {
   dryRun: boolean;
@@ -215,10 +227,6 @@ export async function processPendingOrderNotificationJobs({
     .limit(limit);
 
   if (error) {
-    if (isNotificationStorageMissingError(error)) {
-      return summary;
-    }
-
     throw new Error(`Notification jobs could not be read: ${error.message}`);
   }
 
@@ -234,6 +242,7 @@ export async function processPendingOrderNotificationJobs({
 
     if (unconfiguredMessage) {
       summary.unconfigured += 1;
+      await enqueueGiftAddressFallbackToOrderer(job, unconfiguredMessage);
 
       if (skipUnconfigured) {
         await markNotificationJob(job.id, {
@@ -242,6 +251,10 @@ export async function processPendingOrderNotificationJobs({
         });
         summary.processed += 1;
         summary.skipped += 1;
+        await refundGiftAddressIfOrdererFallbackFailed(
+          job,
+          unconfiguredMessage,
+        );
       }
 
       continue;
@@ -252,6 +265,7 @@ export async function processPendingOrderNotificationJobs({
 
       if (result.status === "unconfigured") {
         summary.unconfigured += 1;
+        await enqueueGiftAddressFallbackToOrderer(job, result.errorMessage);
 
         if (skipUnconfigured) {
           await markNotificationJob(job.id, {
@@ -260,6 +274,10 @@ export async function processPendingOrderNotificationJobs({
           });
           summary.processed += 1;
           summary.skipped += 1;
+          await refundGiftAddressIfOrdererFallbackFailed(
+            job,
+            result.errorMessage,
+          );
         }
 
         continue;
@@ -272,16 +290,23 @@ export async function processPendingOrderNotificationJobs({
       summary.processed += 1;
 
       if (result.status === "skipped") {
+        await enqueueGiftAddressFallbackToOrderer(job, result.errorMessage);
+        await refundGiftAddressIfOrdererFallbackFailed(
+          job,
+          result.errorMessage,
+        );
         summary.skipped += 1;
       }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Notification send failed.";
 
+      await enqueueGiftAddressFallbackToOrderer(job, message);
       await markNotificationJob(job.id, {
         errorMessage: message,
         status: "failed",
       });
+      await refundGiftAddressIfOrdererFallbackFailed(job, message);
       summary.failed += 1;
       summary.processed += 1;
     }
@@ -295,17 +320,11 @@ async function insertNotificationRows(rows: NotificationJobRow[]) {
   const { error } = await supabase.from("shop_notification_jobs").insert(rows);
 
   if (!error) {
-    return;
-  }
-
-  if (isNotificationStorageMissingError(error)) {
-    console.warn(
-      "shop_notification_jobs is not ready yet; notification jobs were skipped.",
-    );
-    return;
+    return true;
   }
 
   console.error(`Notification job enqueue failed: ${error.message}`);
+  return false;
 }
 
 async function sendNotificationJob(
@@ -458,6 +477,222 @@ function buildNotificationRows(
   }
 
   return rows;
+}
+
+async function enqueueGiftAddressFallbackToOrderer(
+  job: PendingNotificationJob,
+  reason: string,
+) {
+  if (!shouldFallbackGiftAddressRequest(job)) {
+    return;
+  }
+
+  const actionUrl = stringPayload(job.payload.actionUrl);
+
+  if (!actionUrl || !job.order_id) {
+    return;
+  }
+
+  try {
+    const supabase = getSupabaseAdminClient();
+    const { data: existingFallback, error: existingFallbackError } =
+      await supabase
+        .from("shop_notification_jobs")
+        .select("id")
+        .eq("order_id", job.order_id)
+        .eq("template", "gift_address_request")
+        .contains("payload", {
+          actionUrl,
+          giftAddressFallback: "orderer",
+        })
+        .limit(1);
+
+    if (existingFallbackError) {
+      console.error(
+        `Gift address fallback lookup failed: ${existingFallbackError.message}`,
+      );
+      return;
+    }
+
+    if ((existingFallback ?? []).length > 0) {
+      return;
+    }
+
+    const { data: order, error: orderError } = await supabase
+      .from("shop_orders")
+      .select(giftAddressFallbackOrderSelect)
+      .eq("id", job.order_id)
+      .maybeSingle();
+
+    if (orderError) {
+      console.error(
+        `Gift address fallback order lookup failed: ${orderError.message}`,
+      );
+      return;
+    }
+
+    if (!order) {
+      return;
+    }
+
+    const orderRow = order as GiftAddressFallbackOrderRow;
+    const orderNumber =
+      stringPayload(job.payload.orderNumber) ?? orderRow.order_number ?? "";
+    const fallbackPayload = {
+      ...job.payload,
+      actionUrl,
+      fallbackReason: reason,
+      giftAddressFallback: "orderer",
+      orderNumber,
+      originalRecipient: job.recipient,
+    };
+    const rows: NotificationJobRow[] = [];
+    const ordererEmail = stringPayload(orderRow.orderer_email);
+    const ordererPhone = stringPayload(orderRow.orderer_phone);
+
+    if (ordererEmail && orderRow.notification_email_enabled !== false) {
+      rows.push({
+        channel: "email",
+        order_id: job.order_id,
+        payload: fallbackPayload,
+        recipient: ordererEmail,
+        template: "gift_address_request",
+      });
+    }
+
+    if (ordererPhone && orderRow.notification_kakao_enabled !== false) {
+      rows.push({
+        channel: "kakao",
+        order_id: job.order_id,
+        payload: fallbackPayload,
+        recipient: ordererPhone,
+        template: "gift_address_request",
+      });
+    }
+
+    if (rows.length === 0) {
+      await refundGiftAddressNotificationFailure({
+        actionUrl,
+        notificationJobId: job.id,
+        orderId: job.order_id,
+        reason: `No orderer fallback channel was available after: ${reason}`,
+      });
+      return;
+    }
+
+    const inserted = await insertNotificationRows(rows);
+
+    if (!inserted) {
+      await refundGiftAddressNotificationFailure({
+        actionUrl,
+        notificationJobId: job.id,
+        orderId: job.order_id,
+        reason: `Orderer fallback notification enqueue failed after: ${reason}`,
+      });
+      return;
+    }
+
+    const { error: eventError } = await supabase
+      .from("shop_order_events")
+      .insert({
+        actor: "system",
+        event_type: "gift_address_request_fallback_enqueued",
+        order_id: job.order_id,
+        payload: {
+          channels: rows.map((row) => row.channel),
+          originalJobId: job.id,
+          originalRecipient: job.recipient,
+          reason,
+        },
+      });
+
+    if (eventError) {
+      console.error(
+        `Gift address fallback event insert failed: ${eventError.message}`,
+      );
+    }
+  } catch (error) {
+    console.error("Gift address fallback enqueue failed.", error);
+  }
+}
+
+function shouldFallbackGiftAddressRequest(job: PendingNotificationJob) {
+  return (
+    job.channel === "kakao" &&
+    job.template === "gift_address_request" &&
+    stringPayload(job.payload.giftAddressFallback) !== "orderer"
+  );
+}
+
+async function refundGiftAddressIfOrdererFallbackFailed(
+  job: PendingNotificationJob,
+  reason: string,
+) {
+  if (!isGiftAddressOrdererFallbackJob(job)) {
+    return;
+  }
+
+  const actionUrl = stringPayload(job.payload.actionUrl);
+
+  if (!actionUrl || !job.order_id) {
+    return;
+  }
+
+  try {
+    const supabase = getSupabaseAdminClient();
+    const { data, error } = await supabase
+      .from("shop_notification_jobs")
+      .select("id, channel, recipient, status")
+      .eq("order_id", job.order_id)
+      .eq("template", "gift_address_request")
+      .contains("payload", {
+        actionUrl,
+        giftAddressFallback: "orderer",
+      });
+
+    if (error) {
+      console.error(
+        `Gift address fallback refund lookup failed: ${error.message}`,
+      );
+      return;
+    }
+
+    const fallbackJobs = (data ?? []) as Array<{
+      channel: OrderNotificationChannel;
+      id: string;
+      recipient: string | null;
+      status: "failed" | "pending" | "sent" | "skipped";
+    }>;
+
+    if (fallbackJobs.length === 0) {
+      return;
+    }
+
+    if (
+      fallbackJobs.some(
+        (fallbackJob) =>
+          fallbackJob.status === "pending" || fallbackJob.status === "sent",
+      )
+    ) {
+      return;
+    }
+
+    await refundGiftAddressNotificationFailure({
+      actionUrl,
+      notificationJobId: job.id,
+      orderId: job.order_id,
+      reason,
+    });
+  } catch (error) {
+    console.error("Gift address fallback refund failed.", error);
+  }
+}
+
+function isGiftAddressOrdererFallbackJob(job: PendingNotificationJob) {
+  return (
+    job.template === "gift_address_request" &&
+    stringPayload(job.payload.giftAddressFallback) === "orderer"
+  );
 }
 
 function getUnconfiguredProviderMessage(channel: OrderNotificationChannel) {
@@ -626,17 +861,4 @@ function escapeHtml(value: string) {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
-}
-
-function isNotificationStorageMissingError(error: {
-  code?: string;
-  message?: string;
-}) {
-  const message = error.message ?? "";
-
-  return (
-    error.code === "42P01" ||
-    message.includes("shop_notification_jobs") ||
-    message.includes("schema cache")
-  );
 }

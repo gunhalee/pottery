@@ -59,6 +59,8 @@ type RateLimitBucketRow = {
   window_start: string;
 };
 
+type HeaderReader = Pick<Headers, "get">;
+
 const buckets = new Map<string, RateLimitBucket>();
 const maxBuckets = 1_000;
 
@@ -92,10 +94,6 @@ export async function readRateLimitBuckets(
     .limit(limit);
 
   if (error) {
-    if (isMissingRateLimitStorageError(error)) {
-      return [];
-    }
-
     throw new Error(`Failed to read rate limit buckets: ${error.message}`);
   }
 
@@ -113,16 +111,27 @@ export async function readRateLimitBuckets(
   }));
 }
 
-export function getClientIp(headers: Headers) {
-  const forwardedFor = headers.get("x-forwarded-for");
-  const forwardedIp = forwardedFor?.split(",")[0]?.trim();
+export function getClientIp(headers: HeaderReader) {
+  const directIp = firstHeaderIp(headers, [
+    "cf-connecting-ip",
+    "true-client-ip",
+    "x-real-ip",
+    "x-client-ip",
+  ]);
 
-  return (
-    forwardedIp ||
-    headers.get("x-real-ip")?.trim() ||
-    headers.get("cf-connecting-ip")?.trim() ||
-    "unknown"
-  );
+  if (directIp) {
+    return directIp;
+  }
+
+  if (shouldTrustForwardedFor()) {
+    return (
+      firstForwardedIp(headers.get("x-vercel-forwarded-for")) ??
+      firstForwardedIp(headers.get("x-forwarded-for")) ??
+      "unknown"
+    );
+  }
+
+  return "unknown";
 }
 
 export function rateLimitHeaders(rateLimit: RateLimitResult) {
@@ -155,11 +164,7 @@ async function consumeSupabaseRateLimit({
     .single();
 
   if (error) {
-    if (!isMissingRateLimitStorageError(error)) {
-      console.error(`Rate limit storage failed: ${error.message}`);
-    }
-
-    return null;
+    throw new Error(`Rate limit storage failed: ${error.message}`);
   }
 
   const row = data as RateLimitRpcRow;
@@ -252,14 +257,49 @@ function hashRateLimitKey(namespace: string, key: string) {
   return createHash("sha256").update(`${namespace}:${key}`).digest("hex");
 }
 
-function isMissingRateLimitStorageError(error: { code?: string; message?: string }) {
-  const message = error.message ?? "";
+function firstHeaderIp(headers: HeaderReader, names: string[]) {
+  for (const name of names) {
+    const value = normalizeIp(headers.get(name));
 
-  return (
-    error.code === "PGRST202" ||
-    message.includes("api_rate_limit_buckets") ||
-    message.includes("consume_api_rate_limit") ||
-    message.includes("schema cache") ||
-    message.includes("does not exist")
-  );
+    if (value) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function firstForwardedIp(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  for (const part of value.split(",")) {
+    const ip = normalizeIp(part);
+
+    if (ip) {
+      return ip;
+    }
+  }
+
+  return null;
+}
+
+function normalizeIp(value: string | null | undefined) {
+  const trimmed = value?.trim();
+
+  if (
+    !trimmed ||
+    trimmed.length > 64 ||
+    /[\s,]/.test(trimmed) ||
+    !/^[0-9a-fA-F:.]+$/.test(trimmed)
+  ) {
+    return null;
+  }
+
+  return trimmed;
+}
+
+function shouldTrustForwardedFor() {
+  return process.env.VERCEL === "1" || process.env.TRUST_X_FORWARDED_FOR === "true";
 }

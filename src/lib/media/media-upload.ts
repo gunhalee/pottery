@@ -40,6 +40,7 @@ export type MediaImageUploadInput = {
 };
 
 let ensureMediaAssetBucketPromise: Promise<void> | null = null;
+const maxInputPixels = 40_000_000;
 
 export async function uploadMediaImage(
   input: MediaImageUploadInput,
@@ -186,7 +187,7 @@ async function ensureMediaAssetBucketExists() {
 }
 
 export async function buildImageVariants(buffer: Buffer, assetId: string) {
-  const normalized = sharp(buffer).rotate();
+  const normalized = sharp(buffer, { limitInputPixels: maxInputPixels }).rotate();
   const variantInputs = [
     {
       fit: "inside" as const,

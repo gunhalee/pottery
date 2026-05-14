@@ -12,6 +12,7 @@ import {
   getClientIp,
   rateLimitHeaders,
 } from "@/lib/security/rate-limit";
+import { validateRequestBodySize } from "@/lib/security/request-size";
 
 export const runtime = "nodejs";
 
@@ -50,6 +51,21 @@ export async function POST(request: Request) {
         headers: rateLimitHeaders(rateLimit),
         status: 429,
       },
+    );
+  }
+
+  const sizeCheck = validateRequestBodySize(
+    request.headers,
+    maxReturnRequestBodyBytes,
+    {
+      requireContentLength: true,
+    },
+  );
+
+  if (!sizeCheck.ok) {
+    return NextResponse.json(
+      { error: sizeCheck.error },
+      { status: sizeCheck.status },
     );
   }
 
@@ -145,6 +161,12 @@ async function readReturnRequest(request: Request): Promise<
       ok: false;
     }
 > {
+  const contentType = request.headers.get("content-type") ?? "";
+
+  if (!contentType.includes("multipart/form-data")) {
+    return { error: "Invalid request content type.", ok: false };
+  }
+
   const formData = await request.formData().catch(() => null);
 
   if (!formData) {

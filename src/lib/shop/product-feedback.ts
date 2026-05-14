@@ -161,10 +161,6 @@ export async function readFeedbackImagesByFeedbackIds(feedbackIds: string[]) {
     .order("sort_order", { ascending: true });
 
   if (error) {
-    if (isMissingFeedbackStorageError(error)) {
-      return imageMap;
-    }
-
     throw new Error(`Supabase product feedback images query failed: ${error.message}`);
   }
 
@@ -211,10 +207,6 @@ async function readPublishedProductFeedback(productId: string) {
     .limit(20);
 
   if (error) {
-    if (isMissingFeedbackStorageError(error)) {
-      return { count: 0, entries: [] };
-    }
-
     throw new Error(`Supabase product feedback query failed: ${error.message}`);
   }
 
@@ -261,17 +253,4 @@ function fromFeedbackImageRow(
     variants: buildMediaVariantSources(asset),
     width: listVariant.width,
   };
-}
-
-function isMissingFeedbackStorageError(error: { code?: string; message?: string }) {
-  const message = error.message ?? "";
-
-  return (
-    error.code === "42P01" ||
-    error.code === "PGRST205" ||
-    (message.includes("shop_product_feedback") &&
-      (message.includes("schema cache") ||
-        message.includes("does not exist") ||
-        message.includes("relation")))
-  );
 }

@@ -400,22 +400,22 @@ export async function syncPortOnePayment({
           template: "made_to_order_confirmed",
         });
       }
+    }
 
-      if (!order.shipping_address1) {
-        await ensureGiftRecipientAddressRequest({
-          order: {
-            contains_live_plant: order.contains_live_plant,
-            id: order.id,
-            is_gift: order.is_gift,
-            order_number: result.orderNumber,
-            orderer_email: order.orderer_email,
-            orderer_phone: order.orderer_phone,
-            recipient_name: order.recipient_name,
-            recipient_phone: order.recipient_phone,
-          },
-          paidAt: new Date(readPaymentPaidAt(payment) ?? Date.now()),
-        });
-      }
+    if (!order.shipping_address1) {
+      await ensureGiftRecipientAddressRequestAfterPayment({
+        order: {
+          contains_live_plant: order.contains_live_plant,
+          id: order.id,
+          is_gift: order.is_gift,
+          order_number: result.orderNumber,
+          orderer_email: order.orderer_email,
+          orderer_phone: order.orderer_phone,
+          recipient_name: order.recipient_name,
+          recipient_phone: order.recipient_phone,
+        },
+        paidAt: new Date(readPaymentPaidAt(payment) ?? Date.now()),
+      });
     }
 
     await updateCheckoutAttemptPayment({
@@ -609,8 +609,17 @@ async function preRegisterPortOnePayment({
   );
 
   if (!response.ok) {
+    const responseText = await response.text();
+
+    if (isPortOneAlreadyPaidError(responseText)) {
+      throw new PortOnePaymentError(
+        "이미 결제가 완료된 결제건입니다. 결제 상태를 다시 확인해 주세요.",
+        409,
+      );
+    }
+
     throw new PortOnePaymentError(
-      `PortOne 결제 사전등록 실패: ${await response.text()}`,
+      `PortOne 결제 사전등록 실패: ${responseText}`,
       502,
     );
   }
@@ -714,6 +723,54 @@ async function recordPaymentFailure({
     paymentId,
     status: "manual_review",
   });
+}
+
+async function ensureGiftRecipientAddressRequestAfterPayment({
+  order,
+  paidAt,
+}: {
+  order: Parameters<typeof ensureGiftRecipientAddressRequest>[0]["order"];
+  paidAt: Date;
+}) {
+  try {
+    await ensureGiftRecipientAddressRequest({ order, paidAt });
+  } catch (error) {
+    console.error("Gift recipient address request failed after payment.", error);
+    await insertOrderEventSafely({
+      eventType: "gift_address_request_failed",
+      orderId: order.id,
+      payload: {
+        errorMessage:
+          error instanceof Error ? error.message : "Unknown gift address error",
+      },
+    });
+  }
+}
+
+async function insertOrderEventSafely({
+  eventType,
+  orderId,
+  payload,
+}: {
+  eventType: string;
+  orderId: string;
+  payload: Record<string, unknown>;
+}) {
+  try {
+    const supabase = getSupabaseAdminClient();
+    const { error } = await supabase.from("shop_order_events").insert({
+      actor: "system",
+      event_type: eventType,
+      order_id: orderId,
+      payload,
+    });
+
+    if (error) {
+      console.error(`Order event insert failed: ${error.message}`);
+    }
+  } catch (error) {
+    console.error("Order event insert failed.", error);
+  }
 }
 
 async function upsertPaymentRecord({
@@ -1322,6 +1379,19 @@ function firstString(...values: unknown[]) {
   }
 
   return undefined;
+}
+
+function isPortOneAlreadyPaidError(responseText: string) {
+  try {
+    const payload = JSON.parse(responseText) as {
+      code?: unknown;
+      type?: unknown;
+    };
+
+    return payload.type === "ALREADY_PAID" || payload.code === "ALREADY_PAID";
+  } catch {
+    return responseText.includes("ALREADY_PAID");
+  }
 }
 
 function normalizeDateString(value: string | undefined) {

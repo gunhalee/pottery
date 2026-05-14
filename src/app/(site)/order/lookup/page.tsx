@@ -3,7 +3,7 @@ import { PageIntro, PageShell } from "@/components/site/primitives";
 import { OrderLookupForm } from "@/components/shop/order-lookup-form";
 
 export const metadata: Metadata = {
-  description: "자체 주문번호와 조회 비밀번호로 주문 및 배송 상태를 확인합니다.",
+  description: "주문자 이름과 조회 비밀번호로 주문 및 배송 상태를 확인합니다.",
   title: "주문 조회",
 };
 
