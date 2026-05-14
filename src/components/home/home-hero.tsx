@@ -1,6 +1,6 @@
 import Image from "next/image";
+import heroPoster from "../../../public/asset/hero-poster.webp";
 import type { HomeHeroTagline } from "@/lib/content/site-content";
-import { potOnForestFourthImage } from "@/lib/content/brand-assets";
 import { mediaImageSizes } from "@/lib/media/media-image-sizes";
 
 export function HomeHero({
@@ -16,11 +16,12 @@ export function HomeHero({
     <section className="home-hero">
       <div className="hero-bg" aria-hidden="true">
         <Image
-          src={potOnForestFourthImage.src}
+          src={heroPoster}
           alt=""
           fill
           fetchPriority="high"
           loading="eager"
+          placeholder="blur"
           quality={70}
           sizes={mediaImageSizes.homeHero}
           className="hero-poster"
@@ -32,7 +33,7 @@ export function HomeHero({
             loop
             muted
             playsInline
-            poster={potOnForestFourthImage.src}
+            poster="/asset/hero-poster.webp"
             preload="metadata"
           >
             <source src={videoSrc} type="video/mp4" />
