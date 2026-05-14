@@ -44,15 +44,35 @@ export default async function NewsPage() {
                   <div className="news-date">{item.dateLabel}</div>
                   <div className="news-body">
                     {item.thumbnailUrl ? (
-                      <Image
-                        alt=""
-                        className="news-thumb"
-                        height={90}
-                        loading="lazy"
-                        sizes="120px"
-                        src={item.thumbnailUrl}
-                        width={120}
-                      />
+                      item.external ? (
+                        <a
+                          aria-label={`${item.title} 원문 보기`}
+                          className="news-thumb-link"
+                          href={item.href}
+                          rel="noopener noreferrer"
+                          target="_blank"
+                        >
+                          <Image
+                            alt=""
+                            className="news-thumb"
+                            height={90}
+                            loading="lazy"
+                            sizes="120px"
+                            src={item.thumbnailUrl}
+                            width={120}
+                          />
+                        </a>
+                      ) : (
+                        <Image
+                          alt=""
+                          className="news-thumb"
+                          height={90}
+                          loading="lazy"
+                          sizes="120px"
+                          src={item.thumbnailUrl}
+                          width={120}
+                        />
+                      )
                     ) : null}
                     <div className="news-copy">
                       <div className="news-meta">
@@ -78,7 +98,20 @@ export default async function NewsPage() {
                           </Link>
                         )}
                       </h3>
-                      <p className="news-preview">{item.summary}</p>
+                      {item.summary ? (
+                        item.external ? (
+                          <a
+                            className="news-preview-link"
+                            href={item.href}
+                            rel="noopener noreferrer"
+                            target="_blank"
+                          >
+                            <span className="news-preview">{item.summary}</span>
+                          </a>
+                        ) : (
+                          <p className="news-preview">{item.summary}</p>
+                        )
+                      ) : null}
                       {item.external && item.linkLabel ? (
                         <a
                           className="news-original-link"
@@ -153,7 +186,7 @@ function toNaverBlogFeedItem(item: NaverBlogPost): NewsFeedItem {
     linkLabel: "네이버 블로그에서 보기",
     previewLabel: "원문 미리보기",
     sourceLabel: item.category || "블로그",
-    summary: item.summary || "이미지 중심의 블로그 글입니다.",
+    summary: item.summary,
     thumbnailUrl: item.thumbnailUrl,
     timestamp: readTimestamp(item.publishedAt, item.createdAt),
     title: item.title,
