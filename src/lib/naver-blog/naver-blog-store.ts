@@ -7,6 +7,7 @@ import {
   getConfiguredNaverBlogId,
   normalizeNaverBlogId,
 } from "@/lib/naver-blog/naver-blog-config";
+import { fetchNaverBlogRss } from "@/lib/naver-blog/naver-blog-rss";
 import type {
   NaverBlogPost,
   NaverBlogPostInput,
@@ -77,7 +78,13 @@ export async function getPublishedNaverBlogPosts(
     return [];
   }
 
-  return readNaverBlogPostsCached(blogId, options.limit ?? null);
+  const posts = await readNaverBlogPostsCached(blogId, options.limit ?? null);
+
+  if (posts.length > 0) {
+    return posts;
+  }
+
+  return readNaverBlogPostsRssFallbackCached(blogId, options.limit ?? null);
 }
 
 export async function upsertNaverBlogPosts(posts: NaverBlogPostInput[]) {
@@ -131,6 +138,33 @@ const readNaverBlogPostsCached = unstable_cache(
       limit: limit ?? undefined,
     }),
   ["published-naver-blog-posts"],
+  {
+    revalidate: 3600,
+    tags: [publicCacheTags.naverBlog],
+  },
+);
+
+const readNaverBlogPostsRssFallbackCached = unstable_cache(
+  async (blogId: string, limit: number | null) => {
+    try {
+      const feed = await fetchNaverBlogRss({
+        blogId,
+        cache: "force-cache",
+        limit: limit ?? undefined,
+        revalidate: 3600,
+      });
+
+      return feed.posts.map(fromNaverBlogPostInput);
+    } catch (error) {
+      console.error(
+        error instanceof Error
+          ? `Naver Blog RSS fallback failed: ${error.message}`
+          : "Naver Blog RSS fallback failed.",
+      );
+      return [];
+    }
+  },
+  ["published-naver-blog-posts-rss-fallback"],
   {
     revalidate: 3600,
     tags: [publicCacheTags.naverBlog],
@@ -239,6 +273,27 @@ function fromSupabaseNaverBlogPostRow(
   };
 }
 
+function fromNaverBlogPostInput(post: NaverBlogPostInput): NaverBlogPost {
+  const now = new Date().toISOString();
+
+  return {
+    category: post.category,
+    createdAt: post.publishedAt,
+    descriptionHtml: post.descriptionHtml,
+    fetchedAt: now,
+    guid: post.guid,
+    id: createFallbackPostId(post.naverBlogId, post.guid),
+    link: post.link,
+    naverBlogId: post.naverBlogId,
+    publishedAt: post.publishedAt,
+    summary: post.summary,
+    tags: post.tags,
+    thumbnailUrl: post.thumbnailUrl,
+    title: post.title,
+    updatedAt: now,
+  };
+}
+
 function isSameNaverBlogPost(
   existing: ExistingNaverBlogPostRow,
   post: NaverBlogPostInput,
@@ -269,6 +324,17 @@ function arraysEqual(left: string[], right: string[]) {
 
 function createPostKey(blogId: string, guid: string) {
   return `${blogId}\n${guid}`;
+}
+
+function createFallbackPostId(blogId: string, guid: string) {
+  let hash = 0;
+  const value = `${blogId}:${guid}`;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) | 0;
+  }
+
+  return `rss-${blogId}-${Math.abs(hash).toString(36)}`;
 }
 
 function isMissingNaverBlogTableError(error: { code?: string; message?: string }) {

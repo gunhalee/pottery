@@ -29,10 +29,14 @@ const rssParser = new XMLParser({
 
 export async function fetchNaverBlogRss({
   blogId,
+  cache = "no-store",
   limit,
+  revalidate,
 }: {
   blogId: string;
+  cache?: RequestCache;
   limit?: number;
+  revalidate?: number;
 }) {
   const normalizedBlogId = normalizeNaverBlogId(blogId);
 
@@ -40,13 +44,20 @@ export async function fetchNaverBlogRss({
     throw new Error("A valid NAVER_BLOG_ID is required.");
   }
 
-  const response = await fetch(buildNaverBlogRssUrl(normalizedBlogId), {
-    cache: "no-store",
+  const fetchOptions: RequestInit & { next?: { revalidate: number } } = {
     headers: {
       Accept: "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
       "User-Agent": "consepot-site-naver-rss/1.0",
     },
-  });
+  };
+
+  if (revalidate) {
+    fetchOptions.next = { revalidate };
+  } else {
+    fetchOptions.cache = cache;
+  }
+
+  const response = await fetch(buildNaverBlogRssUrl(normalizedBlogId), fetchOptions);
 
   if (!response.ok) {
     throw new Error(
