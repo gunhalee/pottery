@@ -22,6 +22,7 @@ const allowedRevalidateTags = new Set([
   publicCacheTags.content,
   publicCacheTags.contentKind("gallery"),
   publicCacheTags.contentKind("news"),
+  publicCacheTags.naverBlog,
   publicCacheTags.products,
 ]);
 const allowedRevalidatePathPrefixes = [

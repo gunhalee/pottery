@@ -51,6 +51,21 @@ const nextConfig: NextConfig = {
         pathname: "/vi/**",
         protocol: "https",
       },
+      {
+        hostname: "blogthumb.pstatic.net",
+        pathname: "/**",
+        protocol: "https",
+      },
+      {
+        hostname: "postfiles.pstatic.net",
+        pathname: "/**",
+        protocol: "https",
+      },
+      {
+        hostname: "blogpfthumb.phinf.naver.net",
+        pathname: "/**",
+        protocol: "https",
+      },
     ],
   },
   poweredByHeader: false,

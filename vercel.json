@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/portone-payment-reconcile",
       "schedule": "17 18 * * *"
+    },
+    {
+      "path": "/api/cron/naver-blog-sync",
+      "schedule": "0 0 * * *"
     }
   ]
 }

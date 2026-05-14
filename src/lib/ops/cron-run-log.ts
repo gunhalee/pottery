@@ -4,6 +4,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase/server";
 
 export type CronJobName =
   | "daily_maintenance"
+  | "naver_blog_sync"
   | "order_notifications"
   | "portone_payment_reconcile"
   | "upload_cleanup"
