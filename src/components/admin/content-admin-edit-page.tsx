@@ -20,6 +20,7 @@ import {
 
 type ContentAdminEditPageProps = {
   created?: string;
+  dateError?: string;
   deleteError?: string;
   entry: ContentEntry;
   imageDeleted?: string;
@@ -36,6 +37,7 @@ type ContentAdminEditPageProps = {
 
 export function ContentAdminEditPage({
   created,
+  dateError,
   deleteError,
   entry,
   imageDeleted,
@@ -103,6 +105,11 @@ export function ContentAdminEditPage({
           이미 사용 중인 slug입니다.
         </div>
       ) : null}
+      {dateError ? (
+        <div className="admin-alert admin-alert-warning">
+          {getDateErrorMessage(dateError)}
+        </div>
+      ) : null}
       {publishError ? (
         <div className="admin-alert admin-alert-danger">
           {getContentPublishErrorMessage(publishError)}
@@ -147,4 +154,12 @@ export function ContentAdminEditPage({
       </section>
     </main>
   );
+}
+
+function getDateErrorMessage(value: string) {
+  if (value === "invalid") {
+    return "날짜가 올바르지 않습니다. 월과 일을 확인해주세요.";
+  }
+
+  return "날짜는 yyyy. mm. dd. 형식으로 입력해주세요.";
 }

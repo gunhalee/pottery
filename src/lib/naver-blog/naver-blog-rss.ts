@@ -26,6 +26,7 @@ const rssParser = new XMLParser({
   parseTagValue: false,
   trimValues: true,
 });
+const minimumRssPostYear = 2023;
 
 export async function fetchNaverBlogRss({
   blogId,
@@ -90,11 +91,14 @@ export function parseNaverBlogRss(
     };
   };
   const channel = parsed.rss?.channel;
-  const items = toArray(channel?.item).slice(0, limit);
+  const posts = toArray(channel?.item)
+    .flatMap((item) => normalizeRssItem(item, blogId))
+    .filter(isAcceptedRssPost)
+    .slice(0, limit);
 
   return {
     feedTitle: textValue(channel?.title) || undefined,
-    posts: items.flatMap((item) => normalizeRssItem(item, blogId)),
+    posts,
   };
 }
 
@@ -150,6 +154,16 @@ function parseRssDate(value: string) {
   }
 
   return date.toISOString();
+}
+
+function isAcceptedRssPost(post: NaverBlogPostInput) {
+  const date = new Date(post.publishedAt);
+
+  if (Number.isNaN(date.getTime())) {
+    return false;
+  }
+
+  return date.getFullYear() >= minimumRssPostYear;
 }
 
 function createSummary(descriptionHtml: string) {

@@ -121,6 +121,7 @@ export function ContentEditorForm({
   const [initialImageIds] = useState(() => entry.images.map((image) => image.id));
   const [bodyText, setBodyText] = useState(entry.bodyText);
   const [displayDate, setDisplayDate] = useState(entry.displayDate ?? "");
+  const [displayDateWarning, setDisplayDateWarning] = useState("");
   const [images, setImages] = useState(entry.images);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [summary, setSummary] = useState(entry.summary);
@@ -268,10 +269,26 @@ export function ContentEditorForm({
                 <span>{entry.kind === "news" ? "날짜" : "연도/날짜"}</span>
                 <input
                   name="displayDate"
-                  onChange={(event) => setDisplayDate(event.target.value)}
-                  placeholder={entry.kind === "news" ? "2026.05" : "2026"}
+                  onBlur={() => {
+                    const result = normalizeNewsDisplayDateInput(
+                      entry.kind,
+                      displayDate,
+                    );
+                    setDisplayDate(result.value);
+                    setDisplayDateWarning(result.warning ?? "");
+                  }}
+                  onChange={(event) => {
+                    setDisplayDate(event.target.value);
+                    setDisplayDateWarning("");
+                  }}
+                  placeholder={
+                    entry.kind === "news" ? "2026. 05. 15." : "2026"
+                  }
                   value={displayDate}
                 />
+                {displayDateWarning ? (
+                  <p className="admin-field-warning">{displayDateWarning}</p>
+                ) : null}
               </label>
               <label>
                 <span>상태</span>
@@ -722,6 +739,49 @@ function mediaAssetToContentImage(
     asset,
     layout,
   });
+}
+
+function normalizeNewsDisplayDateInput(
+  kind: ContentKind,
+  value: string,
+): { value: string; warning?: string } {
+  const trimmed = value.trim();
+
+  if (!trimmed || kind !== "news") {
+    return { value: trimmed };
+  }
+
+  const parts = trimmed.match(/\d+/g) ?? [];
+
+  if (parts.length < 3 || !/^\d{4}$/.test(parts[0] ?? "")) {
+    return {
+      value: trimmed,
+      warning: "날짜는 yyyy. mm. dd. 형식으로 입력해주세요.",
+    };
+  }
+
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  const day = Number(parts[2]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day) ||
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return {
+      value: trimmed,
+      warning: "날짜가 올바르지 않습니다. 월과 일을 확인해주세요.",
+    };
+  }
+
+  return {
+    value: `${String(year).padStart(4, "0")}. ${String(month).padStart(2, "0")}. ${String(day).padStart(2, "0")}.`,
+  };
 }
 
 function ImageSettings({

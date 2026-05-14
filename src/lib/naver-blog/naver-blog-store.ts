@@ -66,6 +66,7 @@ const naverBlogPostRowSchema = z.object({
   updated_at: z.string(),
 });
 const naverBlogPostRowsSchema = z.array(naverBlogPostRowSchema);
+const minimumPublishedPostDate = "2023-01-01T00:00:00.000Z";
 
 export async function getPublishedNaverBlogPosts(
   options: ReadNaverBlogPostsOptions = {},
@@ -181,6 +182,7 @@ async function readNaverBlogPostsFromSupabase({
     .from("naver_blog_posts")
     .select("*")
     .eq("naver_blog_id", blogId)
+    .gte("pub_date", minimumPublishedPostDate)
     .order("pub_date", { ascending: false });
 
   if (limit) {

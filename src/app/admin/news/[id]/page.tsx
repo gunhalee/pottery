@@ -11,6 +11,7 @@ type AdminNewsEditPageProps = {
   searchParams: Promise<{
     created?: string;
     delete_error?: string;
+    date_error?: string;
     image_deleted?: string;
     publish_error?: string;
     saved?: string;
@@ -45,6 +46,7 @@ export default async function AdminNewsEditPage({
   return (
     <ContentAdminEditPage
       created={flags.created}
+      dateError={flags.date_error}
       deleteError={flags.delete_error}
       entry={entry}
       imageDeleted={flags.image_deleted}

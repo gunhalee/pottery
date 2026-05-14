@@ -219,6 +219,13 @@
   outline-offset: 2px;
 }
 
+.admin-field-warning {
+  margin: 0;
+  color: #8c5c16;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .admin-check-row {
   display: flex;
   gap: 20px;

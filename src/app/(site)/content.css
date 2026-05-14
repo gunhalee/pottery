@@ -42,12 +42,13 @@
   display: block;
   width: 120px;
   color: inherit;
+  overflow: hidden;
   text-decoration: none;
 }
 
 .news-thumb {
   display: block;
-  width: 120px;
+  width: 100%;
   aspect-ratio: 4 / 3;
   background: var(--bg3);
   filter: var(--image-treatment-artwork);
@@ -751,7 +752,7 @@
     grid-template-columns: 1fr;
   }
 
-  .news-thumb {
+  .news-thumb-link {
     width: min(100%, 180px);
   }
 

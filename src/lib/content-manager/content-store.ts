@@ -356,8 +356,16 @@ async function readEntriesFromSupabase(
   const supabase = client ?? getSupabaseAdminClient();
   let query = supabase
     .from("content_entries")
-    .select("*")
-    .order("created_at", { ascending: false });
+    .select("*");
+
+  if (options.kind === "news") {
+    query = query
+      .order("display_date", { ascending: false, nullsFirst: false })
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false });
+  } else {
+    query = query.order("created_at", { ascending: false });
+  }
 
   if (options.id) {
     query = query.eq("id", options.id);
@@ -423,8 +431,16 @@ async function readEntryListItemsFromSupabase(
         created_at,
         updated_at
       `,
-    )
-    .order("created_at", { ascending: false });
+    );
+
+  if (options.kind === "news") {
+    query = query
+      .order("display_date", { ascending: false, nullsFirst: false })
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false });
+  } else {
+    query = query.order("created_at", { ascending: false });
+  }
 
   if (options.id) {
     query = query.eq("id", options.id);

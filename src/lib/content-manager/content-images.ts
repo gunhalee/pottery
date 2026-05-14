@@ -41,6 +41,23 @@ export function getContentListImage(entry: ContentImageSource) {
   );
 }
 
+export function getContentListThumbnailImage(entry: ContentImageSource) {
+  const image =
+    entry.images.find((item) => item.isListImage && !item.isReserved) ??
+    entry.images.find((item) => item.isCover && !item.isReserved) ??
+    null;
+
+  if (!image) {
+    return null;
+  }
+
+  const displayImage = withContentImageVariant(image, "list", {
+    allowFallback: true,
+  });
+
+  return displayImage.src ? displayImage : null;
+}
+
 export function getContentBodyImage(image: ContentImage) {
   if (image.isReserved) {
     return null;

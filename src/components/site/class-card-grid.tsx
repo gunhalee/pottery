@@ -26,7 +26,7 @@ function ClassCard({
   return (
     <article className="class-card">
       <div className="small-caps">{item.eyebrow}</div>
-      <h2 className="card-title">{item.title}</h2>
+      <h2 className="card-title">{renderClassTitle(item.title)}</h2>
       <p className="body-copy">{item.description}</p>
       <ul className="detail-list">
         {item.details.map((detail) => (
@@ -39,4 +39,18 @@ function ClassCard({
       <ExternalButtonLink href={actionHref}>{item.action}</ExternalButtonLink>
     </article>
   );
+}
+
+function renderClassTitle(title: string) {
+  if (title === "원데이클래스 · 커플 원데이클래스") {
+    return (
+      <>
+        <span className="class-title-nowrap">원데이클래스 ·</span>
+        <br />
+        <span className="class-title-nowrap">커플 원데이클래스</span>
+      </>
+    );
+  }
+
+  return title;
 }

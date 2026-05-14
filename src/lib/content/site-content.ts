@@ -109,38 +109,25 @@ export const paletteLabels = ["백색", "회색", "흙색", "그늘", "먹색"] 
 
 export const classItems = [
   {
-    action: "예약 문의",
+    action: "예약 신청",
     description:
-      "처음 흙을 만지는 분도 괜찮습니다. 속도에 맞춰 작은 기물부터 함께 만들어갑니다.",
+      "처음 흙을 만지는 분도 편하게 시작할 수 있는 시간입니다.",
     details: [
-      { label: "구성", value: "기초 체험" },
-      { label: "시간", value: "예약 시 안내" },
-      { label: "비용", value: "60,000원" },
-      { label: "인원", value: "1명부터" },
+      { label: "구성", value: "흙과 친해지기" },
+      { label: "시간", value: "3시간" },
+      { label: "비용", value: "6만원 · 10만원" },
+      { label: "예시", value: "기초적인 작업의 결과물" },
     ],
     eyebrow: "원데이",
-    title: "원데이클래스",
+    title: "원데이클래스 · 커플 원데이클래스",
   },
   {
-    action: "예약 문의",
+    action: "예약 신청",
     description:
-      "둘이 함께 접시나 컵을 빚으며 그날의 시간을 작은 물건으로 남깁니다.",
+      "핀칭, 코일링, 판성형, 가압성형과 장식기법을 익히는 과정입니다.",
     details: [
-      { label: "구성", value: "2인 체험" },
-      { label: "시간", value: "예약 시 안내" },
-      { label: "비용", value: "100,000원" },
-      { label: "인원", value: "2명" },
-    ],
-    eyebrow: "커플",
-    title: "커플 원데이클래스",
-  },
-  {
-    action: "상담 문의",
-    description:
-      "핀칭, 코일링, 판성형, 가압성형과 장식기법을 익히며 손의 기본기를 다집니다.",
-    details: [
-      { label: "구성", value: "주 1회 x 4주" },
       { label: "과정", value: "기초 성형" },
+      { label: "구성", value: "주 1회 x 4주" },
       { label: "비용", value: "150,000원" },
       { label: "예시", value: "찻잔 · 공기 · 사발 · 머그" },
     ],
@@ -148,12 +135,12 @@ export const classItems = [
     title: "익힘반",
   },
   {
-    action: "상담 문의",
+    action: "예약 신청",
     description:
-      "성형기법을 손에 익히며 원하는 형태와 기능을 구현하는 과정입니다.",
+      "원하는 형태와 기능을 자유롭게 구현하는 과정입니다.",
     details: [
-      { label: "구성", value: "주 2회 x 4주" },
       { label: "과정", value: "자유 제작" },
+      { label: "구성", value: "주 2회 x 4주" },
       { label: "비용", value: "190,000원" },
       { label: "예시", value: "원형접시 · 사각판접시 · 드리퍼" },
     ],
@@ -161,12 +148,12 @@ export const classItems = [
     title: "익숙반",
   },
   {
-    action: "상담 문의",
+    action: "예약 신청",
     description:
-      "자신만의 디자인과 작업 방향을 구체화하고 싶은 분께 추천합니다.",
+      "자기 작업을 조금 더 깊게 이어가고 싶은 분께 추천드립니다.",
     details: [
-      { label: "구성", value: "주 3회 x 4주" },
       { label: "과정", value: "개인 작업" },
+      { label: "구성", value: "주 3회 x 4주" },
       { label: "비용", value: "240,000원" },
       { label: "재료", value: "소지 · 유약 · 도구 협의" },
     ],

@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { HomeSubscribeLinksSection } from "@/components/home/home-subscribe-links-section";
 import { PageShell } from "@/components/site/primitives";
+import { getContentListThumbnailImage } from "@/lib/content-manager/content-images";
 import type { ContentEntryListItem } from "@/lib/content-manager/content-model";
 import { getPublishedContentListEntries } from "@/lib/content-manager/content-store";
 import type { NaverBlogPost } from "@/lib/naver-blog/naver-blog-model";
@@ -64,15 +65,22 @@ export default async function NewsPage() {
                           />
                         </a>
                       ) : (
-                        <Image
-                          alt=""
-                          className="news-thumb"
-                          height={90}
-                          loading="lazy"
-                          sizes="120px"
-                          src={item.thumbnailUrl}
-                          width={120}
-                        />
+                        <Link
+                          aria-label={item.title}
+                          className="news-thumb-link"
+                          href={item.href}
+                          prefetch={false}
+                        >
+                          <Image
+                            alt=""
+                            className="news-thumb"
+                            height={90}
+                            loading="lazy"
+                            sizes="120px"
+                            src={item.thumbnailUrl}
+                            width={120}
+                          />
+                        </Link>
                       )
                     ) : null}
                     <div className="news-copy">
@@ -177,14 +185,17 @@ function createNewsFeedItems(
 }
 
 function toLocalNewsFeedItem(item: ContentEntryListItem): NewsFeedItem {
+  const thumbnailImage = getContentListThumbnailImage(item);
+
   return {
-    dateLabel: item.displayDate ?? item.publishedAt ?? "",
+    dateLabel: item.displayDate ?? formatDateLabel(item.publishedAt ?? item.createdAt),
     external: false,
     href: `/news/${item.slug}`,
     id: item.id,
     sourceLabel: "소식",
     summary: item.summary || item.bodyText,
-    timestamp: readTimestamp(item.publishedAt, item.createdAt),
+    thumbnailUrl: thumbnailImage?.src,
+    timestamp: readTimestamp(item.displayDate, item.publishedAt, item.createdAt),
     title: item.title,
   };
 }
@@ -211,7 +222,7 @@ function readTimestamp(...values: Array<string | null | undefined>) {
       continue;
     }
 
-    const timestamp = new Date(value).getTime();
+    const timestamp = readDateTimestamp(value);
 
     if (Number.isFinite(timestamp)) {
       return timestamp;
@@ -219,6 +230,21 @@ function readTimestamp(...values: Array<string | null | undefined>) {
   }
 
   return 0;
+}
+
+function readDateTimestamp(value: string) {
+  const displayDateMatch = value
+    .trim()
+    .match(/^(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.?$/);
+
+  if (displayDateMatch) {
+    const [, year, month, day] = displayDateMatch;
+    return new Date(
+      `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T00:00:00+09:00`,
+    ).getTime();
+  }
+
+  return new Date(value).getTime();
 }
 
 function formatDateLabel(value: string) {
@@ -238,5 +264,5 @@ function formatDateLabel(value: string) {
   const month = parts.find((part) => part.type === "month")?.value ?? "";
   const day = parts.find((part) => part.type === "day")?.value ?? "";
 
-  return `${year}.${month}.${day}`;
+  return `${year}. ${month}. ${day}.`;
 }

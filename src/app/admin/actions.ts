@@ -253,14 +253,26 @@ export async function updateContentEntryAction(formData: FormData) {
   await assertAdmin();
 
   const body = parseJsonField(formData.get("bodyJson"));
+  const kind = z.enum(["gallery", "news"]).parse(formData.get("kind"));
+  const id = stringValue(formData.get("id"));
+  const adminPath = getContentAdminPath(kind);
+  const displayDate = normalizeContentDisplayDateForSave(
+    kind,
+    stringValue(formData.get("displayDate")),
+  );
+
+  if (displayDate.error) {
+    redirect(`${adminPath}/${id}?date_error=${displayDate.error}`);
+  }
+
   const parsed = contentUpdateSchema.parse({
     body,
-    displayDate: stringValue(formData.get("displayDate")),
-    id: stringValue(formData.get("id")),
+    displayDate: displayDate.value,
+    id,
     images: z.array(contentImageUpdateSchema).parse(
       parseJsonField(formData.get("imagesJson")),
     ),
-    kind: formData.get("kind"),
+    kind,
     relatedProductSlug: nullableStringValue(formData.get("relatedProductSlug")),
     slug: normalizeContentSlug(String(formData.get("slug") ?? "")),
     status: formData.get("status"),
@@ -269,7 +281,6 @@ export async function updateContentEntryAction(formData: FormData) {
   });
 
   const beforeUpdate = await getContentEntryById(parsed.id);
-  const adminPath = getContentAdminPath(parsed.kind);
 
   if (!beforeUpdate || beforeUpdate.kind !== parsed.kind) {
     redirect(`${adminPath}?missing=1`);
@@ -343,16 +354,27 @@ export async function deleteContentEntryAction(formData: FormData) {
 export async function deleteContentImageAction(formData: FormData) {
   await assertAdmin();
 
+  const kind = z.enum(["gallery", "news"]).parse(formData.get("kind"));
+  const entryId = stringValue(formData.get("entryId"));
   const parsed = contentImageDeleteSchema.parse({
-    entryId: stringValue(formData.get("entryId")),
+    entryId,
     imageId: stringValue(formData.get("imageId")),
-    kind: formData.get("kind"),
+    kind,
   });
   const adminPath = getContentAdminPath(parsed.kind);
   const entry = await getContentEntryById(parsed.entryId);
 
   if (!entry || entry.kind !== parsed.kind) {
     redirect(`${adminPath}?missing=1`);
+  }
+
+  const displayDate = normalizeContentDisplayDateForSave(
+    parsed.kind,
+    stringValue(formData.get("displayDate")),
+  );
+
+  if (displayDate.error) {
+    redirect(`${adminPath}/${parsed.entryId}?date_error=${displayDate.error}`);
   }
 
   const body = removeContentImageNodeFromLexicalJson(
@@ -367,7 +389,7 @@ export async function deleteContentImageAction(formData: FormData) {
   const updated = await updateContentEntry(entry.id, {
     body,
     bodyText: extractPlainTextFromLexicalJson(body),
-    displayDate: stringValue(formData.get("displayDate")),
+    displayDate: displayDate.value,
     images: images.map((image) => ({
       ...image,
       layout: image.layout as ContentImageLayout,
@@ -703,6 +725,43 @@ function nullableSelectValue(value: FormDataEntryValue | null) {
 function nullableStringValue(value: FormDataEntryValue | null) {
   const raw = String(value ?? "").trim();
   return raw ? raw : null;
+}
+
+function normalizeContentDisplayDateForSave(
+  kind: ContentKind,
+  value: string,
+): { error?: "incomplete" | "invalid"; value: string } {
+  const trimmed = value.trim();
+
+  if (!trimmed || kind !== "news") {
+    return { value: trimmed };
+  }
+
+  const parts = trimmed.match(/\d+/g) ?? [];
+
+  if (parts.length < 3 || !/^\d{4}$/.test(parts[0] ?? "")) {
+    return { error: "incomplete", value: trimmed };
+  }
+
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  const day = Number(parts[2]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day) ||
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return { error: "invalid", value: trimmed };
+  }
+
+  return {
+    value: `${String(year).padStart(4, "0")}. ${String(month).padStart(2, "0")}. ${String(day).padStart(2, "0")}.`,
+  };
 }
 
 function stringValue(value: FormDataEntryValue | null) {

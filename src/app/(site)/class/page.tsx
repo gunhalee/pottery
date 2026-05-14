@@ -23,7 +23,7 @@ export default async function ClassPage() {
     <>
       <PageShell className="listing-page-shell">
         <PageIntro
-          subtitle="흙의 성질을 손으로 익히며 작은 기물부터 천천히 만들어갑니다. 정해진 결과물보다 손의 속도와 형태가 자라는 시간을 중요하게 여깁니다."
+          subtitle="결과물보다 손의 속도와 형태가 자라는 시간을 중요하게 여깁니다."
           title="흙을 함께 만져보는 시간"
           variant="compact"
         />
