@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/tmp/
 /.chrome-*/
 /.chrome-capture-policy-latest/
 /screenshots/
