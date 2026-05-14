@@ -47,7 +47,7 @@
   --color-border: var(--brd);
   --color-accent: var(--acc);
   --font-sans: var(--font-gothic-a1), "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-gothic-a1), "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-gowun-batang), "Gowun Batang", "AppleMyungjo", "Batang", "Times New Roman", serif;
   --font-mono: var(--font-gothic-a1), "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -67,6 +67,7 @@ body {
   color: var(--tx);
   font-family: var(--font-sans);
   font-weight: 300;
+  font-synthesis: none;
   text-rendering: geometricPrecision;
   overflow-wrap: normal;
   word-break: keep-all;

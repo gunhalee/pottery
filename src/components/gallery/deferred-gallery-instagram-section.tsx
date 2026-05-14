@@ -17,8 +17,8 @@ export function DeferredGalleryInstagramSection({
   profileUrl: string;
 }) {
   const { active, ref } = useDeferredActivation<HTMLElement>({
-    idleTimeout: 2200,
-    rootMargin: "720px 0px",
+    idleTimeout: 900,
+    rootMargin: "1600px 0px",
   });
 
   if (active) {

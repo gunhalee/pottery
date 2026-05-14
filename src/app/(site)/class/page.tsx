@@ -25,12 +25,12 @@ export default async function ClassPage() {
         <PageIntro
           action={
             <a
-              className="class-reservation-top-link"
+              className="class-reservation-top-link link-arrow"
               href={siteConfig.naverReservationUrl}
               rel="noopener noreferrer"
               target="_blank"
             >
-              {"예약하기 -->"}
+              예약하기
             </a>
           }
           subtitle="결과물보다 손의 속도와 형태가 자라는 시간을 중요하게 여깁니다."
@@ -52,17 +52,20 @@ export default async function ClassPage() {
             <SectionTitle>익히고, 익숙해지고, 자기 작업으로</SectionTitle>
             <p className="body-copy">
               익힘반과 익숙반, 야심반은 흙을 다루는 법을 넓혀가는 과정입니다.
-              기초 성형기법부터 개인 작업에 이르기까지, 흙의 세계를 손의
-              언어로 옮겨봅니다.
+              기초 성형기법부터 개인 작업에 이르기까지,{" "}
+              <span className="class-nowrap">흙의 세계를</span> 손의 언어로
+              옮겨봅니다.
             </p>
           </div>
           <dl className="product-spec-list">
             <div className="product-spec-row">
               <dt>익힘반</dt>
               <dd>
-                핀칭, 코일링, 판성형, 가압성형과 장식기법을 익힙니다.
+                핀칭, 코일링, 판성형, 가압성형, 장식기법을 익힙니다.
                 찻잔, 공기, 사발, 머그, 원형접시, 사각판접시, 드립퍼 같은
-                작은 기물을 차근히 제작하며 흙의 두께와 균형을 배웁니다.
+                작은 기물을 차근히 제작하며{" "}
+                <span className="class-nowrap">흙의 두께와 균형</span>을
+                배웁니다.
               </dd>
             </div>
             <div className="product-spec-row">

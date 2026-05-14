@@ -24,17 +24,39 @@ export function useDeferredActivation<TElement extends HTMLElement = HTMLElement
       return;
     }
 
+    let observer: IntersectionObserver | undefined;
+    let cancelIdle: (() => void) | undefined;
+    let activated = false;
+    const activate = () => {
+      if (activated) {
+        return;
+      }
+
+      activated = true;
+      observer?.disconnect();
+      cancelIdle?.();
+      setActive(true);
+    };
     const element = ref.current;
 
-    if (!element || typeof IntersectionObserver === "undefined") {
-      return scheduleWhenIdle(() => setActive(true), idleTimeout ?? 0);
+    if (typeof idleTimeout === "number") {
+      cancelIdle = scheduleWhenIdle(activate, idleTimeout);
     }
 
-    const observer = new IntersectionObserver(
+    if (!element || typeof IntersectionObserver === "undefined") {
+      if (!cancelIdle) {
+        cancelIdle = scheduleWhenIdle(activate, 0);
+      }
+
+      return () => {
+        cancelIdle?.();
+      };
+    }
+
+    observer = new IntersectionObserver(
       ([entry]) => {
         if (entry?.isIntersecting) {
-          setActive(true);
-          observer.disconnect();
+          activate();
         }
       },
       { rootMargin },
@@ -43,7 +65,8 @@ export function useDeferredActivation<TElement extends HTMLElement = HTMLElement
     observer.observe(element);
 
     return () => {
-      observer.disconnect();
+      observer?.disconnect();
+      cancelIdle?.();
     };
   }, [active, disabled, idleTimeout, rootMargin]);
 

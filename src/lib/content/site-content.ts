@@ -109,7 +109,7 @@ export const paletteLabels = ["백색", "회색", "흙색", "그늘", "먹색"] 
 export const classItems = [
   {
     description:
-      "처음 흙을 만지는 분도 편하게 시작할 수 있는 시간입니다.",
+      "처음 흙을 만진다면 편하게 시작할 수 있는 시간입니다.",
     details: [
       { label: "구성", value: "흙과 친해지기" },
       { label: "시간", value: "3시간" },
@@ -121,7 +121,7 @@ export const classItems = [
   },
   {
     description:
-      "핀칭, 코일링, 판성형, 가압성형과 장식기법을 익히는 과정입니다.",
+      "핀칭, 코일링, 판성형, 가압성형, 장식기법을 익히는 과정입니다.",
     details: [
       { label: "과정", value: "기초 성형" },
       { label: "구성", value: "주 1회 x 4주" },
@@ -133,7 +133,7 @@ export const classItems = [
   },
   {
     description:
-      "원하는 형태와 기능을 자유롭게 구현하는 과정입니다.",
+      "원하는 형태와 기능으로 자유롭게 구현하는 과정입니다.",
     details: [
       { label: "과정", value: "자유 제작" },
       { label: "구성", value: "주 2회 x 4주" },
@@ -145,7 +145,7 @@ export const classItems = [
   },
   {
     description:
-      "자기 작업을 더 깊게 이어가고 싶은 분께 추천합니다.",
+      "작업을 더 깊게 이어가고 싶다면 추천합니다.",
     details: [
       { label: "과정", value: "개인 작업" },
       { label: "구성", value: "주 3회 x 4주" },

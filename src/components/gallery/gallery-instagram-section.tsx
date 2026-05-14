@@ -137,8 +137,9 @@ export function GalleryInstagramSection({
         </div>
       </div>
       <div className="gallery-instagram-grid">
-        {visibleItems.map((item) => {
+        {visibleItems.map((item, index) => {
           const src = item.thumbnailUrl ?? item.mediaUrl;
+          const eagerImage = index < columns;
 
           if (!src) {
             return null;
@@ -156,7 +157,8 @@ export function GalleryInstagramSection({
               <img
                 alt={item.caption ?? "콩새와 도자기공방 인스타그램 사진"}
                 decoding="async"
-                loading="lazy"
+                fetchPriority={eagerImage ? "low" : "auto"}
+                loading={eagerImage ? "eager" : "lazy"}
                 referrerPolicy="no-referrer"
                 src={src}
               />

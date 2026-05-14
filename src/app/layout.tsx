@@ -4,14 +4,24 @@ import { siteConfig } from "@/lib/config/site";
 import "./globals.css";
 
 const gothicA1 = Gothic_A1({
+  adjustFontFallback: false,
   display: "optional",
+  fallback: [
+    "Apple SD Gothic Neo",
+    "Malgun Gothic",
+    "Segoe UI",
+    "system-ui",
+    "sans-serif",
+  ],
   variable: "--font-gothic-a1",
   weight: ["300", "400", "500", "700"],
   preload: false,
 });
 
 const gowunBatang = Gowun_Batang({
+  adjustFontFallback: false,
   display: "optional",
+  fallback: ["AppleMyungjo", "Batang", "Times New Roman", "serif"],
   variable: "--font-gowun-batang",
   weight: ["400", "700"],
   preload: false,

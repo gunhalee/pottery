@@ -53,8 +53,9 @@
 }
 
 .class-reservation-top-link {
-  color: var(--tx2);
+  color: var(--tx);
   font-size: 12px;
+  font-weight: 400;
   line-height: 1.45;
   white-space: nowrap;
   transition: color 0.2s ease;
@@ -62,6 +63,10 @@
 
 .class-reservation-top-link:hover {
   color: var(--tx);
+}
+
+.class-nowrap {
+  white-space: nowrap;
 }
 
 .class-card:nth-child(8n + 2),
