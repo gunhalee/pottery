@@ -267,7 +267,7 @@
 .gallery-instagram-head h2 {
   margin: 0;
   color: var(--tx);
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 22px;
   font-weight: 400;
   line-height: 1.2;
@@ -372,7 +372,7 @@
 .gallery-youtube-head h2 {
   margin: 0;
   color: var(--tx);
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 22px;
   font-weight: 400;
   line-height: 1.2;

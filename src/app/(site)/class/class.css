@@ -58,11 +58,6 @@
   font-weight: 400;
   line-height: 1.45;
   white-space: nowrap;
-  transition: color 0.2s ease;
-}
-
-.class-reservation-top-link:hover {
-  color: var(--tx);
 }
 
 .class-nowrap {
