@@ -71,8 +71,8 @@ export type TogetherRecord = {
 };
 
 export const homeHero = {
-  taglines: ["화분, 그릇, 작은 기물 속에 사람과 식물, 동물의 이야기를 녹여냅니다."],
-  title: "초록을 담은 흙의 형태를 빚어냅니다.",
+  taglines: ["고운 바탕"],
+  title: "초록을 담은 흙의 형태",
 } as const satisfies {
   taglines: ReadonlyArray<HomeHeroTagline>;
   title: string;
@@ -80,25 +80,25 @@ export const homeHero = {
 
 export const homeEntryCards = [
   {
-    description: "일정 · 신작 · 작업 일지",
+    description: "작업과 계절의 기록",
     href: "/news",
     label: "소식",
     title: "공방 이야기",
   },
   {
-    description: "초록과 흙의 작업 기록",
+    description: "흙과 초록의 형태",
     href: "/gallery",
     label: "작업물",
     title: "초록을 담은 도자",
   },
   {
-    description: "수업과 함께 한 기록",
+    description: "손으로 가까이 경험하는 시간",
     href: "/class",
     label: "함께하기",
     title: "흙을 만지는 시간",
   },
   {
-    description: "소장 가능한 작업",
+    description: "곁에 둘 수 있는 작업",
     href: "/shop",
     label: "소장하기",
     title: "작업물 소장",
@@ -163,7 +163,7 @@ export const homeWorks: WorkItem[] = [
 export const homeQuickLinks = [
   {
     description:
-      "손으로 빚고 다듬는 시간을 경험할 수 있는 정규 수업과 원데이 클래스를 운영합니다.",
+      "정해진 결과물을 빠르게 만드는 대신, 흙의 성질과 자기 손의 속도를 익히는 시간입니다.",
     eyebrow: "수업",
     href: "/class",
     title: "흙을 만지는 시간",
@@ -210,7 +210,7 @@ export const introFeatures: FeatureSection[] = [
     imageVariant: "wide",
     paragraphs: [
       "이 공방에는 사람과 식물, 동물의 시간이 함께 머뭅니다. 반려동물과 함께 오는 방문을 환영하고, 흙으로 만든 작은 친구들은 화분 위의 풍경처럼 놓입니다.",
-      "작업물을 보거나 수업을 상담하는 방문은 예약제로 운영합니다. 조용히 둘러보고 직접 손으로 만져볼 수 있는 시간을 준비합니다.",
+      "창가의 초록, 흙 위의 작은 동물, 다녀간 사람들의 손끝에서 공방의 시간은 천천히 겹쳐집니다.",
     ],
     title: "사람과 식물, 동물이 함께 머무는 곳",
     titleEmphasis: "",
@@ -267,7 +267,7 @@ export const classItems = [
   {
     action: "예약 문의",
     description:
-      "처음 흙을 만지는 분도 괜찮습니다. 속도에 맞춰 작은 기물부터 함께 만들어갑니다.",
+      "처음 흙을 만지는 분도 괜찮습니다. 손의 속도에 맞춰 작은 기물부터 시작합니다.",
     details: [
       { label: "구성", value: "기초 체험" },
       { label: "시간", value: "예약 시 안내" },
@@ -280,7 +280,7 @@ export const classItems = [
   {
     action: "예약 문의",
     description:
-      "기념일이나 조용한 데이트를 위해 함께 접시나 컵을 만듭니다. 시간이 지나도 그날을 기억하게 해줄 물건을 남깁니다.",
+      "둘이 함께 접시나 컵을 빚으며 그날의 시간을 작은 물건으로 남깁니다.",
     details: [
       { label: "구성", value: "2인 체험" },
       { label: "시간", value: "예약 시 안내" },
@@ -293,7 +293,7 @@ export const classItems = [
   {
     action: "상담 문의",
     description:
-      "핀칭, 코일링, 판성형, 가압성형과 장식기법을 익히며 작은 기물부터 차근히 제작합니다.",
+      "핀칭, 코일링, 판성형, 가압성형과 장식기법을 익히며 손의 기본기를 다집니다.",
     details: [
       { label: "구성", value: "주 1회 x 4주" },
       { label: "과정", value: "기초 성형" },
@@ -306,7 +306,7 @@ export const classItems = [
   {
     action: "상담 문의",
     description:
-      "성형기법을 손에 익히며 원하는 형태와 기능을 구현합니다. 자유 제작을 중심으로 완성도를 높입니다.",
+      "성형기법을 손에 익히며 원하는 형태와 기능을 구현합니다.",
     details: [
       { label: "구성", value: "주 2회 x 4주" },
       { label: "과정", value: "자유 제작" },
@@ -319,7 +319,7 @@ export const classItems = [
   {
     action: "상담 문의",
     description:
-      "자신만의 디자인을 개발하고 창의적인 기물을 제작하고 싶은 분께 추천합니다.",
+      "자신만의 디자인과 작업 방향을 구체화하고 싶은 분께 추천합니다.",
     details: [
       { label: "구성", value: "주 3회 x 4주" },
       { label: "과정", value: "개인 작업" },
@@ -334,7 +334,7 @@ export const classItems = [
 export const classReviews = [
   {
     cite: "결혼기념일 / 커플 원데이",
-    quote: "함께 만든 접시가 그날을 오래 기억하게 해줄 물건으로 남았습니다.",
+    quote: "함께 빚은 접시가 그날을 오래 기억하게 해줄 물건으로 남았습니다.",
   },
   {
     cite: "친구와 함께 / 원데이",

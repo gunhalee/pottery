@@ -141,7 +141,7 @@ export default async function ShopDetailPage({
         id="product-detail-description"
       >
         <div className="product-section-header product-detail-story-head">
-          <h2>상세정보</h2>
+          <h2>작업 이야기</h2>
         </div>
         <div className="product-detail-story-body">
           {product.storyBody ? (
@@ -158,7 +158,7 @@ export default async function ShopDetailPage({
         <section className="product-linked-content">
           <div>
             <p className="small-caps">작업물 기록</p>
-            <h2>이 상품과 연결된 작업물 이야기</h2>
+            <h2>이어지는 작업 기록</h2>
           </div>
           <div className="product-linked-content-list">
             {relatedGalleryEntries.map((entry) => (
@@ -212,7 +212,7 @@ export default async function ShopDetailPage({
 
       {relatedProducts.length > 0 ? (
         <section className="product-related-section" aria-label="연관 상품">
-          <h2>+ 연관 상품</h2>
+          <h2>함께 보기</h2>
           <div className="product-related-grid">
             {relatedProducts.map((relatedProduct) => (
               <ProductCard key={relatedProduct.id} product={relatedProduct} />

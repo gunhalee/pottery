@@ -18,7 +18,7 @@ export default async function GalleryPage() {
     <>
       <PageShell className="listing-page-shell">
         <PageIntro
-          subtitle="초록을 담는 형태, 흙의 질감, 작은 생명이 놓이는 장면을 작업물로 기록합니다."
+          subtitle="초록을 담는 형태, 흙의 질감, 작은 생명이 놓이는 장면을 작업물로 기록합니다. 함께 한 기록과 분리해 작가의 작업관을 보여주는 공간입니다."
           title="작업물"
           variant="compact"
         />
