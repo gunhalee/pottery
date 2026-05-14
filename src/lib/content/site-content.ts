@@ -29,7 +29,6 @@ export type DetailItem = {
 };
 
 export type ClassItem = {
-  action: string;
   description: string;
   details: readonly DetailItem[];
   eyebrow: string;
@@ -109,20 +108,18 @@ export const paletteLabels = ["백색", "회색", "흙색", "그늘", "먹색"] 
 
 export const classItems = [
   {
-    action: "예약 신청",
     description:
       "처음 흙을 만지는 분도 편하게 시작할 수 있는 시간입니다.",
     details: [
       { label: "구성", value: "흙과 친해지기" },
       { label: "시간", value: "3시간" },
-      { label: "비용", value: "6만원 · 10만원" },
+      { label: "비용", value: "60,000원 · 100,000원" },
       { label: "예시", value: "기초적인 작업의 결과물" },
     ],
     eyebrow: "원데이",
-    title: "원데이클래스 · 커플 원데이클래스",
+    title: "원데이클래스 · 커플 클래스",
   },
   {
-    action: "예약 신청",
     description:
       "핀칭, 코일링, 판성형, 가압성형과 장식기법을 익히는 과정입니다.",
     details: [
@@ -135,7 +132,6 @@ export const classItems = [
     title: "익힘반",
   },
   {
-    action: "예약 신청",
     description:
       "원하는 형태와 기능을 자유롭게 구현하는 과정입니다.",
     details: [
@@ -148,9 +144,8 @@ export const classItems = [
     title: "익숙반",
   },
   {
-    action: "예약 신청",
     description:
-      "자기 작업을 조금 더 깊게 이어가고 싶은 분께 추천드립니다.",
+      "자기 작업을 더 깊게 이어가고 싶은 분께 추천합니다.",
     details: [
       { label: "과정", value: "개인 작업" },
       { label: "구성", value: "주 3회 x 4주" },

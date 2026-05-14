@@ -151,6 +151,20 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   background: var(--bg);
 }
 
+.home-entry-card:nth-child(8n + 1),
+.home-entry-card:nth-child(8n + 3),
+.home-entry-card:nth-child(8n + 6),
+.home-entry-card:nth-child(8n + 8) {
+  background: var(--white);
+}
+
+.home-entry-card:nth-child(8n + 2),
+.home-entry-card:nth-child(8n + 4),
+.home-entry-card:nth-child(8n + 5),
+.home-entry-card:nth-child(8n + 7) {
+  background: var(--bg);
+}
+
 .home-entry-card:hover {
   background: var(--bg2);
 }
@@ -269,17 +283,23 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
   }
 
   .home-entry-card:nth-child(4n + 1),
-.home-entry-card:nth-child(4n + 4) {
+  .home-entry-card:nth-child(4n + 4) {
     background: var(--white);
   }
 
   .home-entry-card:nth-child(4n + 2),
-.home-entry-card:nth-child(4n + 3) {
+  .home-entry-card:nth-child(4n + 3) {
     background: var(--bg);
   }
 
   .home-entry-card:hover {
     background: var(--bg2);
+  }
+}
+
+@media (min-width: 901px) {
+  .home-hero {
+    min-height: 82svh;
   }
 }
 

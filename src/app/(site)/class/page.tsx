@@ -23,8 +23,18 @@ export default async function ClassPage() {
     <>
       <PageShell className="listing-page-shell">
         <PageIntro
+          action={
+            <a
+              className="class-reservation-top-link"
+              href={siteConfig.naverReservationUrl}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              {"예약하기 -->"}
+            </a>
+          }
           subtitle="결과물보다 손의 속도와 형태가 자라는 시간을 중요하게 여깁니다."
-          title="흙을 함께 만져보는 시간"
+          title="클래스"
           variant="compact"
         />
 
@@ -41,10 +51,9 @@ export default async function ClassPage() {
             <MetaLabel>정규반</MetaLabel>
             <SectionTitle>익히고, 익숙해지고, 자기 작업으로</SectionTitle>
             <p className="body-copy">
-              익힘반과 익숙반, 야심반은 손의 속도에 맞춰 흙을 다루는 법을
-              넓혀가는 과정입니다. 기초 성형기법부터 자유 제작과 개인 작업까지,
-              각자의 쓰임과 형태를 찾아가며 공방의 세계를 자기 손의 언어로
-              옮겨봅니다.
+              익힘반과 익숙반, 야심반은 흙을 다루는 법을 넓혀가는 과정입니다.
+              기초 성형기법부터 개인 작업에 이르기까지, 흙의 세계를 손의
+              언어로 옮겨봅니다.
             </p>
           </div>
           <dl className="product-spec-list">
@@ -102,12 +111,19 @@ export default async function ClassPage() {
               </dd>
             </div>
             <div className="product-spec-row">
-              <dt>소성·수령</dt>
+              <dt>완성 과정</dt>
+              <dd>작품은 건조, 초벌, 유약 작업, 재벌 과정을 거쳐 완성됩니다.</dd>
+            </div>
+            <div className="product-spec-row">
+              <dt>유의 사항</dt>
               <dd>
-                작품은 건조, 초벌, 유약 작업, 재벌 과정을 거쳐 완성됩니다. 도자
-                작업 특성상 균열, 뒤틀림, 파손, 유약 흐름, 색상 차이가 발생할
-                수 있으며 완성 안내 후 30일 이내 수령을 원칙으로 합니다.
+                도자 작업 특성상 균열, 뒤틀림, 파손, 유약 흐름, 색상 차이가
+                발생할 수 있습니다.
               </dd>
+            </div>
+            <div className="product-spec-row">
+              <dt>수령 기한</dt>
+              <dd>완성 안내 후 30일 이내 수령을 원칙으로 합니다.</dd>
             </div>
           </dl>
         </section>
@@ -117,9 +133,8 @@ export default async function ClassPage() {
             <MetaLabel>기록</MetaLabel>
             <SectionTitle>함께 한 기록</SectionTitle>
             <p className="body-copy">
-              이곳을 다녀간 사람들은 각자의 속도로 흙을 만지고, 서로 다른
-              형태를 남겼습니다. 원데이의 짧은 장면부터 정규반의 작업 시간까지,
-              함께 빚어진 순간들을 이곳에 모읍니다.
+              원데이의 짧은 장면부터 정규반의 작업 시간까지, 함께 빚어진
+              순간들을 이곳에 모읍니다.
             </p>
           </div>
           <ClassReviewPanel

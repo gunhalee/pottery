@@ -4,12 +4,14 @@ import { siteConfig } from "@/lib/config/site";
 import "./globals.css";
 
 const gothicA1 = Gothic_A1({
+  display: "optional",
   variable: "--font-gothic-a1",
   weight: ["300", "400", "500", "700"],
   preload: false,
 });
 
 const gowunBatang = Gowun_Batang({
+  display: "optional",
   variable: "--font-gowun-batang",
   weight: ["400", "700"],
   preload: false,

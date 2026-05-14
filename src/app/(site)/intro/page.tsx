@@ -23,7 +23,6 @@ export default function IntroPage() {
     <>
       <PageShell className="intro-page-header">
         <PageIntro
-          subtitle="화분, 그릇, 작은 기물 속에 사람과 식물, 동물의 이야기를 녹여냅니다."
           title="초록을 담은 도자"
           variant="editorial"
         />
@@ -100,27 +99,11 @@ export default function IntroPage() {
           <MetaLabel>공방</MetaLabel>
           <SectionTitle>사람과 식물, 동물이 함께 머무는 곳</SectionTitle>
           <p className="body-copy">
-            이 공방에는 사람과 식물, 동물의 시간이 함께 머뭅니다.
-            곁에 있는 동물의 존재도 이곳의 자연스러운 풍경입니다. 흙으로
-            만든 작은 친구들은 초록 사이에 다시 태어난 생명처럼 화분 위에
-            놓입니다.
-          </p>
-          <p className="body-copy">
             이곳의 풍경은 완성된 작업물에만 머물지 않습니다. 창가의 초록,
             흙 위의 작은 동물, 다녀간 사람들의 손끝에서 공방의 시간은
             천천히 겹쳐집니다.
           </p>
         </div>
-      </Section>
-
-      <Section className="intro-legacy-section">
-        <MetaLabel>기록</MetaLabel>
-        <SectionTitle>처음의 이름</SectionTitle>
-        <p className="body-copy">
-          공방은 처음에 콩새와 팥새라는 이름으로 시작했습니다. 지금은
-          콩새와 도자기공방의 이름으로 이어가며, 그때 시작된 흙과 초록의
-          시간을 현재의 작업 세계 안에 조용히 담고 있습니다.
-        </p>
       </Section>
 
       <Section className="studio-location-section" id="location">

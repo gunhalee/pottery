@@ -14,6 +14,7 @@
   flex-direction: column;
   padding: 36px 24px;
   background: var(--bg2);
+  cursor: pointer;
   transition: background 0.2s ease;
 }
 
@@ -25,10 +26,6 @@
   word-break: keep-all;
 }
 
-.class-title-nowrap {
-  white-space: nowrap;
-}
-
 .class-card .body-copy {
   font-size: 13px;
   overflow-wrap: normal;
@@ -37,29 +34,57 @@
 }
 
 .class-card .detail-list li {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
   align-items: baseline;
-  flex-wrap: wrap;
   gap: 8px 14px;
 }
 
 .class-card .detail-list span {
+  justify-self: end;
   min-width: 0;
   text-align: right;
   overflow-wrap: normal;
   word-break: keep-all;
 }
 
-.class-card .button-primary {
-  align-self: flex-end;
-  margin-top: auto;
+.class-card .detail-list {
+  margin-bottom: 0;
 }
 
-.class-card:nth-child(even) {
+.class-reservation-top-link {
+  color: var(--tx2);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.class-reservation-top-link:hover {
+  color: var(--tx);
+}
+
+.class-card:nth-child(8n + 2),
+.class-card:nth-child(8n + 4),
+.class-card:nth-child(8n + 5),
+.class-card:nth-child(8n + 7) {
   background: var(--white);
+}
+
+.class-card:nth-child(8n + 1),
+.class-card:nth-child(8n + 3),
+.class-card:nth-child(8n + 6),
+.class-card:nth-child(8n + 8) {
+  background: var(--bg2);
 }
 
 .class-card:hover {
   background: var(--bg3);
+}
+
+.class-card:focus-visible {
+  outline: 1px solid var(--tx);
+  outline-offset: 3px;
 }
 
 .review-title {
@@ -83,6 +108,10 @@
   background: var(--white);
 }
 
+.review-grid:has(> .review:nth-child(4)) > .review:nth-child(even) {
+  background: var(--bg2);
+}
+
 .review q {
   display: block;
   margin-bottom: 12px;
@@ -99,7 +128,7 @@
   font-style: normal;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1180px) {
 
   .class-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -109,8 +138,45 @@
     padding: 28px 18px;
   }
 
+  .class-card:nth-child(4n + 1),
+  .class-card:nth-child(4n + 4) {
+    background: var(--bg2);
+  }
+
+  .class-card:nth-child(4n + 2),
+  .class-card:nth-child(4n + 3) {
+    background: var(--white);
+  }
+
+  .class-card:hover {
+    background: var(--bg3);
+  }
+
   .review-grid {
     grid-template-columns: 1fr;
+  }
+
+  .review-grid:has(> .review:nth-child(4)) > .review {
+    background: var(--white);
+  }
+}
+
+@media (max-width: 640px) {
+
+  .class-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .class-card:nth-child(odd) {
+    background: var(--bg2);
+  }
+
+  .class-card:nth-child(even) {
+    background: var(--white);
+  }
+
+  .class-card:hover {
+    background: var(--bg3);
   }
 }
 
@@ -118,6 +184,10 @@
 
   .class-card {
     padding: 26px 10px;
+  }
+
+  .class-reservation-top-link {
+    font-size: 11px;
   }
 
   .class-card .card-title {
@@ -210,7 +280,7 @@
   font-size: 13px;
   line-height: 1.85;
   word-break: keep-all;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
 }
 
 .class-review-form {

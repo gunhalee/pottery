@@ -41,7 +41,7 @@ export const pageBottomCtas = {
       body: "직접 만들어보고 싶다면",
       href: "/class",
       kind: "internal",
-      label: "클래스 신청하기",
+      label: "예약하기",
     },
   ],
 } as const satisfies Record<string, readonly PageCta[]>;

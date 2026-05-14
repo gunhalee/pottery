@@ -1,4 +1,3 @@
-import { ExternalButtonLink } from "@/components/site/primitives";
 import type { ClassItem } from "@/lib/content/site-content";
 
 type ClassCardGridProps = {
@@ -24,9 +23,15 @@ function ClassCard({
   item: ClassItem;
 }) {
   return (
-    <article className="class-card">
+    <a
+      aria-label={`${item.title} 네이버 예약하기`}
+      className="class-card"
+      href={actionHref}
+      rel="noopener noreferrer"
+      target="_blank"
+    >
       <div className="small-caps">{item.eyebrow}</div>
-      <h2 className="card-title">{renderClassTitle(item.title)}</h2>
+      <h2 className="card-title">{item.title}</h2>
       <p className="body-copy">{item.description}</p>
       <ul className="detail-list">
         {item.details.map((detail) => (
@@ -36,21 +41,6 @@ function ClassCard({
           </li>
         ))}
       </ul>
-      <ExternalButtonLink href={actionHref}>{item.action}</ExternalButtonLink>
-    </article>
+    </a>
   );
-}
-
-function renderClassTitle(title: string) {
-  if (title === "원데이클래스 · 커플 원데이클래스") {
-    return (
-      <>
-        <span className="class-title-nowrap">원데이클래스 ·</span>
-        <br />
-        <span className="class-title-nowrap">커플 원데이클래스</span>
-      </>
-    );
-  }
-
-  return title;
 }

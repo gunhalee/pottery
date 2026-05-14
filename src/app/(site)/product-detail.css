@@ -536,8 +536,8 @@
   min-width: 0;
   max-width: 100%;
   white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: normal;
+  word-break: keep-all;
 }
 
 .product-shipping-copy strong {
@@ -586,7 +586,7 @@
   font-size: 12px;
   font-weight: 500;
   line-height: 1.35;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
 }
 
 .product-quantity-stepper {
@@ -1017,8 +1017,8 @@
 
   .product-shipping-copy span,
   .product-shipping-copy strong {
-    overflow-wrap: anywhere;
-    word-break: break-all;
+    overflow-wrap: normal;
+    word-break: keep-all;
   }
 
   .product-quantity-head {
