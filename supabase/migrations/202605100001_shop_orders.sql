@@ -42,6 +42,8 @@ create table if not exists public.shop_orders (
   orderer_phone text not null,
   orderer_phone_last4 text not null check (orderer_phone_last4 ~ '^[0-9]{4}$'),
   orderer_email text not null,
+  notification_email_enabled boolean not null default true,
+  notification_kakao_enabled boolean not null default true,
   lookup_password_hash text not null,
   is_gift boolean not null default false,
   gift_message text,
