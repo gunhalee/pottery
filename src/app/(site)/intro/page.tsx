@@ -12,7 +12,7 @@ import { SiteExternalActionLink } from "@/components/site/actions";
 import { NaverPlaceMap } from "@/components/site/naver-place-map";
 import dogImage from "../../../../public/asset/dog.webp";
 import greenPotImage from "../../../../public/asset/green-pot.webp";
-import { potOnForestHeroImage } from "@/lib/content/brand-assets";
+import { potOnForestFourthImage } from "@/lib/content/brand-assets";
 import { paletteLabels } from "@/lib/content/site-content";
 import { studioLocation } from "@/lib/config/site";
 
@@ -31,22 +31,24 @@ export default function IntroPage() {
 
       <Section className="split">
         <IntroImage
-          alt={potOnForestHeroImage.alt}
-          src={potOnForestHeroImage.src}
+          alt={potOnForestFourthImage.alt}
+          src={potOnForestFourthImage.src}
           variant="portrait"
         />
         <div>
           <MetaLabel>작업관</MetaLabel>
-          <SectionTitle>화분 위의 숲</SectionTitle>
+          <SectionTitle>초록과 동물이 머무는 흙의 형태</SectionTitle>
           <p className="body-copy">
-            숲을 상징하는 작은 반원들이 토분을 감싸고, 초록은 그 안팎을
-            지나며 작은 풍경을 만듭니다. 이곳의 도자는 식물을 담는 용기를
-            넘어, 흙이 다시 식물의 자리로 태어나는 일을 살핍니다.
+            이곳의 작업은 기물을 하나의 물건으로만 보지 않습니다. 흙은
+            화분이 되어 초록을 받치고, 그릇과 작은 기물은 사람의 손과
+            일상에 머물며, 흙으로 빚은 작은 동물은 그 풍경 안에 조용히
+            섞입니다.
           </p>
           <p className="body-copy">
-            흙으로 만든 작은 동물은 화분 위에 놓이고, 토분의 가장자리는
-            숲의 능선처럼 둘러섭니다. 사람과 식물, 동물이 한 자리에서
-            머무는 장면을 기물 안에 담습니다.
+            화분 위의 숲처럼 가장자리의 결, 작은 장식, 손으로 남긴 흔적은
+            표면의 꾸밈이 아니라 세계를 만드는 문법입니다. 초록을 담는 일,
+            흙으로 생명을 다시 빚는 일, 사람과 동물이 함께 머무는 장면을
+            도자 안에서 천천히 완성합니다.
           </p>
         </div>
       </Section>
