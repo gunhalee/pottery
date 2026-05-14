@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "content:seed": "node scripts/seed-site-content-to-supabase.mjs",
     "email:test": "node scripts/test-resend-email.mjs",
     "orders:seed": "node scripts/seed-shop-orders.mjs",
     "perf:assets": "node scripts/analyze-route-assets-with-server.mjs --fetch-images --output .next/route-asset-audit.json",

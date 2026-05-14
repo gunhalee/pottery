@@ -82,7 +82,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 }
 
 .hero-title {
-  font-family: var(--font-sans);
+  font-family: var(--font-gowun-batang), "Gowun Batang", var(--font-serif);
   font-weight: 300;
   letter-spacing: 0;
 }
@@ -90,7 +90,7 @@ body:has(.home-hero) .site-nav:not(.site-nav-scrolled) .nav-link:hover {
 .hero-title {
   margin: 0 0 28px;
   color: rgba(255, 255, 255, 0.92);
-  font-family: var(--font-sans);
+  font-family: var(--font-gowun-batang), "Gowun Batang", var(--font-serif);
   font-size: clamp(32px, 4vw, 56px);
   font-weight: 400;
   line-height: 1.15;

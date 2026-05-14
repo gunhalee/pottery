@@ -8,11 +8,7 @@ import {
   SectionTitle,
 } from "@/components/site/primitives";
 import { pageBottomCtas } from "@/lib/content/page-ctas";
-import {
-  classItems,
-  classReviews,
-  togetherRecords,
-} from "@/lib/content/site-content";
+import { classItems } from "@/lib/content/site-content";
 import { siteConfig } from "@/lib/config/site";
 import { getPublishedClassSessions } from "@/lib/shop/class-sessions";
 import { getPublishedClassReviews } from "@/lib/shop/class-reviews";
@@ -27,7 +23,7 @@ export default async function ClassPage() {
     <>
       <PageShell className="listing-page-shell">
         <PageIntro
-          subtitle="수업은 공방의 작업관을 손으로 가까이 경험하는 시간입니다. 정해진 결과물을 빠르게 완성하기보다 흙의 성질과 자기 손의 속도를 천천히 익힙니다."
+          subtitle="흙의 성질을 손으로 익히며 작은 기물부터 천천히 만들어갑니다. 정해진 결과물보다 손의 속도와 형태가 자라는 시간을 중요하게 여깁니다."
           title="흙을 함께 만져보는 시간"
           variant="compact"
         />
@@ -129,26 +125,30 @@ export default async function ClassPage() {
           <ClassReviewPanel
             classSessions={classSessions}
             reviews={publishedClassReviews}
-            staticReviews={classReviews}
+            staticReviews={[]}
           />
-          <div className="together-record-grid" aria-label="정규반 작업 기록">
-            {togetherRecords.map((record) => (
-              <article className="together-record-card" key={record.title}>
-                <div className="small-caps">{record.course}</div>
-                <h3>{record.title}</h3>
-                <dl>
-                  <div>
-                    <dt>만든 것</dt>
-                    <dd>{record.made}</dd>
+          {publishedClassReviews.length > 0 ? (
+            <div className="together-record-grid" aria-label="정규반 작업 기록">
+              {publishedClassReviews.slice(0, 3).map((record) => (
+                <article className="together-record-card" key={record.id}>
+                  <div className="small-caps">
+                    {record.classTitle ?? "함께 한 기록"}
                   </div>
-                  <div>
-                    <dt>기록</dt>
-                    <dd>{record.note}</dd>
-                  </div>
-                </dl>
-              </article>
-            ))}
-          </div>
+                  <h3>{record.displayName}</h3>
+                  <dl>
+                    <div>
+                      <dt>만든 것</dt>
+                      <dd>{record.classTitle ?? "수업 기록"}</dd>
+                    </div>
+                    <div>
+                      <dt>기록</dt>
+                      <dd>{record.body}</dd>
+                    </div>
+                  </dl>
+                </article>
+              ))}
+            </div>
+          ) : null}
         </section>
       </PageShell>
       <PageBottomCtaSection

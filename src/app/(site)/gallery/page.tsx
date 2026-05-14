@@ -6,7 +6,6 @@ import { PageBottomCtaSection } from "@/components/site/page-bottom-cta-section"
 import { PageIntro, PageShell } from "@/components/site/primitives";
 import { siteConfig } from "@/lib/config/site";
 import { pageBottomCtas } from "@/lib/content/page-ctas";
-import { galleryFallbackItems } from "@/lib/content/site-content";
 import { getContentListImage } from "@/lib/content-manager/content-images";
 import { getPublishedContentListEntries } from "@/lib/content-manager/content-store";
 import { mediaImageSizes } from "@/lib/media/media-image-sizes";
@@ -18,7 +17,7 @@ export default async function GalleryPage() {
     <>
       <PageShell className="listing-page-shell">
         <PageIntro
-          subtitle="초록을 담는 형태, 흙의 질감, 작은 생명이 놓이는 장면을 작업물로 기록합니다. 함께 한 기록과 분리해 작가의 작업관을 보여주는 공간입니다."
+          subtitle="초록을 담는 형태, 흙의 질감, 작은 생명이 머무는 장면을 따라 완성된 도자 작업을 모았습니다."
           title="작업물"
           variant="compact"
         />
@@ -51,24 +50,6 @@ export default async function GalleryPage() {
                 </Link>
               );
             })
-          ) : galleryFallbackItems.length > 0 ? (
-            galleryFallbackItems.map((item, index) => (
-              <div
-                className="gallery-item gallery-content-item"
-                key={item.title}
-              >
-                <ArtworkImage
-                  alt={item.imageAlt}
-                  fetchPriority={index === 0 ? "high" : "auto"}
-                  fill
-                  loading={index < 2 ? "eager" : "lazy"}
-                  quality={70}
-                  sizes={mediaImageSizes.galleryCard}
-                  src={item.imageSrc}
-                />
-                <span>{item.title}</span>
-              </div>
-            ))
           ) : (
             <div className="gallery-item gallery-content-empty">
               <span>공개된 작업물이 아직 없습니다.</span>

@@ -2,11 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { HomeSubscribeLinksSection } from "@/components/home/home-subscribe-links-section";
 import { PageShell } from "@/components/site/primitives";
-import { scheduleItems } from "@/lib/content/site-content";
 import type { ContentEntryListItem } from "@/lib/content-manager/content-model";
 import { getPublishedContentListEntries } from "@/lib/content-manager/content-store";
 import type { NaverBlogPost } from "@/lib/naver-blog/naver-blog-model";
 import { getPublishedNaverBlogPosts } from "@/lib/naver-blog/naver-blog-store";
+import { getPublishedClassSessions } from "@/lib/shop/class-sessions";
 
 type NewsFeedItem = {
   dateLabel: string;
@@ -23,9 +23,10 @@ type NewsFeedItem = {
 };
 
 export default async function NewsPage() {
-  const [newsItems, naverBlogItems] = await Promise.all([
+  const [newsItems, naverBlogItems, classSessions] = await Promise.all([
     getPublishedContentListEntries("news"),
     getPublishedNaverBlogPosts({ limit: 12 }),
+    getPublishedClassSessions(),
   ]);
   const feedItems = createNewsFeedItems(newsItems, naverBlogItems);
 
@@ -139,13 +140,24 @@ export default async function NewsPage() {
           </div>
           <aside>
             <div className="aside-title">일정</div>
-            {scheduleItems.map((item) => (
-              <div className="schedule" key={item.title}>
-                <div className="schedule-date">{item.date}</div>
-                <div className="schedule-title">{item.title}</div>
-                <div className="schedule-place">{item.place}</div>
+            {classSessions.length > 0 ? (
+              classSessions.map((item) => (
+                <div className="schedule" key={item.id}>
+                  <div className="schedule-date">
+                    {item.dateLabel ?? formatDateLabel(item.sessionDate ?? "")}
+                  </div>
+                  <div className="schedule-title">{item.title}</div>
+                  {item.description ? (
+                    <div className="schedule-place">{item.description}</div>
+                  ) : null}
+                </div>
+              ))
+            ) : (
+              <div className="schedule">
+                <div className="schedule-date">Soon</div>
+                <div className="schedule-title">공개된 일정이 없습니다.</div>
               </div>
-            ))}
+            )}
           </aside>
         </div>
       </PageShell>

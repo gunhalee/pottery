@@ -36,7 +36,7 @@ export default function IntroPage() {
           variant="portrait"
         />
         <div>
-          <MetaLabel>작업관</MetaLabel>
+          <MetaLabel>작품관</MetaLabel>
           <SectionTitle>흙으로 만든 작은 생태</SectionTitle>
           <p className="body-copy">
             이곳의 작업은 기물을 하나의 물건으로만 보지 않습니다. 흙은

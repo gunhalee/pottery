@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
-import { Gothic_A1 } from "next/font/google";
+import { Gothic_A1, Gowun_Batang } from "next/font/google";
 import { siteConfig } from "@/lib/config/site";
 import "./globals.css";
 
 const gothicA1 = Gothic_A1({
   variable: "--font-gothic-a1",
   weight: ["300", "400", "500", "700"],
+  preload: false,
+});
+
+const gowunBatang = Gowun_Batang({
+  variable: "--font-gowun-batang",
+  weight: ["400", "700"],
   preload: false,
 });
 
@@ -24,7 +30,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className={`${gothicA1.variable} h-full`}>
+    <html
+      lang="ko"
+      className={`${gothicA1.variable} ${gowunBatang.variable} h-full`}
+    >
       <body className="min-h-full">
         {children}
       </body>
