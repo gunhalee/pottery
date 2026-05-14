@@ -12,7 +12,7 @@ type CheckoutCompletePageProps = {
 };
 
 export const metadata: Metadata = {
-  description: "PortOne 결제 결과를 확인합니다.",
+  description: "결제 결과를 확인합니다.",
   title: "결제 확인",
 };
 
@@ -24,7 +24,7 @@ export default async function CheckoutCompletePage({
   return (
     <PageShell className="checkout-page-shell">
       <PageIntro
-        subtitle="PortOne 결제 결과를 서버에서 다시 검증합니다."
+        subtitle="결제 결과를 확인하고 있습니다."
         title="결제 확인"
         variant="compact"
       />

@@ -25,7 +25,7 @@ type CheckoutPageProps = {
 };
 
 export const metadata: Metadata = {
-  description: "주문 정보를 확인하고 자체 주문 기록을 생성합니다.",
+  description: "주문 정보를 확인하고 결제를 진행합니다.",
   title: "주문하기",
 };
 
@@ -124,7 +124,7 @@ export default async function CheckoutPage({
         <SiteEmptyState className="checkout-empty">
           <strong>{product.titleKo}</strong>
           <p>
-            주문 과정에서 오류가 일어났습니다. 최대한 빨리 고치겠습니다.
+            주문 과정에서 오류가 발생했습니다. 최대한 빨리 고치겠습니다.
           </p>
           <SiteActionLink href={`/shop/${product.slug}`}>
             상품 상세로 돌아가기

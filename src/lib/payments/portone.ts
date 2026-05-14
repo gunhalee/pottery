@@ -8,8 +8,13 @@ import type {
   PaymentMethod,
   PaymentStatus,
 } from "@/lib/orders/order-model";
+import {
+  updateCheckoutAttemptPayment,
+  type CheckoutAttemptStatus,
+} from "@/lib/orders/checkout-attempt-store";
 import { assertPaymentTransitionAllowed } from "@/lib/orders/order-state";
 import { ensureGiftRecipientAddressRequest } from "@/lib/orders/gift-recipient";
+import { getDepositDueAt } from "@/lib/orders/virtual-account";
 import {
   enqueueAdminNotificationJob,
   enqueueOrderNotificationJobs,
@@ -89,6 +94,8 @@ type SyncPortOnePaymentInput = {
   webhook?: unknown;
 };
 
+const portOneApiTimeoutMs = 7000;
+
 export class PortOnePaymentError extends Error {
   constructor(
     message: string,
@@ -100,9 +107,11 @@ export class PortOnePaymentError extends Error {
 }
 
 export async function preparePortOnePayment({
+  forceNewPaymentId = false,
   orderId,
   origin,
 }: {
+  forceNewPaymentId?: boolean;
   orderId: string;
   origin: string;
 }): Promise<PortOnePaymentPrepareResult> {
@@ -113,25 +122,45 @@ export async function preparePortOnePayment({
     throw new PortOnePaymentError("이미 결제가 완료된 주문입니다.");
   }
 
-  if (order.order_status === "canceled" || order.payment_status === "canceled") {
+  if (order.order_status === "canceled") {
     throw new PortOnePaymentError("취소된 주문은 결제할 수 없습니다.");
   }
 
   const paymentInfo = await buildOrderPaymentInfo(order.id);
   const payMethod = resolvePortOnePayMethod(order.payment_method, paymentInfo.checkoutMode);
   const checkoutConfig = getPortOneCheckoutConfig(order.payment_method, payMethod);
-  const paymentId = order.portone_payment_id ?? generatePortOnePaymentId();
+  const normalizedPaymentMethod = normalizePortOneOrderPaymentMethod(
+    order.payment_method,
+    payMethod,
+  );
+  const replacePaymentId = shouldReplacePortOnePaymentId(order, forceNewPaymentId);
+  const paymentId =
+    replacePaymentId || !order.portone_payment_id
+      ? generatePortOnePaymentId()
+      : order.portone_payment_id;
 
-  if (!order.portone_payment_id) {
+  if (replacePaymentId || !order.portone_payment_id) {
+    const resetPayload: Record<string, unknown> = {
+      canceled_at: null,
+      fulfillment_status: "unfulfilled",
+      order_status: "pending_payment",
+      payment_method: normalizedPaymentMethod,
+      payment_status: "pending",
+      portone_payment_id: paymentId,
+    };
+
+    if (normalizedPaymentMethod === "portone_virtual_account") {
+      resetPayload.deposit_due_at = getDepositDueAt().toISOString();
+      resetPayload.deposit_review_status = "waiting";
+      resetPayload.virtual_account_account_holder = null;
+      resetPayload.virtual_account_account_number = null;
+      resetPayload.virtual_account_bank_name = null;
+      resetPayload.virtual_account_issued_at = null;
+    }
+
     const { error } = await supabase
       .from("shop_orders")
-      .update({
-        payment_method: normalizePortOneOrderPaymentMethod(
-          order.payment_method,
-          payMethod,
-        ),
-        portone_payment_id: paymentId,
-      })
+      .update(resetPayload)
       .eq("id", order.id);
 
     if (error) {
@@ -143,10 +172,7 @@ export async function preparePortOnePayment({
     {
       amount_krw: order.total_krw,
       order_id: order.id,
-      payment_method: normalizePortOneOrderPaymentMethod(
-        order.payment_method,
-        payMethod,
-      ),
+      payment_method: normalizedPaymentMethod,
       provider: "portone",
       provider_payment_id: paymentId,
       status: "requested",
@@ -174,10 +200,7 @@ export async function preparePortOnePayment({
     payload: {
       paymentId,
       payMethod,
-      paymentMethod: normalizePortOneOrderPaymentMethod(
-        order.payment_method,
-        payMethod,
-      ),
+      paymentMethod: normalizedPaymentMethod,
       total: order.total_krw,
     },
   });
@@ -221,7 +244,18 @@ export async function preparePortOnePayment({
     };
   }
 
-  return { paymentRequest };
+  await updateCheckoutAttemptPayment({
+    orderId: order.id,
+    paymentId,
+    status: "payment_prepared",
+  });
+
+  return {
+    orderId: order.id,
+    orderNumber: order.order_number,
+    paymentRequest,
+    paymentStatus: "pending",
+  };
 }
 
 export async function completePortOnePayment({
@@ -232,6 +266,43 @@ export async function completePortOnePayment({
   paymentId: string;
 }): Promise<PortOnePaymentCompleteResult> {
   return syncPortOnePayment({ orderId, paymentId, source: "browser" });
+}
+
+function shouldReplacePortOnePaymentId(
+  order: OrderPaymentRow,
+  forceNewPaymentId: boolean,
+) {
+  if (!forceNewPaymentId || !order.portone_payment_id) {
+    return false;
+  }
+
+  return ["failed", "canceled", "expired"].includes(order.payment_status);
+}
+
+function mapPaymentStatusToCheckoutAttemptStatus(
+  status: PaymentStatus,
+): CheckoutAttemptStatus {
+  if (status === "failed") {
+    return "payment_failed";
+  }
+
+  if (status === "canceled") {
+    return "payment_canceled";
+  }
+
+  if (status === "expired") {
+    return "payment_expired";
+  }
+
+  if (status === "paid") {
+    return "payment_paid";
+  }
+
+  if (status === "pending") {
+    return "payment_pending";
+  }
+
+  return "manual_review";
 }
 
 export async function syncPortOnePayment({
@@ -347,11 +418,19 @@ export async function syncPortOnePayment({
       }
     }
 
+    await updateCheckoutAttemptPayment({
+      orderId: order.id,
+      paymentId,
+      status: "payment_paid",
+    });
+
     return {
       depositAccount,
       depositDueAt: readDepositDueAt(payment) ?? order.deposit_due_at,
+      orderId: order.id,
       orderNumber: result.orderNumber,
       paymentMethod: syncedPaymentMethod,
+      paymentId,
       paymentStatus: "paid",
       total: order.total_krw,
     };
@@ -375,11 +454,19 @@ export async function syncPortOnePayment({
       webhook,
     });
 
+    await updateCheckoutAttemptPayment({
+      orderId: order.id,
+      paymentId,
+      status: "payment_pending",
+    });
+
     return {
       depositAccount,
       depositDueAt: readDepositDueAt(payment) ?? order.deposit_due_at,
+      orderId: order.id,
       orderNumber: order.order_number,
       paymentMethod: syncedPaymentMethod,
+      paymentId,
       paymentStatus: "pending",
       total: order.total_krw,
     };
@@ -394,11 +481,19 @@ export async function syncPortOnePayment({
     webhook,
   });
 
+  await updateCheckoutAttemptPayment({
+    orderId: order.id,
+    paymentId,
+    status: mapPaymentStatusToCheckoutAttemptStatus(normalizedStatus),
+  });
+
   return {
     depositAccount,
     depositDueAt: readDepositDueAt(payment) ?? order.deposit_due_at,
+    orderId: order.id,
     orderNumber: order.order_number,
     paymentMethod: syncedPaymentMethod,
+    paymentId,
     paymentStatus: normalizedStatus,
     total: order.total_krw,
   };
@@ -465,13 +560,14 @@ async function buildOrderPaymentInfo(orderId: string) {
 }
 
 async function fetchPortOnePayment(paymentId: string): Promise<PortOnePayment> {
-  const response = await fetch(
+  const response = await fetchPortOneApi(
     `${getPortOneApiBaseUrl()}/payments/${encodeURIComponent(paymentId)}`,
     {
       headers: {
         Authorization: `PortOne ${getPortOneApiSecret()}`,
       },
     },
+    "결제 조회",
   );
 
   if (!response.ok) {
@@ -493,7 +589,7 @@ async function preRegisterPortOnePayment({
   storeId: string;
   totalAmount: number;
 }) {
-  const response = await fetch(
+  const response = await fetchPortOneApi(
     `${getPortOneApiBaseUrl()}/payments/${encodeURIComponent(
       paymentId,
     )}/pre-register`,
@@ -509,12 +605,31 @@ async function preRegisterPortOnePayment({
       },
       method: "POST",
     },
+    "결제 사전등록",
   );
 
   if (!response.ok) {
     throw new PortOnePaymentError(
       `PortOne 결제 사전등록 실패: ${await response.text()}`,
       502,
+    );
+  }
+}
+
+async function fetchPortOneApi(
+  input: RequestInfo | URL,
+  init: RequestInit,
+  label: string,
+) {
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: AbortSignal.timeout(portOneApiTimeoutMs),
+    });
+  } catch (error) {
+    throw new PortOnePaymentError(
+      `${label} 요청 시간이 초과되었습니다.`,
+      error instanceof DOMException && error.name === "TimeoutError" ? 504 : 502,
     );
   }
 }
@@ -590,6 +705,14 @@ async function recordPaymentFailure({
       source,
       webhook,
     },
+  });
+
+  await updateCheckoutAttemptPayment({
+    errorCode: reason,
+    errorMessage: "payment_verification_failed",
+    orderId: order.id,
+    paymentId,
+    status: "manual_review",
   });
 }
 

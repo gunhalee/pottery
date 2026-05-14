@@ -8,6 +8,7 @@ import {
 import { PortOnePaymentError, preparePortOnePayment } from "@/lib/payments";
 
 const preparePaymentSchema = z.object({
+  forceNewPaymentId: z.boolean().optional(),
   orderId: z.uuid(),
 });
 
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
 
   try {
     const result = await preparePortOnePayment({
+      forceNewPaymentId: parsed.data.forceNewPaymentId,
       orderId: parsed.data.orderId,
       origin: getRequestOrigin(request),
     });
@@ -66,7 +68,7 @@ export async function POST(request: Request) {
     console.error(error);
 
     return NextResponse.json(
-      { error: "결제 준비 중 오류가 발생했습니다." },
+      { error: "결제창 로딩 중 오류가 발생했습니다." },
       { status: 500 },
     );
   }

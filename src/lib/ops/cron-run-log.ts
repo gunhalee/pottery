@@ -5,6 +5,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase/server";
 export type CronJobName =
   | "daily_maintenance"
   | "order_notifications"
+  | "portone_payment_reconcile"
   | "upload_cleanup"
   | "virtual_account_expiry";
 export type CronRunLogJobName = CronJobName | "cafe24_inventory";

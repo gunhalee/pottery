@@ -16,6 +16,7 @@ const orderDraftSchema = z.object({
     .enum(["phone", "cash_receipt_card", "business_registration"])
     .optional(),
   cashReceiptType: z.enum(["none", "personal", "business"]).optional(),
+  checkoutAttemptId: z.uuid().optional(),
   checkoutMode: z.enum(["standard", "gift", "naver_pay"]),
   giftMessage: z.string().max(200).optional(),
   lookupPassword: z.string().regex(/^[0-9]{4}$/),

@@ -48,14 +48,19 @@ export type PortOnePaymentRequest = {
 };
 
 export type PortOnePaymentPrepareResult = {
+  orderId: string;
+  orderNumber: string;
   paymentRequest: PortOnePaymentRequest;
+  paymentStatus: PaymentStatus;
 };
 
 export type PortOnePaymentCompleteResult = {
   depositAccount?: DepositAccount;
   depositDueAt?: string | null;
+  orderId: string;
   orderNumber: string;
   paymentMethod?: PaymentMethod;
+  paymentId: string;
   paymentStatus: PaymentStatus;
   total: number;
 };

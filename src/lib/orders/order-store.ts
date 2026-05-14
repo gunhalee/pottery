@@ -36,6 +36,12 @@ import type {
   ShippingMethod,
 } from "./order-model";
 import { OrderLookupVerificationError } from "./order-model";
+import {
+  attachOrderToCheckoutAttempt,
+  claimCheckoutAttempt,
+  createCheckoutPayloadHash,
+  refreshCheckoutRecoveryToken,
+} from "./checkout-attempt-store";
 import { readGiftAddressStatus } from "./gift-recipient";
 import { calculateOrderAmounts } from "./pricing";
 import { isRestrictedPlantShippingAddress } from "./shipping-restrictions";
@@ -94,6 +100,9 @@ type CreatedOrderRow = {
   payment_method: PaymentMethod;
   payment_status: PaymentStatus;
   total_krw: number;
+  virtual_account_account_holder?: string | null;
+  virtual_account_account_number?: string | null;
+  virtual_account_bank_name?: string | null;
 };
 
 export class OrderDraftError extends Error {
@@ -158,6 +167,10 @@ export async function createOrderDraft(
       503,
     );
   }
+
+  const checkoutPayloadHash = input.checkoutAttemptId
+    ? createCheckoutPayloadHash(input)
+    : null;
 
   const product = await getProductBySlug(input.productSlug);
 
@@ -273,6 +286,33 @@ export async function createOrderDraft(
   const depositDueAt = isVirtualAccountPaymentMethod(paymentMethod)
     ? getDepositDueAt().toISOString()
     : null;
+
+  if (input.checkoutAttemptId && checkoutPayloadHash) {
+    const checkoutAttempt = await claimCheckoutAttempt({
+      attemptId: input.checkoutAttemptId,
+      payloadHash: checkoutPayloadHash,
+    });
+
+    if (checkoutAttempt.kind === "conflict") {
+      throw new OrderDraftError(
+        "주문 정보가 달라졌습니다. 주문 상품을 다시 선택해 주세요.",
+        409,
+      );
+    }
+
+    if (checkoutAttempt.record?.orderId) {
+      const existingOrder = await readCreatedOrderById(checkoutAttempt.record.orderId);
+      if (existingOrder) {
+        const recovery = await refreshCheckoutRecoveryToken(input.checkoutAttemptId);
+        return toOrderDraftResult(existingOrder, {
+          checkoutAttemptId: input.checkoutAttemptId,
+          recoveryToken: recovery?.recoveryToken,
+          recoveryTokenExpiresAt: recovery?.recoveryTokenExpiresAt,
+        });
+      }
+    }
+  }
+
   const supabase = getSupabaseAdminClient();
   const order = await insertOrderWithRetry({
     cash_receipt_identifier_encrypted: cashReceipt.identifierEncrypted,
@@ -423,14 +463,23 @@ export async function createOrderDraft(
     template: "admin_order_received",
   });
 
-  return {
-    depositDueAt,
-    orderId: order.id,
-    orderNumber: order.order_number,
-    paymentMethod: order.payment_method,
-    paymentStatus: order.payment_status,
-    total: order.total_krw,
-  };
+  const recovery =
+    input.checkoutAttemptId && checkoutPayloadHash
+      ? await attachOrderToCheckoutAttempt({
+          attemptId: input.checkoutAttemptId,
+          order: {
+            orderId: order.id,
+            orderNumber: order.order_number,
+          },
+          payloadHash: checkoutPayloadHash,
+        })
+      : null;
+
+  return toOrderDraftResult(order, {
+    checkoutAttemptId: input.checkoutAttemptId,
+    recoveryToken: recovery?.recoveryToken,
+    recoveryTokenExpiresAt: recovery?.recoveryTokenExpiresAt,
+  });
 }
 
 export async function lookupOrder(
@@ -608,11 +657,23 @@ async function insertOrderWithRetry(
         ...row,
         order_number: generateOrderNumber(),
       })
-      .select("id, order_number, payment_method, payment_status, deposit_due_at, total_krw")
+      .select(
+        [
+          "id",
+          "order_number",
+          "payment_method",
+          "payment_status",
+          "deposit_due_at",
+          "total_krw",
+          "virtual_account_bank_name",
+          "virtual_account_account_number",
+          "virtual_account_account_holder",
+        ].join(", "),
+      )
       .single();
 
     if (!error && data) {
-      return data as CreatedOrderRow;
+      return data as unknown as CreatedOrderRow;
     }
 
     lastErrorMessage = error?.message ?? lastErrorMessage;
@@ -623,6 +684,68 @@ async function insertOrderWithRetry(
   }
 
   throw new OrderDraftError(`주문 저장 실패: ${lastErrorMessage}`, 500);
+}
+
+async function readCreatedOrderById(
+  orderId: string,
+): Promise<CreatedOrderRow | null> {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("shop_orders")
+    .select(
+      [
+        "id",
+        "order_number",
+        "payment_method",
+        "payment_status",
+        "deposit_due_at",
+        "total_krw",
+        "virtual_account_bank_name",
+        "virtual_account_account_number",
+        "virtual_account_account_holder",
+      ].join(", "),
+    )
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (error) {
+    throw new OrderDraftError(`주문 조회 실패: ${error.message}`, 500);
+  }
+
+  return data ? (data as unknown as CreatedOrderRow) : null;
+}
+
+function toOrderDraftResult(
+  order: CreatedOrderRow,
+  recovery?: {
+    checkoutAttemptId?: string;
+    recoveryToken?: string;
+    recoveryTokenExpiresAt?: string | null;
+  },
+): OrderDraftResult {
+  const depositAccount =
+    order.virtual_account_bank_name &&
+    order.virtual_account_account_number &&
+    order.virtual_account_account_holder
+      ? {
+          accountHolder: order.virtual_account_account_holder,
+          accountNumber: order.virtual_account_account_number,
+          bankName: order.virtual_account_bank_name,
+        }
+      : undefined;
+
+  return {
+    checkoutAttemptId: recovery?.checkoutAttemptId,
+    depositAccount,
+    depositDueAt: order.deposit_due_at,
+    orderId: order.id,
+    orderNumber: order.order_number,
+    paymentMethod: order.payment_method,
+    paymentStatus: order.payment_status,
+    recoveryToken: recovery?.recoveryToken,
+    recoveryTokenExpiresAt: recovery?.recoveryTokenExpiresAt ?? null,
+    total: order.total_krw,
+  };
 }
 
 async function readOrderItems(orderId: string): Promise<OrderLookupItem[]> {

@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { SiteLink } from "@/components/navigation/site-link";
 import {
   SiteActionButton,
@@ -55,7 +55,7 @@ type SubmitState =
     }
   | {
       error: string | null;
-      order: OrderDraftResult;
+      order: RecoverableOrderDraft;
       status: "created" | "payment";
     }
   | {
@@ -68,6 +68,49 @@ type SubmitState =
       order: PortOnePaymentCompleteResult;
       status: "success";
     };
+
+type RecoverableOrderDraft = OrderDraftResult & {
+  paymentId?: string;
+};
+
+type StoredCheckoutRecovery = {
+  checkoutAttemptId: string;
+  orderId?: string;
+  orderNumber?: string;
+  paymentId?: string;
+  recoveryToken?: string;
+  recoveryTokenExpiresAt?: string | null;
+  signature: string;
+  updatedAt: number;
+};
+
+type CheckoutRecoveryResponse = {
+  action:
+    | "manual_review"
+    | "none"
+    | "prepare_payment"
+    | "retry_payment"
+    | "submit_order"
+    | "sync_payment";
+  code: string;
+  message: string;
+  order?: {
+    depositAccount?: PortOnePaymentCompleteResult["depositAccount"];
+    depositDueAt?: string | null;
+    orderId: string;
+    orderNumber: string;
+    paymentMethod?: PaymentMethod;
+    paymentStatus: PortOnePaymentCompleteResult["paymentStatus"];
+    total: number;
+  };
+  payment?: {
+    paymentId?: string;
+  } | null;
+  retryable: boolean;
+};
+
+const checkoutRecoveryStorageKey = "pottery.checkout.recovery";
+const checkoutRecoveryRequestTimeoutMs = 8000;
 
 export function CheckoutForm({
   checkoutMode,
@@ -100,6 +143,9 @@ export function CheckoutForm({
     order: null,
     status: "idle",
   });
+  const recoveryRequestsRef = useRef(
+    new Map<string, Promise<CheckoutRecoveryResponse | null>>(),
+  );
 
   const isGift = checkoutMode === "gift";
   const isNaverPay = checkoutMode === "naver_pay";
@@ -135,6 +181,27 @@ export function CheckoutForm({
     madeToOrderDaysMin,
     shippingMethod,
   });
+  const checkoutSignature = useMemo(
+    () =>
+      createCheckoutSignature({
+        checkoutMode,
+        isMadeToOrder,
+        paymentMethod: selectedPaymentMethod,
+        productOption,
+        productSlug,
+        quantity,
+        shippingMethod,
+      }),
+    [
+      checkoutMode,
+      isMadeToOrder,
+      productOption,
+      productSlug,
+      quantity,
+      selectedPaymentMethod,
+      shippingMethod,
+    ],
+  );
 
   async function submitOrder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -144,6 +211,7 @@ export function CheckoutForm({
     }
 
     const formData = new FormData(event.currentTarget);
+    const checkoutRecovery = getOrCreateCheckoutRecovery(checkoutSignature);
 
     setState({
       error: null,
@@ -151,13 +219,17 @@ export function CheckoutForm({
       status: "submitting",
     });
 
-    const response = await fetch("/api/orders/draft", {
+    let response: Response;
+
+    try {
+      response = await fetch("/api/orders/draft", {
       body: JSON.stringify({
         cashReceiptIdentifier: String(
           formData.get("cashReceiptIdentifier") ?? "",
         ),
         cashReceiptIdentifierType,
         cashReceiptType,
+        checkoutAttemptId: checkoutRecovery.checkoutAttemptId,
         checkoutMode,
         giftMessage: String(formData.get("giftMessage") ?? ""),
         lookupPassword: String(formData.get("lookupPassword") ?? ""),
@@ -188,7 +260,18 @@ export function CheckoutForm({
         "Content-Type": "application/json",
       },
       method: "POST",
-    });
+      });
+    } catch (error) {
+      setState({
+        error:
+          error instanceof Error
+            ? error.message
+            : "주문 접수 중 오류가 발생했습니다.",
+        order: null,
+        status: "idle",
+      });
+      return;
+    }
 
     const result = (await response.json().catch(() => ({}))) as {
       error?: string;
@@ -204,19 +287,28 @@ export function CheckoutForm({
       return;
     }
 
-    await requestPayment(result.order);
+    const order = mergeCheckoutRecovery(result.order, checkoutRecovery);
+    persistCheckoutRecovery(checkoutSignature, order);
+    await requestPayment(order);
   }
 
-  async function requestPayment(order: OrderDraftResult) {
+  async function requestPayment(
+    order: RecoverableOrderDraft,
+    options: { forceNewPaymentId?: boolean } = {},
+  ) {
     setState({
       error: null,
       order,
       status: "payment",
     });
 
+    let latestOrder = order;
+    let shouldAutoRecover = false;
+
     try {
       const prepareResponse = await fetch("/api/payments/portone/prepare", {
         body: JSON.stringify({
+          forceNewPaymentId: options.forceNewPaymentId,
           orderId: order.orderId,
         }),
         headers: {
@@ -230,9 +322,21 @@ export function CheckoutForm({
 
       if (!prepareResponse.ok || !("paymentRequest" in prepared)) {
         throw new Error(
-          prepared.error ?? "PortOne 결제 준비 중 오류가 발생했습니다.",
+          prepared.error ?? "결제창 로딩 중 오류가 발생했습니다.",
         );
       }
+
+      const preparedOrder: RecoverableOrderDraft = {
+        ...order,
+        paymentId: prepared.paymentRequest.paymentId,
+      };
+      latestOrder = preparedOrder;
+      persistCheckoutRecovery(checkoutSignature, preparedOrder);
+      setState({
+        error: null,
+        order: preparedOrder,
+        status: "payment",
+      });
 
       const PortOne = await import("@portone/browser-sdk/v2");
       const paymentResponse = await PortOne.requestPayment(
@@ -244,7 +348,7 @@ export function CheckoutForm({
       if (!paymentResponse) {
         setState({
           error: null,
-          order,
+          order: preparedOrder,
           status: "created",
         });
         return;
@@ -254,9 +358,11 @@ export function CheckoutForm({
         throw new Error(paymentResponse.message ?? "결제가 취소되었습니다.");
       }
 
+      shouldAutoRecover = true;
+
       const completeResponse = await fetch("/api/payments/portone/complete", {
         body: JSON.stringify({
-          orderId: order.orderId,
+          orderId: preparedOrder.orderId,
           paymentId: paymentResponse.paymentId,
         }),
         headers: {
@@ -269,8 +375,18 @@ export function CheckoutForm({
         | { error?: string };
 
       if (!completeResponse.ok || !("orderNumber" in completed)) {
+        const recovery = await recoverCheckout(preparedOrder, {
+          paymentId: paymentResponse.paymentId,
+          sync: true,
+        });
+        if (recovery && applyCompletedRecovery(recovery)) {
+          return;
+        }
+
         throw new Error(
-          completed.error ?? "결제 검증 중 오류가 발생했습니다.",
+          recovery?.message ??
+            completed.error ??
+            "결제 검증 중 오류가 발생했습니다.",
         );
       }
 
@@ -290,21 +406,220 @@ export function CheckoutForm({
         return;
       }
 
+      clearCheckoutRecovery(checkoutSignature);
       setState({
         error: null,
         order: completed,
         status: "success",
       });
     } catch (error) {
+      const recovery = shouldAutoRecover
+        ? await recoverCheckout(latestOrder, { sync: true })
+        : null;
+      if (recovery && applyCompletedRecovery(recovery)) {
+        return;
+      }
+
       setState({
         error:
-          error instanceof Error
+          recovery?.message ??
+          (error instanceof Error
             ? error.message
-            : "결제 진행 중 오류가 발생했습니다.",
-        order,
+            : "결제 진행 중 오류가 발생했습니다."),
+        order: latestOrder,
         status: "created",
       });
     }
+  }
+
+  async function handleRetryPayment(order: RecoverableOrderDraft) {
+    if (state.status === "payment") {
+      return;
+    }
+
+    setState({
+      error: null,
+      order,
+      status: "payment",
+    });
+
+    const recovery = await recoverCheckout(order, {
+      sync: !isRetryablePaymentStatus(order.paymentStatus),
+    });
+    if (recovery && applyCompletedRecovery(recovery)) {
+      return;
+    }
+
+    if (recovery?.action === "manual_review") {
+      setState({
+        error: recovery.message,
+        order,
+        status: "created",
+      });
+      return;
+    }
+
+    if (!recovery && order.paymentId) {
+      setState({
+        error: "결제 상태를 확인하는 중 오류가 발생했습니다. 잠시 후 다시 확인해 주세요.",
+        order,
+        status: "created",
+      });
+      return;
+    }
+
+    await requestPayment(order, {
+      forceNewPaymentId:
+        recovery?.action === "retry_payment" ||
+        isRetryablePaymentStatus(recovery?.order?.paymentStatus ?? order.paymentStatus),
+    });
+  }
+
+  async function handleRecoverPayment(order: RecoverableOrderDraft) {
+    if (state.status === "payment") {
+      return;
+    }
+
+    setState({
+      error: null,
+      order,
+      status: "payment",
+    });
+
+    const recovery = await recoverCheckout(order, { sync: true });
+    if (recovery && applyCompletedRecovery(recovery)) {
+      return;
+    }
+
+    setState({
+      error:
+        recovery?.message ??
+        "결제 상태를 확인하는 중 오류가 발생했습니다. 잠시 후 다시 확인해 주세요.",
+      order,
+      status: "created",
+    });
+  }
+
+  async function recoverCheckout(
+    order: RecoverableOrderDraft,
+    options: { paymentId?: string; sync?: boolean } = {},
+  ): Promise<CheckoutRecoveryResponse | null> {
+    const stored = readStoredCheckoutRecovery(checkoutSignature);
+    const attemptId = order.checkoutAttemptId ?? stored?.checkoutAttemptId;
+    const recoveryToken = order.recoveryToken ?? stored?.recoveryToken;
+    const paymentId = options.paymentId ?? order.paymentId ?? stored?.paymentId;
+
+    if (!attemptId && !paymentId) {
+      return null;
+    }
+
+    const recoveryKey = [
+      attemptId ?? "no-attempt",
+      order.orderId,
+      paymentId ?? "no-payment",
+      options.sync === false ? "local" : "sync",
+    ].join(":");
+    const inFlight = recoveryRequestsRef.current.get(recoveryKey);
+
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const recoveryRequest = (async () => {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(
+        () => controller.abort(),
+        checkoutRecoveryRequestTimeoutMs,
+      );
+
+      try {
+        const response = await fetch("/api/checkout/recover", {
+          body: JSON.stringify({
+            attemptId,
+            orderId: order.orderId,
+            paymentId,
+            recoveryToken,
+            sync: options.sync,
+          }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+          method: "POST",
+          signal: controller.signal,
+        });
+        const recovery = (await response.json().catch(() => null)) as
+          | CheckoutRecoveryResponse
+          | null;
+
+        if (!recovery || !("action" in recovery)) {
+          return null;
+        }
+
+        if (recovery.order) {
+          persistCheckoutRecovery(checkoutSignature, {
+            ...order,
+            checkoutAttemptId: attemptId,
+            orderId: recovery.order.orderId,
+            orderNumber: recovery.order.orderNumber,
+            paymentId: recovery.payment?.paymentId ?? paymentId,
+            recoveryToken,
+            recoveryTokenExpiresAt:
+              order.recoveryTokenExpiresAt ?? stored?.recoveryTokenExpiresAt,
+          });
+        }
+
+        return recovery;
+      } catch {
+        return null;
+      } finally {
+        window.clearTimeout(timeoutId);
+        recoveryRequestsRef.current.delete(recoveryKey);
+      }
+    })();
+
+    recoveryRequestsRef.current.set(recoveryKey, recoveryRequest);
+    return recoveryRequest;
+  }
+
+  function applyCompletedRecovery(recovery: CheckoutRecoveryResponse) {
+    if (!recovery.order) {
+      return false;
+    }
+
+    const completed: PortOnePaymentCompleteResult = {
+      depositAccount: recovery.order.depositAccount,
+      depositDueAt: recovery.order.depositDueAt,
+      orderId: recovery.order.orderId,
+      orderNumber: recovery.order.orderNumber,
+      paymentId: recovery.payment?.paymentId ?? "",
+      paymentMethod: recovery.order.paymentMethod,
+      paymentStatus: recovery.order.paymentStatus,
+      total: recovery.order.total,
+    };
+
+    if (
+      completed.paymentStatus === "pending" &&
+      completed.paymentMethod === "portone_virtual_account"
+    ) {
+      setState({
+        error: null,
+        order: completed,
+        status: "virtual_account",
+      });
+      return true;
+    }
+
+    if (completed.paymentStatus === "paid") {
+      clearCheckoutRecovery(checkoutSignature);
+      setState({
+        error: null,
+        order: completed,
+        status: "success",
+      });
+      return true;
+    }
+
+    return false;
   }
 
   if (state.status === "success") {
@@ -331,7 +646,7 @@ export function CheckoutForm({
         <span>가상계좌 입금대기</span>
         <strong>{state.order.orderNumber}</strong>
         <p>
-          PortOne을 통해 전용 입금계좌가 발급되었습니다. 입금기한 내 결제가
+          전용 입금계좌가 발급되었습니다. 입금기한 내 결제가
           확인되면 주문이 확정되고 배송 준비가 시작됩니다.
         </p>
         <CommerceSummaryList
@@ -366,16 +681,24 @@ export function CheckoutForm({
         <strong>{state.order.orderNumber}</strong>
         <p>
           {state.status === "payment"
-            ? "PortOne 결제창을 준비하고 있습니다."
-            : "주문 기록은 생성되었습니다. 결제 설정을 확인한 뒤 다시 결제할 수 있습니다."}
+            ? "결제창을 로딩하고 있습니다."
+            : "주문이 완료되지 않았습니다. 다시 한번 주문해주세요."}
         </p>
         <CommerceFormStatusMessage status={toErrorStatus(state.error)} />
         <SiteActionButton
           disabled={state.status === "payment"}
-          onClick={() => requestPayment(state.order)}
+          onClick={() => handleRetryPayment(state.order)}
         >
           {state.status === "payment" ? "결제 준비 중" : "결제 다시 시도"}
         </SiteActionButton>
+        {state.status === "created" ? (
+          <SiteActionButton
+            onClick={() => handleRecoverPayment(state.order)}
+            variant="quiet"
+          >
+            결제 상태 다시 확인
+          </SiteActionButton>
+        ) : null}
         <SiteActionLink href="/order/lookup" variant="quiet">
           주문 조회하기
         </SiteActionLink>
@@ -504,14 +827,14 @@ export function CheckoutForm({
             </div>
             {isVirtualAccount ? (
               <CommerceFormNote>
-                PortOne 결제창에서 주문별 전용 입금계좌가 발급됩니다. 입금
+                결제창에서 주문별 전용 입금계좌가 발급됩니다. 입금
                 확인은 PG사를 통해 자동 반영되며, 발급 후 24시간 내 미입금 시
                 주문이 자동 취소될 수 있습니다.
               </CommerceFormNote>
             ) : null}
             {isAccountTransfer ? (
               <CommerceFormNote>
-                계좌이체는 PortOne 결제창에서 즉시 결제와 현금영수증 신청이
+                계좌이체는 결제창에서 즉시 결제와 현금영수증 신청이
                 함께 진행됩니다.
               </CommerceFormNote>
             ) : null}
@@ -596,7 +919,7 @@ export function CheckoutForm({
               </>
             ) : null}
             <CommerceFormNote>
-              입력한 발급 정보는 PortOne 결제 요청에 전달되며, 발급 상태는
+              입력한 발급 정보는 결제 요청에 전달되며, 발급 상태는
               결제대행사 처리 결과를 기준으로 반영됩니다.
             </CommerceFormNote>
           </fieldset>
@@ -735,7 +1058,7 @@ export function CheckoutForm({
 
         {isNaverPay ? (
           <CommerceFormNote>
-            N pay 버튼으로 들어온 주문은 PortOne 결제 요청 후 간편결제
+            N pay 버튼으로 들어온 주문은 결제 요청 후 간편결제
             방식으로 진행됩니다.
           </CommerceFormNote>
         ) : null}
@@ -801,6 +1124,135 @@ export function CheckoutForm({
       </form>
     </div>
   );
+}
+
+function createCheckoutSignature(input: {
+  checkoutMode: CheckoutMode;
+  isMadeToOrder: boolean;
+  paymentMethod: PaymentMethod;
+  productOption: ProductOption;
+  productSlug: string;
+  quantity: number;
+  shippingMethod: ShippingMethod;
+}) {
+  return JSON.stringify(input);
+}
+
+function getOrCreateCheckoutRecovery(signature: string): StoredCheckoutRecovery {
+  const stored = readStoredCheckoutRecovery(signature);
+  if (stored) {
+    return stored;
+  }
+
+  const next: StoredCheckoutRecovery = {
+    checkoutAttemptId: createBrowserUuid(),
+    signature,
+    updatedAt: Date.now(),
+  };
+  writeStoredCheckoutRecovery(next);
+  return next;
+}
+
+function mergeCheckoutRecovery(
+  order: OrderDraftResult,
+  recovery: StoredCheckoutRecovery,
+): RecoverableOrderDraft {
+  return {
+    ...order,
+    checkoutAttemptId: order.checkoutAttemptId ?? recovery.checkoutAttemptId,
+    paymentId: recovery.paymentId,
+    recoveryToken: order.recoveryToken ?? recovery.recoveryToken,
+    recoveryTokenExpiresAt:
+      order.recoveryTokenExpiresAt ?? recovery.recoveryTokenExpiresAt,
+  };
+}
+
+function readStoredCheckoutRecovery(
+  signature: string,
+): StoredCheckoutRecovery | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(checkoutRecoveryStorageKey);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const stored = JSON.parse(raw) as StoredCheckoutRecovery;
+    if (
+      stored.signature !== signature ||
+      !stored.checkoutAttemptId ||
+      Date.now() - stored.updatedAt > 1000 * 60 * 60 * 24
+    ) {
+      return null;
+    }
+
+    return stored;
+  } catch {
+    return null;
+  }
+}
+
+function persistCheckoutRecovery(
+  signature: string,
+  order: RecoverableOrderDraft,
+) {
+  const stored = readStoredCheckoutRecovery(signature);
+  const checkoutAttemptId = order.checkoutAttemptId ?? stored?.checkoutAttemptId;
+
+  if (!checkoutAttemptId) {
+    return;
+  }
+
+  writeStoredCheckoutRecovery({
+    checkoutAttemptId,
+    orderId: order.orderId,
+    orderNumber: order.orderNumber,
+    paymentId: order.paymentId ?? stored?.paymentId,
+    recoveryToken: order.recoveryToken ?? stored?.recoveryToken,
+    recoveryTokenExpiresAt:
+      order.recoveryTokenExpiresAt ?? stored?.recoveryTokenExpiresAt,
+    signature,
+    updatedAt: Date.now(),
+  });
+}
+
+function clearCheckoutRecovery(signature: string) {
+  const stored = readStoredCheckoutRecovery(signature);
+  if (stored && typeof window !== "undefined") {
+    window.localStorage.removeItem(checkoutRecoveryStorageKey);
+  }
+}
+
+function writeStoredCheckoutRecovery(recovery: StoredCheckoutRecovery) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(
+    checkoutRecoveryStorageKey,
+    JSON.stringify(recovery),
+  );
+}
+
+function createBrowserUuid() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
+    const value = Math.floor(Math.random() * 16);
+    const nibble = char === "x" ? value : (value & 0x3) | 0x8;
+    return nibble.toString(16);
+  });
+}
+
+function isRetryablePaymentStatus(
+  status: PortOnePaymentCompleteResult["paymentStatus"] | undefined,
+) {
+  return status === "failed" || status === "canceled" || status === "expired";
 }
 
 function formatCurrency(value: number) {

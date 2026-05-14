@@ -34,6 +34,23 @@ type CompletionState =
       status: "success";
     };
 
+type CompletionRecoveryResponse = {
+  action: string;
+  message: string;
+  order?: {
+    depositAccount?: PortOnePaymentCompleteResult["depositAccount"];
+    depositDueAt?: string | null;
+    orderId: string;
+    orderNumber: string;
+    paymentMethod?: PortOnePaymentCompleteResult["paymentMethod"];
+    paymentStatus: PortOnePaymentCompleteResult["paymentStatus"];
+    total: number;
+  };
+  payment?: {
+    paymentId?: string;
+  } | null;
+};
+
 export function CheckoutCompleteClient({
   errorCode,
   errorMessage,
@@ -74,7 +91,24 @@ export function CheckoutCompleteClient({
           | { error?: string };
 
         if (!response.ok || !("orderNumber" in result)) {
-          throw new Error(result.error ?? "결제 검증에 실패했습니다.");
+          const recovered = await recoverPaymentCompletion({
+            orderId,
+            paymentId,
+            signal: controller.signal,
+          });
+
+          if (recovered?.result) {
+            setState({
+              error: null,
+              result: recovered.result,
+              status: "success",
+            });
+            return;
+          }
+
+          throw new Error(
+            recovered?.message ?? result.error ?? "결제 검증에 실패했습니다.",
+          );
         }
 
         if (!isSuccessfulPaymentCompletion(result)) {
@@ -185,6 +219,71 @@ export function CheckoutCompleteClient({
       <p>브라우저를 닫지 말고 잠시만 기다려 주세요.</p>
     </div>
   );
+}
+
+async function recoverPaymentCompletion({
+  orderId,
+  paymentId,
+  signal,
+}: {
+  orderId?: string;
+  paymentId?: string;
+  signal: AbortSignal;
+}): Promise<{ message?: string; result?: PortOnePaymentCompleteResult } | null> {
+  if (!orderId || !paymentId) {
+    return null;
+  }
+
+  try {
+    const response = await fetch("/api/checkout/recover", {
+      body: JSON.stringify({
+        orderId,
+        paymentId,
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+      signal,
+    });
+    const recovery = (await response.json().catch(() => null)) as
+      | CompletionRecoveryResponse
+      | null;
+
+    if (!recovery) {
+      return null;
+    }
+
+    if (
+      recovery.order &&
+      (recovery.order.paymentStatus === "paid" ||
+        (recovery.order.paymentStatus === "pending" &&
+          recovery.order.paymentMethod === "portone_virtual_account"))
+    ) {
+      return {
+        result: {
+          depositAccount: recovery.order.depositAccount,
+          depositDueAt: recovery.order.depositDueAt,
+          orderId: recovery.order.orderId,
+          orderNumber: recovery.order.orderNumber,
+          paymentId: recovery.payment?.paymentId ?? paymentId,
+          paymentMethod: recovery.order.paymentMethod,
+          paymentStatus: recovery.order.paymentStatus,
+          total: recovery.order.total,
+        },
+      };
+    }
+
+    return {
+      message: recovery.message,
+    };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error;
+    }
+
+    return null;
+  }
 }
 
 function getInitialCompletionState({

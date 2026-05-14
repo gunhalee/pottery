@@ -89,6 +89,7 @@ export type OrderDraftInput = {
   cashReceiptIdentifier?: string;
   cashReceiptIdentifierType?: CashReceiptIdentifierType;
   cashReceiptType?: CashReceiptType;
+  checkoutAttemptId?: string;
   checkoutMode: CheckoutMode;
   giftMessage?: string;
   lookupPassword: string;
@@ -115,12 +116,15 @@ export type OrderDraftInput = {
 };
 
 export type OrderDraftResult = {
+  checkoutAttemptId?: string;
   depositAccount?: DepositAccount;
   depositDueAt?: string | null;
   orderId: string;
   orderNumber: string;
   paymentStatus: PaymentStatus;
   paymentMethod: PaymentMethod;
+  recoveryToken?: string;
+  recoveryTokenExpiresAt?: string | null;
   total: number;
 };
 

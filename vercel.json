@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/order-notifications",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/portone-payment-reconcile",
+      "schedule": "17 18 * * *"
     }
   ]
 }
