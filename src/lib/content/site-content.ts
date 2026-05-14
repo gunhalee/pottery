@@ -1,4 +1,5 @@
 import type { AppHref } from "@/lib/routing/types";
+import { potOnForestFourthImage } from "@/lib/content/brand-assets";
 
 type LinkHref = AppHref;
 
@@ -85,22 +86,22 @@ export const homeEntryCards = [
     title: "공방 이야기",
   },
   {
-    description: "작업 과정과 결과물",
+    description: "초록과 흙의 작업 기록",
     href: "/gallery",
     label: "작업물",
-    title: "초록과 도자기",
+    title: "초록을 담은 도자",
   },
   {
-    description: "클래스 이야기 · 신청",
+    description: "수업과 함께 한 기록",
     href: "/class",
     label: "함께하기",
-    title: "콩새와 도자기숲",
+    title: "흙을 만지는 시간",
   },
   {
-    description: "구매 가능한 작업물",
+    description: "소장 가능한 작업",
     href: "/shop",
     label: "소장하기",
-    title: "소장하기",
+    title: "작업물 소장",
   },
 ] as const satisfies ReadonlyArray<HomeEntryCard>;
 
@@ -108,54 +109,54 @@ export const homeStory = {
   ctaHref: "/intro",
   ctaLabel: "소개 보기",
   description:
-    "화분과 그릇, 작은 기물은 같은 세계에서 출발합니다. 흙으로 만든 형태가 식물과 사람 곁에 오래 놓일 수 있도록, 수레실길의 공방에서 초록과 도자의 관계를 천천히 살핍니다.",
-  imageAlt: "햇빛이 드는 창가에 놓인 흰 도자 화분과 초록 식물",
-  imageLabel: "초록과 도자",
-  imageSrc: "/asset/green-pot.webp",
-  title: "초록과 도자",
+    "화분과 그릇, 작은 기물은 같은 태도에서 출발합니다. 흙은 초록을 받치고, 작은 동물은 그 곁에 놓이며, 사람의 손이 닿는 시간은 기물 안에 조용히 남습니다.",
+  imageAlt: potOnForestFourthImage.alt,
+  imageLabel: "초록을 담은 도자",
+  imageSrc: potOnForestFourthImage.src,
+  title: "초록을 담은 도자",
   titleEmphasis: "",
 } as const satisfies HomeStoryContent;
 
 export const homeRecentWorkFallbacks = [
   {
+    imageAlt: potOnForestFourthImage.alt,
+    imageSrc: potOnForestFourthImage.src,
+    summary: "초록이 머무는 작은 풍경",
+    title: "화분 위의 숲",
+  },
+  {
     imageAlt: "햇빛이 드는 창가에 놓인 흰 도자 화분과 초록 식물",
     imageSrc: "/asset/green-pot.webp",
-    summary: "초록을 담는 흙의 형태",
-    title: "초록을 위한 도자",
+    summary: "식물 곁에 오래 놓이는 형태",
+    title: "초록을 담은 화분",
   },
   {
-    imageAlt: "흙색 도자 화분의 가장자리와 표면 질감",
-    imageSrc: "/asset/hero-poster.webp",
-    summary: "손의 흔적이 남은 생활 기물",
-    title: "흙의 결을 남긴 기물",
-  },
-  {
-    imageAlt: "넓게 클로즈업된 흙색 도자 화분",
-    imageSrc: "/asset/hero-image.jpg",
-    summary: "식물과 오래 놓이는 형태",
-    title: "수레실길의 화분",
+    imageAlt: "화분 흙 위에 놓인 흙으로 만든 작은 강아지 기물",
+    imageSrc: "/asset/dog.webp",
+    summary: "흙으로 다시 태어난 작은 생명",
+    title: "화분 위의 친구",
   },
 ] as const satisfies readonly WorkPreview[];
 
 export const homeWorks: WorkItem[] = [
   {
-    description: "White porcelain",
+    description: "초록이 머무는 작은 풍경",
     href: "/shop",
     placeholder: "작업물 01",
-    title: "백자 달항아리",
+    title: "화분 위의 숲",
   },
   {
-    description: "Hand-thrown stoneware",
+    description: "손의 결을 남긴 흙의 형태",
     href: "/shop",
     placeholder: "작업물 02",
-    title: "찻사발",
+    title: "흙색 토분",
     tone: "dark",
   },
   {
-    description: "Matte ash glaze",
+    description: "작은 생명이 놓이는 자리",
     href: "/shop",
     placeholder: "작업물 03",
-    title: "작은 화병",
+    title: "화분 위의 친구",
   },
 ];
 
@@ -165,13 +166,13 @@ export const homeQuickLinks = [
       "손으로 빚고 다듬는 시간을 경험할 수 있는 정규 수업과 원데이 클래스를 운영합니다.",
     eyebrow: "수업",
     href: "/class",
-    title: "Section Title",
+    title: "흙을 만지는 시간",
   },
   {
-    description: "새 작업물, 전시 일정, 공방 운영 소식을 간결하게 전합니다.",
+    description: "작업물과 공방의 계절, 새로 빚은 형태의 이야기를 전합니다.",
     eyebrow: "소식",
     href: "/news",
-    title: "Section Title",
+    title: "공방의 기록",
   },
 ] as const satisfies ReadonlyArray<{
   description: string;
@@ -252,14 +253,14 @@ export const scheduleItems = [
 ] as const;
 
 export const galleryItems = [
-  { title: "작업물명 / 연도" },
-  { title: "작업물명 / 연도" },
-  { title: "작업물명 / 연도" },
-  { featured: true, title: "작업 과정 / 스튜디오" },
-  { title: "작업물명 / 연도" },
-  { title: "작업물명 / 연도" },
-  { title: "작업물명 / 스타일링" },
-  { title: "작업물명 / 연도" },
+  { title: "화분 위의 숲" },
+  { title: "초록을 담은 화분" },
+  { title: "화분 위의 친구" },
+  { featured: true, title: "흙과 초록의 작업 과정" },
+  { title: "무유 토분" },
+  { title: "손의 결이 남은 기물" },
+  { title: "식물 곁의 작은 도자" },
+  { title: "수레실길의 작업물" },
 ] as const;
 
 export const classItems = [
@@ -349,62 +350,62 @@ export const togetherRecords = [
   {
     course: "익힘반",
     made: "찻잔 · 공기 · 작은 접시",
-    note: "기초 성형기법을 익히며 흙의 두께와 손의 압력을 천천히 맞춰간 기록입니다.",
-    title: "작은 기물에서 시작한 시간",
+    note: "처음에는 흙의 두께를 맞추는 일부터 시작해, 손에 남는 압력과 작은 쓰임을 하나씩 배워간 시간입니다.",
+    title: "처음의 손이 남긴 기물",
   },
   {
     course: "익숙반",
     made: "원형접시 · 사각판접시 · 드립퍼",
-    note: "원하는 형태와 쓰임을 직접 정하고, 반복 제작을 통해 균형과 완성도를 살핀 기록입니다.",
-    title: "원하는 형태를 찾아가는 과정",
+    note: "원하는 형태와 쓰임을 직접 정하고, 반복 제작을 통해 균형과 완성도를 살핀 과정입니다.",
+    title: "자기 쓰임을 찾아간 과정",
   },
   {
     course: "회원님 작품",
     made: "모빌 · 화분 · 생활 기물",
-    note: "공방에 다녀간 사람들의 손에서 각자의 취향과 시간이 담긴 작업이 남았습니다.",
-    title: "공방에 남은 손의 흔적",
+    note: "공방을 다녀간 사람들의 손에서 각자의 취향과 시간이 담긴 작업이 남았습니다.",
+    title: "각자의 풍경이 된 작업",
   },
 ] as const satisfies readonly TogetherRecord[];
 
 export const galleryFallbackItems = [
   {
+    imageAlt: potOnForestFourthImage.alt,
+    imageSrc: potOnForestFourthImage.src,
+    summary: "초록이 머무는 작은 풍경",
+    title: "화분 위의 숲",
+  },
+  {
     imageAlt: "햇빛이 드는 창가에 놓인 흰 도자 화분과 초록 식물",
     imageSrc: "/asset/green-pot.webp",
-    summary: "초록을 담는 흙의 형태",
-    title: "초록을 담은 도자",
+    summary: "식물 곁에 오래 놓이는 형태",
+    title: "초록을 담은 화분",
   },
   {
-    imageAlt: "흙색 도자 화분의 가장자리와 표면 질감",
-    imageSrc: "/asset/hero-poster.webp",
-    summary: "흙의 질감과 손의 흔적",
-    title: "생활의 기물",
-  },
-  {
-    imageAlt: "넓게 클로즈업된 흙색 도자 화분",
-    imageSrc: "/asset/hero-image.jpg",
-    summary: "식물과 오래 놓이는 형태",
-    title: "화분의 형태",
+    imageAlt: "화분 흙 위에 놓인 흙으로 만든 작은 강아지 기물",
+    imageSrc: "/asset/dog.webp",
+    summary: "흙으로 다시 태어난 작은 생명",
+    title: "화분 위의 친구",
   },
 ] as const satisfies readonly WorkPreview[];
 
 export const shopProducts: WorkItem[] = [
   {
-    description: "작업물 설명 텍스트",
+    description: "초록이 머무는 작은 풍경을 흙으로 빚은 토분",
     placeholder: "01",
     price: "80,000원",
-    title: "작업물 이름",
+    title: "화분 위의 숲",
   },
   {
-    description: "작업물 설명 텍스트",
+    description: "식물 곁에 오래 놓이도록 만든 무유 토분",
     placeholder: "02",
     price: "120,000원",
-    title: "작업물 이름",
+    title: "흙색 토분",
     tone: "dark",
   },
   {
-    description: "작업물 설명 텍스트",
+    description: "화분 위에 조용히 놓이는 작은 흙 친구",
     placeholder: "03",
     price: "95,000원",
-    title: "작업물 이름",
+    title: "화분 위의 친구",
   },
 ];

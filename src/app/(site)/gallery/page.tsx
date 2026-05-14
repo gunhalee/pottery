@@ -3,7 +3,7 @@ import { DeferredGalleryInstagramSection } from "@/components/gallery/deferred-g
 import { DeferredGalleryYoutubeSection } from "@/components/gallery/deferred-gallery-youtube-section";
 import { ArtworkImage } from "@/components/media/artwork-image";
 import { PageBottomCtaSection } from "@/components/site/page-bottom-cta-section";
-import { PageShell } from "@/components/site/primitives";
+import { PageIntro, PageShell } from "@/components/site/primitives";
 import { siteConfig } from "@/lib/config/site";
 import { pageBottomCtas } from "@/lib/content/page-ctas";
 import { galleryFallbackItems } from "@/lib/content/site-content";
@@ -17,7 +17,11 @@ export default async function GalleryPage() {
   return (
     <>
       <PageShell className="listing-page-shell">
-        <h1 className="sr-only">작업물</h1>
+        <PageIntro
+          subtitle="초록을 담는 형태, 흙의 질감, 작은 생명이 놓이는 장면을 작업물로 기록합니다."
+          title="작업물"
+          variant="compact"
+        />
         <div className="gallery-grid gallery-content-grid">
           {galleryItems.length > 0 ? (
             galleryItems.map((item, index) => {
@@ -49,11 +53,9 @@ export default async function GalleryPage() {
             })
           ) : galleryFallbackItems.length > 0 ? (
             galleryFallbackItems.map((item, index) => (
-              <Link
+              <div
                 className="gallery-item gallery-content-item"
-                href="/shop"
                 key={item.title}
-                prefetch={false}
               >
                 <ArtworkImage
                   alt={item.imageAlt}
@@ -65,7 +67,7 @@ export default async function GalleryPage() {
                   src={item.imageSrc}
                 />
                 <span>{item.title}</span>
-              </Link>
+              </div>
             ))
           ) : (
             <div className="gallery-item gallery-content-empty">

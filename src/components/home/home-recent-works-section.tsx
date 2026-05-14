@@ -16,8 +16,8 @@ export function HomeRecentWorksSection({
   return (
     <Section className="home-recent-works-section" deferred>
       <div className="works-head">
-        <h2 className="section-title">최근 작업물</h2>
-        <ArrowLink href="/gallery">전체 보기</ArrowLink>
+        <h2 className="section-title">작업관의 단서</h2>
+        <ArrowLink href="/gallery">작업물 보기</ArrowLink>
       </div>
       {recentEntries.length > 0 ? (
         <div className="grid-3 home-recent-work-grid">

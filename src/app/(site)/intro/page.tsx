@@ -37,12 +37,12 @@ export default function IntroPage() {
         />
         <div>
           <MetaLabel>작업관</MetaLabel>
-          <SectionTitle>초록과 동물이 머무는 흙의 형태</SectionTitle>
+          <SectionTitle>흙으로 만든 작은 생태</SectionTitle>
           <p className="body-copy">
             이곳의 작업은 기물을 하나의 물건으로만 보지 않습니다. 흙은
-            화분이 되어 초록을 받치고, 그릇과 작은 기물은 사람의 손과
-            일상에 머물며, 흙으로 빚은 작은 동물은 그 풍경 안에 조용히
-            섞입니다.
+            화분이 되어 초록이 뿌리내릴 자리를 만들고, 그릇과 작은 기물은
+            사람의 손과 일상에 머뭅니다. 흙으로 빚은 작은 동물은 그 풍경
+            안에 조용히 섞여 생명의 온도를 더합니다.
           </p>
           <p className="body-copy">
             화분 위의 숲처럼 가장자리의 결, 작은 장식, 손으로 남긴 흔적은
@@ -65,7 +65,7 @@ export default function IntroPage() {
           variant="portrait"
         />
         <div>
-          <MetaLabel>작업관</MetaLabel>
+          <MetaLabel>초록</MetaLabel>
           <SectionTitle>초록과 도자</SectionTitle>
           <p className="body-copy">
             초록을 담는 도자는 단순한 화분이 아니라 식물이 머물 자리를
