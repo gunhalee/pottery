@@ -161,6 +161,12 @@ export async function preparePortOnePayment({
     );
   }
 
+  await preRegisterPortOnePayment({
+    paymentId,
+    storeId: checkoutConfig.storeId,
+    totalAmount: order.total_krw,
+  });
+
   await supabase.from("shop_order_events").insert({
     actor: "system",
     event_type: "portone_payment_prepared",
@@ -222,7 +228,7 @@ export async function completePortOnePayment({
   orderId,
   paymentId,
 }: {
-  orderId: string;
+  orderId?: string;
   paymentId: string;
 }): Promise<PortOnePaymentCompleteResult> {
   return syncPortOnePayment({ orderId, paymentId, source: "browser" });
@@ -459,20 +465,11 @@ async function buildOrderPaymentInfo(orderId: string) {
 }
 
 async function fetchPortOnePayment(paymentId: string): Promise<PortOnePayment> {
-  const apiSecret = process.env.PORTONE_API_SECRET;
-
-  if (!apiSecret) {
-    throw new PortOnePaymentError(
-      "PORTONE_API_SECRET 환경변수가 설정되지 않았습니다.",
-      503,
-    );
-  }
-
   const response = await fetch(
     `${getPortOneApiBaseUrl()}/payments/${encodeURIComponent(paymentId)}`,
     {
       headers: {
-        Authorization: `PortOne ${apiSecret}`,
+        Authorization: `PortOne ${getPortOneApiSecret()}`,
       },
     },
   );
@@ -485,6 +482,41 @@ async function fetchPortOnePayment(paymentId: string): Promise<PortOnePayment> {
   }
 
   return (await response.json()) as PortOnePayment;
+}
+
+async function preRegisterPortOnePayment({
+  paymentId,
+  storeId,
+  totalAmount,
+}: {
+  paymentId: string;
+  storeId: string;
+  totalAmount: number;
+}) {
+  const response = await fetch(
+    `${getPortOneApiBaseUrl()}/payments/${encodeURIComponent(
+      paymentId,
+    )}/pre-register`,
+    {
+      body: JSON.stringify({
+        currency: "KRW",
+        storeId,
+        totalAmount,
+      }),
+      headers: {
+        Authorization: `PortOne ${getPortOneApiSecret()}`,
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+    },
+  );
+
+  if (!response.ok) {
+    throw new PortOnePaymentError(
+      `PortOne 결제 사전등록 실패: ${await response.text()}`,
+      502,
+    );
+  }
 }
 
 async function markOrderPaid({
@@ -1260,6 +1292,19 @@ function getPortOneTransactionId(payment: PortOnePayment) {
 
 function getPortOneApiBaseUrl() {
   return process.env.PORTONE_API_BASE_URL || "https://api.portone.io";
+}
+
+function getPortOneApiSecret() {
+  const apiSecret = process.env.PORTONE_API_SECRET;
+
+  if (!apiSecret) {
+    throw new PortOnePaymentError(
+      "PORTONE_API_SECRET 환경변수가 설정되지 않았습니다.",
+      503,
+    );
+  }
+
+  return apiSecret;
 }
 
 function generatePortOnePaymentId() {

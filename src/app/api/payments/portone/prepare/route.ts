@@ -16,6 +16,8 @@ const preparePaymentRateLimit = {
   windowMs: 10 * 60 * 1000,
 };
 
+export const runtime = "nodejs";
+
 export async function POST(request: Request) {
   const rateLimit = await consumeRateLimit({
     key: getClientIp(request.headers),

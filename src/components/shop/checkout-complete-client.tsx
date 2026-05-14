@@ -50,7 +50,7 @@ export function CheckoutCompleteClient({
   );
 
   useEffect(() => {
-    if (errorCode || !orderId || !paymentId) {
+    if (errorCode || !paymentId) {
       return;
     }
 
@@ -75,6 +75,10 @@ export function CheckoutCompleteClient({
 
         if (!response.ok || !("orderNumber" in result)) {
           throw new Error(result.error ?? "결제 검증에 실패했습니다.");
+        }
+
+        if (!isSuccessfulPaymentCompletion(result)) {
+          throw new Error(getPaymentCompletionError(result));
         }
 
         setState({
@@ -103,7 +107,7 @@ export function CheckoutCompleteClient({
     return () => {
       controller.abort();
     };
-  }, [errorCode, errorMessage, orderId, paymentId]);
+  }, [errorCode, orderId, paymentId]);
 
   if (state.status === "success") {
     const result = state.result;
@@ -112,7 +116,13 @@ export function CheckoutCompleteClient({
       result.paymentStatus === "pending";
 
     return (
-      <div className={isVirtualAccount ? "checkout-result checkout-bank-result" : "checkout-result"}>
+      <div
+        className={
+          isVirtualAccount
+            ? "checkout-result checkout-bank-result"
+            : "checkout-result"
+        }
+      >
         <span>{isVirtualAccount ? "입금대기" : "주문 완료"}</span>
         <strong>{result.orderNumber}</strong>
         {isVirtualAccount ? (
@@ -180,7 +190,6 @@ export function CheckoutCompleteClient({
 function getInitialCompletionState({
   errorCode,
   errorMessage,
-  orderId,
   paymentId,
 }: CheckoutCompleteClientProps): CompletionState {
   if (errorCode) {
@@ -191,7 +200,7 @@ function getInitialCompletionState({
     };
   }
 
-  if (!orderId || !paymentId) {
+  if (!paymentId) {
     return {
       error: "결제 완료 정보를 찾지 못했습니다.",
       result: null,
@@ -225,4 +234,32 @@ function formatDateTime(value: string | null | undefined) {
 
 function formatMoney(value: number) {
   return `${value.toLocaleString("ko-KR")}원`;
+}
+
+function isSuccessfulPaymentCompletion(result: PortOnePaymentCompleteResult) {
+  return (
+    result.paymentStatus === "paid" ||
+    (result.paymentStatus === "pending" &&
+      result.paymentMethod === "portone_virtual_account")
+  );
+}
+
+function getPaymentCompletionError(result: PortOnePaymentCompleteResult) {
+  if (result.paymentStatus === "pending") {
+    return "결제가 아직 완료되지 않았습니다. 주문 조회에서 상태를 확인해 주세요.";
+  }
+
+  if (result.paymentStatus === "failed") {
+    return "결제가 실패했습니다. 결제수단을 확인한 뒤 다시 시도해 주세요.";
+  }
+
+  if (result.paymentStatus === "canceled") {
+    return "결제가 취소되었습니다.";
+  }
+
+  if (result.paymentStatus === "expired") {
+    return "입금기한이 만료되었습니다.";
+  }
+
+  return "결제가 완료되지 않았습니다. 주문 조회에서 상태를 확인해 주세요.";
 }

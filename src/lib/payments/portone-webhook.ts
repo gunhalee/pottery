@@ -19,7 +19,7 @@ export async function verifyPortOneWebhookBody({
   const secret = process.env.PORTONE_WEBHOOK_SECRET?.trim();
 
   if (!secret) {
-    return JSON.parse(body) as unknown;
+    return parseUnsignedWebhookBody(body);
   }
 
   try {
@@ -34,5 +34,28 @@ export async function verifyPortOneWebhookBody({
     }
 
     throw error;
+  }
+}
+
+function parseUnsignedWebhookBody(body: string) {
+  try {
+    return JSON.parse(body) as unknown;
+  } catch {
+    if (!body.includes("=")) {
+      throw new PortOneWebhookVerificationError(
+        "PortOne 웹훅 본문을 해석하지 못했습니다.",
+      );
+    }
+
+    const params = new URLSearchParams(body);
+    const entries = Array.from(params.entries());
+
+    if (entries.length === 0) {
+      throw new PortOneWebhookVerificationError(
+        "PortOne 웹훅 본문을 해석하지 못했습니다.",
+      );
+    }
+
+    return Object.fromEntries(entries);
   }
 }

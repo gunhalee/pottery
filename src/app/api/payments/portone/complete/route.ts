@@ -8,7 +8,7 @@ import {
 } from "@/lib/security/rate-limit";
 
 const completePaymentSchema = z.object({
-  orderId: z.uuid(),
+  orderId: z.uuid().optional(),
   paymentId: z.string().trim().min(1).max(80),
 });
 
@@ -16,6 +16,8 @@ const completePaymentRateLimit = {
   limit: 20,
   windowMs: 10 * 60 * 1000,
 };
+
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   const rateLimit = await consumeRateLimit({

@@ -274,6 +274,10 @@ export function CheckoutForm({
         );
       }
 
+      if (!isSuccessfulPaymentCompletion(completed)) {
+        throw new Error(getPaymentCompletionError(completed));
+      }
+
       if (
         completed.paymentStatus === "pending" &&
         completed.paymentMethod === "portone_virtual_account"
@@ -845,4 +849,32 @@ function productOptionLabel(option: ProductOption) {
 
 function toErrorStatus(message: string | null) {
   return message ? { kind: "error" as const, message } : null;
+}
+
+function isSuccessfulPaymentCompletion(result: PortOnePaymentCompleteResult) {
+  return (
+    result.paymentStatus === "paid" ||
+    (result.paymentStatus === "pending" &&
+      result.paymentMethod === "portone_virtual_account")
+  );
+}
+
+function getPaymentCompletionError(result: PortOnePaymentCompleteResult) {
+  if (result.paymentStatus === "pending") {
+    return "결제가 아직 완료되지 않았습니다. 주문 조회에서 상태를 확인해 주세요.";
+  }
+
+  if (result.paymentStatus === "failed") {
+    return "결제가 실패했습니다. 결제수단을 확인한 뒤 다시 시도해 주세요.";
+  }
+
+  if (result.paymentStatus === "canceled") {
+    return "결제가 취소되었습니다.";
+  }
+
+  if (result.paymentStatus === "expired") {
+    return "입금기한이 만료되었습니다.";
+  }
+
+  return "결제가 완료되지 않았습니다. 주문 조회에서 상태를 확인해 주세요.";
 }
