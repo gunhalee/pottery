@@ -22,6 +22,7 @@ import {
   getProductBySlug,
   getProductCta,
   getProductGalleryImages,
+  getProductPurchaseLimitQuantity,
   getProductSlugs,
   getPublishedProductListItems,
   type ProductGalleryImage,
@@ -124,7 +125,9 @@ export default async function ShopDetailPage({
               enabled: isMadeToOrderPurchase,
             }}
             maxQuantity={
-              isMadeToOrderPurchase ? null : product.commerce.stockQuantity
+              isMadeToOrderPurchase
+                ? null
+                : getProductPurchaseLimitQuantity(product)
             }
             plantOption={product.plantOption}
             price={product.commerce.price}

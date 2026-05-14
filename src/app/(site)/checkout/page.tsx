@@ -8,7 +8,10 @@ import type {
   ShippingMethod,
 } from "@/lib/orders/order-model";
 import { calculateOrderAmounts } from "@/lib/orders/pricing";
-import { formatProductPrice, getProductBySlug } from "@/lib/shop";
+import {
+  getProductBySlug,
+  getProductPurchaseLimitQuantity,
+} from "@/lib/shop";
 
 type CheckoutPageProps = {
   searchParams: Promise<{
@@ -37,7 +40,7 @@ export default async function CheckoutPage({
     return (
       <PageShell className="checkout-page-shell">
         <PageIntro
-          subtitle="주문할 작업물을 다시 선택해 주세요."
+          subtitle="주문 상품을 다시 선택해 주세요."
           title="주문하기"
           variant="compact"
         />
@@ -63,7 +66,7 @@ export default async function CheckoutPage({
   const isMadeToOrder = madeToOrderRequested && canMakeToOrder;
   const maxQuantity = isMadeToOrder
     ? 99
-    : Math.max(1, product.commerce.stockQuantity ?? 99);
+    : Math.max(1, getProductPurchaseLimitQuantity(product));
   const quantity = Math.min(normalizeQuantity(params.quantity), maxQuantity);
   const unitPrice =
     product.commerce.price === null
@@ -89,7 +92,6 @@ export default async function CheckoutPage({
   return (
     <PageShell className="checkout-page-shell">
       <PageIntro
-        subtitle="주문자 정보와 조회 비밀번호를 입력해 자체 주문 기록을 생성합니다."
         title="주문하기"
         variant="compact"
       />
@@ -122,8 +124,7 @@ export default async function CheckoutPage({
         <SiteEmptyState className="checkout-empty">
           <strong>{product.titleKo}</strong>
           <p>
-            현재 주문 가능한 상태가 아닙니다. 표시 가격은{" "}
-            {formatProductPrice(product)}입니다.
+            주문 과정에서 오류가 일어났습니다. 최대한 빨리 고치겠습니다.
           </p>
           <SiteActionLink href={`/shop/${product.slug}`}>
             상품 상세로 돌아가기

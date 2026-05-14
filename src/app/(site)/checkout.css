@@ -102,6 +102,14 @@
   line-height: 1.55;
 }
 
+.checkout-form .checkout-check-section {
+  gap: 8px 16px;
+}
+
+.checkout-form .checkout-check-section legend {
+  margin-bottom: 0;
+}
+
 .checkout-form label {
   display: grid;
   gap: 7px;
@@ -131,7 +139,7 @@
 .checkout-choice-row label,
 .checkout-form .checkout-checkbox {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 32px;
   align-items: center;
   gap: 8px;
   justify-content: flex-start;
@@ -143,6 +151,7 @@
   height: 16px;
   min-height: 16px;
   flex: 0 0 auto;
+  margin: 0;
 }
 
 .checkout-form textarea {

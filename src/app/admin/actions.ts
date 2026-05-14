@@ -97,6 +97,7 @@ const productUpdateSchema = z.object({
   plantShippingRestrictionNotice: z.string().optional(),
   plantSpecies: z.string().optional(),
   price: z.number().int().nonnegative().nullable(),
+  purchaseLimitQuantity: z.number().int().nonnegative().nullable(),
   published: z.boolean(),
   restockCtaType: z
     .enum(["restock_alert", "similar_work_alert", "next_limited_alert"])
@@ -528,6 +529,9 @@ function parseProductUpdateFormData(formData: FormData) {
     ),
     plantSpecies: stringValue(formData.get("plantSpecies")),
     price: nullableIntegerValue(formData.get("price")),
+    purchaseLimitQuantity: nullableIntegerValue(
+      formData.get("purchaseLimitQuantity"),
+    ),
     published: formData.get("published") === "on",
     restockCtaType: nullableSelectValue(formData.get("restockCtaType")),
     shippingNote: stringValue(formData.get("shippingNote")),

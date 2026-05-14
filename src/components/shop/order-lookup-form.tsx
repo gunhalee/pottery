@@ -110,6 +110,9 @@ export function OrderLookupForm() {
           <span>주문 비밀번호</span>
           <input
             autoComplete="off"
+            data-1p-ignore="true"
+            data-bwignore="true"
+            data-lpignore="true"
             inputMode="numeric"
             maxLength={4}
             name="password"

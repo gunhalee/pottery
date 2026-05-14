@@ -451,6 +451,10 @@ export function CheckoutForm({
           <label>
             <span>조회 비밀번호</span>
             <input
+              autoComplete="off"
+              data-1p-ignore="true"
+              data-bwignore="true"
+              data-lpignore="true"
               inputMode="numeric"
               maxLength={4}
               minLength={4}
@@ -458,6 +462,7 @@ export function CheckoutForm({
               pattern="[0-9]{4}"
               placeholder="숫자 4자리"
               required
+              type="password"
             />
           </label>
         </fieldset>
@@ -750,7 +755,7 @@ export function CheckoutForm({
           </fieldset>
         ) : null}
 
-        <fieldset>
+        <fieldset className="checkout-check-section">
           <legend>필수 확인</legend>
           <CommerceFormCheckbox>
             <input name="termsAgreed" required type="checkbox" />
@@ -772,7 +777,7 @@ export function CheckoutForm({
           </CommerceFormCheckbox>
         </fieldset>
 
-        <fieldset>
+        <fieldset className="checkout-check-section">
           <legend>알림 옵션</legend>
           <CommerceFormCheckbox>
             <input defaultChecked name="notifyByKakao" type="checkbox" />

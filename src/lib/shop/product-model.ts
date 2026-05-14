@@ -71,6 +71,7 @@ export type ProductCommerceSnapshot = {
   availabilityStatus: AvailabilityStatus;
   currency: "KRW";
   price: number | null;
+  purchaseLimitQuantity: number | null;
   source: "internal";
   stockQuantity: number | null;
   syncedAt?: string;
@@ -149,3 +150,27 @@ export type ProductCta = {
   kind: ProductCtaKind;
   label: string;
 };
+
+export function getProductPurchaseLimitQuantity(
+  product: {
+    commerce: Pick<
+      ProductCommerceSnapshot,
+      "purchaseLimitQuantity" | "stockQuantity"
+    >;
+  },
+  options: { madeToOrder?: boolean } = {},
+) {
+  if (options.madeToOrder) {
+    return 99;
+  }
+
+  const stockQuantity = product.commerce.stockQuantity;
+  const configuredLimit = product.commerce.purchaseLimitQuantity;
+  const fallbackLimit = configuredLimit ?? stockQuantity ?? 99;
+  const effectiveLimit =
+    stockQuantity === null
+      ? fallbackLimit
+      : Math.min(fallbackLimit, stockQuantity);
+
+  return Math.max(0, effectiveLimit);
+}

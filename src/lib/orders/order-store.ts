@@ -10,7 +10,7 @@ import {
   getSupabaseAdminClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
-import { getProductBySlug } from "@/lib/shop";
+import { getProductBySlug, getProductPurchaseLimitQuantity } from "@/lib/shop";
 import {
   encryptSensitiveText,
   maskAccountNumber,
@@ -203,9 +203,9 @@ export async function createOrderDraft(
   }
 
   const quantity = Math.max(1, Math.floor(input.quantity));
-  const stockQuantity = product.commerce.stockQuantity;
+  const maxPurchaseQuantity = getProductPurchaseLimitQuantity(product);
 
-  if (!isMadeToOrder && stockQuantity !== null && quantity > stockQuantity) {
+  if (!isMadeToOrder && quantity > maxPurchaseQuantity) {
     throw new OrderDraftError("주문 가능한 수량을 초과했습니다.");
   }
 

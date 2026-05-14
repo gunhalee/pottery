@@ -13,7 +13,10 @@ import {
   updateCartItemQuantityForSession,
 } from "@/lib/shop/cart-store";
 import { emptyCartSnapshot } from "@/lib/shop/cart-model";
-import { getProductBySlug } from "@/lib/shop";
+import {
+  getProductBySlug,
+  getProductPurchaseLimitQuantity,
+} from "@/lib/shop";
 import {
   consumeRateLimit,
   getClientIp,
@@ -33,13 +36,13 @@ const cartItemPayloadSchema = z.object({
   madeToOrder: z.boolean().optional(),
   productOption: z.enum(["plant_excluded", "plant_included"]),
   productSlug: z.string().trim().min(1).max(120).regex(slugPattern),
-  quantity: z.number().int().min(1).max(99),
+  quantity: z.number().int().min(1).max(9999),
   shippingMethod: z.enum(["parcel", "pickup"]),
 });
 
 const cartQuantityPayloadSchema = z.object({
   key: z.string().trim().min(1).max(240),
-  quantity: z.number().int().min(1).max(99),
+  quantity: z.number().int().min(1).max(9999),
 });
 
 const cartDeletePayloadSchema = z.object({
@@ -96,7 +99,7 @@ export async function POST(request: NextRequest) {
   );
   const maxQuantity = madeToOrder
     ? 99
-    : Math.max(1, product.commerce.stockQuantity ?? 99);
+    : Math.max(1, getProductPurchaseLimitQuantity(product));
 
   try {
     const { session } = await getOrCreateAnonymousSession(request);
@@ -161,8 +164,10 @@ export async function PATCH(request: NextRequest) {
   }
 
   try {
+    const maxQuantity = await getCartItemMaxQuantity(parsed.data.key);
     const snapshot = await updateCartItemQuantityForSession({
       key: parsed.data.key,
+      maxQuantity,
       quantity: parsed.data.quantity,
       sessionId: session.id,
     });
@@ -271,6 +276,27 @@ function rateLimitHeadersForMutation(request: NextRequest) {
   return {
     "X-RateLimit-Scope": getClientIp(request.headers),
   };
+}
+
+async function getCartItemMaxQuantity(key: string) {
+  const [productSlug, , , orderKind] = key.split("|");
+
+  if (!productSlug) {
+    return 99;
+  }
+
+  const product = await getProductBySlug(productSlug);
+
+  if (!product) {
+    return 99;
+  }
+
+  return Math.max(
+    1,
+    getProductPurchaseLimitQuantity(product, {
+      madeToOrder: orderKind === "made_to_order",
+    }),
+  );
 }
 
 async function readJsonBody(

@@ -230,6 +230,16 @@ export default async function AdminProductEditPage({
                   defaultValue={product.commerce.stockQuantity ?? ""}
                 />
               </label>
+              <label>
+                <span>구매 가능 수량</span>
+                <input
+                  min="0"
+                  name="purchaseLimitQuantity"
+                  placeholder="미입력 시 재고와 동일"
+                  type="number"
+                  defaultValue={product.commerce.purchaseLimitQuantity ?? ""}
+                />
+              </label>
             </div>
 
             <div className="admin-check-row">
@@ -442,6 +452,14 @@ export default async function AdminProductEditPage({
                 <dd>{product.commerce.stockQuantity ?? "미입력"}</dd>
               </div>
               <div>
+                <dt>구매 가능 수량</dt>
+                <dd>
+                  {product.commerce.purchaseLimitQuantity ??
+                    product.commerce.stockQuantity ??
+                    "미입력"}
+                </dd>
+              </div>
+              <div>
                 <dt>식물 옵션</dt>
                 <dd>
                   {product.plantOption.enabled
@@ -508,6 +526,14 @@ function getAdminWarnings(product: ConsepotProduct) {
     product.commerce.stockQuantity === 0
   ) {
     warnings.push("판매중 상품의 재고가 0개입니다.");
+  }
+
+  if (
+    product.commerce.purchaseLimitQuantity !== null &&
+    product.commerce.stockQuantity !== null &&
+    product.commerce.purchaseLimitQuantity > product.commerce.stockQuantity
+  ) {
+    warnings.push("구매 가능 수량이 재고보다 커 재고 수량까지만 주문됩니다.");
   }
 
   return warnings;

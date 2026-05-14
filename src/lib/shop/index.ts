@@ -204,3 +204,4 @@ export type {
   ProductListItem,
   RestockCtaType,
 } from "./product-model";
+export { getProductPurchaseLimitQuantity } from "./product-model";

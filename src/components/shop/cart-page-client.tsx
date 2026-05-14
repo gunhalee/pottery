@@ -35,7 +35,11 @@ import {
   type CartSnapshot,
 } from "@/lib/shop/cart-storage";
 import { getProductCartImage } from "@/lib/shop/product-images";
-import type { ProductImage, ProductListItem } from "@/lib/shop/product-model";
+import {
+  getProductPurchaseLimitQuantity,
+  type ProductImage,
+  type ProductListItem,
+} from "@/lib/shop/product-model";
 
 type CartPageClientProps = {
   initialSnapshot: CartSnapshot;
@@ -150,7 +154,7 @@ export function CartPageClient({
         className="shop-subpage-empty"
         title="장바구니를 확인하고 있습니다."
       >
-        <p>브라우저에 저장된 상품을 불러오는 중입니다.</p>
+        <p>장바구니를 불러오고 있습니다.</p>
       </SiteEmptyState>
     );
   }
@@ -314,7 +318,9 @@ function createCartRow({
       : "plant_excluded";
   const availableQuantity = item.madeToOrder
     ? 99
-    : (product?.commerce.stockQuantity ?? 99);
+    : product
+      ? getProductPurchaseLimitQuantity(product)
+      : 99;
   const maxQuantity = Math.max(1, availableQuantity);
   const quantity = Math.min(item.quantity, maxQuantity);
   const containsLivePlant =

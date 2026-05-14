@@ -91,6 +91,7 @@ const commerceSchema = z.object({
   availabilityStatus: z.enum(["available", "sold_out", "upcoming", "archive"]),
   currency: z.literal("KRW"),
   price: z.number().int().nonnegative().nullable(),
+  purchaseLimitQuantity: z.number().int().nonnegative().nullable(),
   source: z.literal("internal"),
   stockQuantity: z.number().int().nonnegative().nullable(),
   syncedAt: z.string().optional(),
@@ -214,6 +215,7 @@ export type ProductUpdateInput = {
   plantShippingRestrictionNotice?: string;
   plantSpecies?: string;
   price: number | null;
+  purchaseLimitQuantity: number | null;
   published: boolean;
   restockCtaType: RestockCtaType;
   shippingNote?: string;
@@ -484,6 +486,7 @@ const productListSelectBase = `
 
 const productListSelectWithCommerceExtensions = `
   ${productListSelectBase},
+  purchase_limit_quantity,
   plant_option_enabled,
   plant_option_price_delta_krw,
   plant_species,
@@ -563,6 +566,7 @@ async function createProductDraftInSupabase(input: ProductDraftInput) {
       availabilityStatus: "upcoming",
       currency: "KRW",
       price: null,
+      purchaseLimitQuantity: null,
       source: "internal",
       stockQuantity: null,
     },
@@ -610,6 +614,7 @@ async function updateProductInSupabase(id: string, input: ProductUpdateInput) {
       ...current.commerce,
       availabilityStatus: input.availabilityStatus,
       price: input.price,
+      purchaseLimitQuantity: input.purchaseLimitQuantity,
       stockQuantity: input.stockQuantity,
     },
     glaze: emptyToUndefined(input.glaze),
@@ -740,6 +745,7 @@ function fromSupabaseRow(
       availabilityStatus: row.availability_status,
       currency: row.currency,
       price: row.price_krw,
+      purchaseLimitQuantity: row.purchase_limit_quantity ?? null,
       source: "internal",
       stockQuantity: row.stock_quantity,
     },
@@ -793,6 +799,7 @@ function fromSupabaseProductListRow(
       availabilityStatus: row.availability_status,
       currency: row.currency,
       price: row.price_krw,
+      purchaseLimitQuantity: row.purchase_limit_quantity ?? null,
       source: "internal",
       stockQuantity: row.stock_quantity,
     },
@@ -853,6 +860,7 @@ function toSupabaseProductRow(product: ConsepotProduct) {
       product.plantOption.shippingRestrictionNotice ?? null,
     plant_species: product.plantOption.species ?? null,
     price_krw: product.commerce.price,
+    purchase_limit_quantity: product.commerce.purchaseLimitQuantity,
     published: product.published,
     published_at: product.publishedAt ?? null,
     restock_cta_type: product.restockCtaType,
@@ -952,6 +960,7 @@ function isMissingOptionalProductCommerceColumn(error: { message?: string }) {
 
   return (
     message.includes("plant_option_") ||
+    message.includes("purchase_limit_quantity") ||
     message.includes("made_to_order_") ||
     message.includes("schema cache")
   );

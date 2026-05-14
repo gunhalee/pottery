@@ -77,7 +77,8 @@ export function ProductPurchasePanel({
   productSlug,
 }: ProductPurchasePanelProps) {
   const router = useRouter();
-  const effectiveMaxQuantity = Math.max(1, maxQuantity ?? 99);
+  const purchaseLimitQuantity = maxQuantity ?? 99;
+  const effectiveMaxQuantity = Math.max(1, purchaseLimitQuantity);
   const [quantity, setQuantity] = useState(1);
   const [productOption, setProductOption] =
     useState<ProductOption>("plant_excluded");
@@ -445,7 +446,10 @@ export function ProductPurchasePanel({
 
       <div className="product-quantity-box">
         <div className="product-quantity-head">
-          <span>수량</span>
+          <div className="product-quantity-copy">
+            <span>수량</span>
+            <strong>구매 가능 수량 {formatNumber(purchaseLimitQuantity)}개</strong>
+          </div>
           <ProductQuantityStepper
             decreaseLabel="수량 줄이기"
             increaseLabel="수량 늘리기"

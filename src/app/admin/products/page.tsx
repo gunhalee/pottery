@@ -104,6 +104,12 @@ function ProductRow({ product }: { product: ConsepotProduct }) {
       <div>{statusLabel(product.commerce.availabilityStatus)}</div>
       <div>{formatProductPrice(product)}</div>
       <div>{product.commerce.stockQuantity ?? "재고 미입력"}</div>
+      <div>
+        구매 가능{" "}
+        {product.commerce.purchaseLimitQuantity ??
+          product.commerce.stockQuantity ??
+          "미입력"}
+      </div>
       <AdminActionLink href={`/admin/products/${product.id}`}>
         편집
       </AdminActionLink>

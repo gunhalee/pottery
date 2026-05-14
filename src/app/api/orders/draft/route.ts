@@ -37,7 +37,7 @@ const orderDraftSchema = z.object({
   privacyAgreed: z.boolean().optional(),
   productOption: z.enum(["plant_excluded", "plant_included"]).optional(),
   productSlug: z.string().trim().min(1).max(120),
-  quantity: z.number().int().min(1).max(99),
+  quantity: z.number().int().min(1).max(9999),
   recipientName: z.string().trim().max(40).optional(),
   recipientPhone: z.string().trim().max(30).optional(),
   shippingAddress1: z.string().trim().max(160).optional(),
