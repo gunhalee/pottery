@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { HomeSubscribeLinksSection } from "@/components/home/home-subscribe-links-section";
-import { PageIntro, PageShell } from "@/components/site/primitives";
+import { PageShell } from "@/components/site/primitives";
 import { siteConfig } from "@/lib/config/site";
 import { getContentListThumbnailImage } from "@/lib/content-manager/content-images";
 import type { ContentEntryListItem } from "@/lib/content-manager/content-model";
@@ -28,13 +28,12 @@ export const metadata: Metadata = {
     canonical: "/news",
   },
   description:
-    "콩새와 도자기공방의 클래스 일정, 작업물 입고, 애견동반 방문 안내와 공방 소식을 전합니다.",
+    "콩새와 도자기공방의 클래스 일정, 작업물 입고, 방문 안내와 공방 소식을 전합니다.",
   openGraph: {
-    description:
-      "경기 광주 능평동 도자기 공방의 클래스 일정, 작업물 소식, 방문 안내.",
+    description: "도자기 공방의 클래스 일정, 작업물 소식, 방문 안내.",
     title: `공방 소식 | ${siteConfig.name}`,
   },
-  title: "공방 소식과 클래스 일정",
+  title: "경기도 광주 공방 소식과 클래스 일정",
 };
 
 export default async function NewsPage() {
@@ -48,11 +47,7 @@ export default async function NewsPage() {
   return (
     <>
       <PageShell className="listing-page-shell listing-page-shell-with-subscribe">
-        <PageIntro
-          subtitle="경기 광주 능평동 공방의 클래스 일정, 작업물 입고, 애견동반 방문 안내와 계절의 기록을 전합니다."
-          title="소식"
-          variant="compact"
-        />
+        <h1 className="sr-only">소식</h1>
         <div className="news-layout">
           <div>
             {feedItems.length > 0 ? (

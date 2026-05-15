@@ -29,7 +29,7 @@ export const metadata: Metadata = {
       "경기 광주 능평동의 애견동반 가능 도자기 공방 소개와 오시는 길.",
     title: `공방 소개 | ${siteConfig.name}`,
   },
-  title: "경기 광주 능평동 도자기 공방 소개",
+  title: "경기도 광주 능평동 도자기 공방 소개",
 };
 
 export default function IntroPage() {

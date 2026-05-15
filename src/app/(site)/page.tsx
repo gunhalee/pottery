@@ -26,7 +26,9 @@ export const metadata: Metadata = {
     title: "콩새와 도자기공방",
     type: "website",
   },
-  title: "경기 광주 능평동 도자기 클래스와 수공예 도자",
+  title: {
+    absolute: "콩새와 도자기공방 | 경기도 광주 능평동 도자기 클래스와 수공예 도자",
+  },
 };
 
 export default async function HomePage() {

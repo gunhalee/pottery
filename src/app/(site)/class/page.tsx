@@ -19,13 +19,12 @@ export const metadata: Metadata = {
     canonical: "/class",
   },
   description:
-    "경기 광주 능평동에서 참여할 수 있는 도자기 클래스입니다. 원데이, 커플, 정규반 수업과 애견동반 가능 공방 경험을 안내합니다.",
+    "결과물보다 손의 속도와 형태가 자라는 시간을 중요하게 여기는 도자기 클래스입니다. 원데이, 커플, 정규반 수업을 안내합니다.",
   openGraph: {
-    description:
-      "경기 광주 능평동 도자기 원데이 클래스와 정규반, 애견동반 가능 공방 경험.",
+    description: "도자기 원데이 클래스와 정규반 수업 안내.",
     title: `도자기 클래스 | ${siteConfig.name}`,
   },
-  title: "경기 광주 능평동 도자기 클래스",
+  title: "경기도 광주 능평동 도자기 클래스",
 };
 
 export default async function ClassPage() {
@@ -48,7 +47,7 @@ export default async function ClassPage() {
               예약하기
             </a>
           }
-          subtitle="경기 광주 능평동에서 흙을 만지는 시간입니다. 결과물보다 손의 속도와 형태가 자라는 과정을 중요하게 여기며, 반려견 동반 방문은 예약 전 문의로 함께 조율합니다."
+          subtitle="결과물보다 손의 속도와 형태가 자라는 시간을 중요하게 여깁니다."
           title="클래스"
           variant="compact"
         />

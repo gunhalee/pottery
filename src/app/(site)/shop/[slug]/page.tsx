@@ -33,7 +33,7 @@ import {
   createBreadcrumbJsonLd,
   createProductJsonLd,
 } from "@/lib/seo/json-ld";
-import { createPageMetadata, normalizeDescription } from "@/lib/seo/site";
+import { createPageMetadata } from "@/lib/seo/site";
 
 type ShopDetailPageProps = {
   params: Promise<{
@@ -58,9 +58,7 @@ export async function generateMetadata({
 
   const primaryImage = getProductPrimaryImage(product);
   const metadata = createPageMetadata({
-    description: normalizeDescription(
-      `${product.shortDescription} 경기 광주 능평동 공방에서 만든 수공예 도자 작업물입니다.`,
-    ),
+    description: product.shortDescription,
     image: primaryImage?.src
       ? {
           alt: primaryImage.alt,

@@ -48,7 +48,7 @@ export const metadata: Metadata = {
   publisher: siteConfig.businessName,
   title: {
     default: siteConfig.name,
-    template: `%s | ${siteConfig.name}`,
+    template: `${siteConfig.name} | %s`,
   },
   twitter: {
     card: "summary_large_image",
