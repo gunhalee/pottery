@@ -351,7 +351,7 @@
 @media (max-width: 640px) {
   .shop-floating-actions {
     right: 18px;
-    bottom: 70px;
+    bottom: calc(env(safe-area-inset-bottom) + 120px);
   }
 
   .product-card-wish-button {
