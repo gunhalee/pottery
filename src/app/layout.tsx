@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Gothic_A1, Gowun_Batang } from "next/font/google";
 import { siteConfig } from "@/lib/config/site";
+import { getSiteUrl } from "@/lib/seo/site";
 import "./globals.css";
 
 const gothicA1 = Gothic_A1({
@@ -28,12 +29,32 @@ const gowunBatang = Gowun_Batang({
 });
 
 export const metadata: Metadata = {
-  metadataBase: getSiteMetadataBase(),
+  applicationName: siteConfig.name,
+  creator: siteConfig.name,
+  description: siteConfig.description,
+  formatDetection: {
+    address: false,
+    email: false,
+    telephone: false,
+  },
+  metadataBase: getSiteUrl(),
+  openGraph: {
+    description: siteConfig.description,
+    locale: "ko_KR",
+    siteName: siteConfig.name,
+    title: siteConfig.name,
+    type: "website",
+  },
+  publisher: siteConfig.businessName,
   title: {
     default: siteConfig.name,
     template: `%s | ${siteConfig.name}`,
   },
-  description: siteConfig.description,
+  twitter: {
+    card: "summary_large_image",
+    description: siteConfig.description,
+    title: siteConfig.name,
+  },
 };
 
 export default function RootLayout({
@@ -52,18 +73,4 @@ export default function RootLayout({
       </body>
     </html>
   );
-}
-
-function getSiteMetadataBase() {
-  const rawUrl = process.env.NEXT_PUBLIC_SITE_URL;
-
-  if (!rawUrl) {
-    return new URL("http://localhost:3000");
-  }
-
-  try {
-    return new URL(rawUrl);
-  } catch {
-    return new URL("http://localhost:3000");
-  }
 }

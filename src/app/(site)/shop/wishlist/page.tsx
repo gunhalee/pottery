@@ -5,12 +5,14 @@ import { ProductGrid } from "@/components/shop/product-grid";
 import { WishlistRefreshOnChange } from "@/components/shop/wishlist-refresh-on-change";
 import { SiteEmptyState } from "@/components/site/actions";
 import { PageIntro, PageShell } from "@/components/site/primitives";
+import { noIndexRobots } from "@/lib/seo/site";
 import { getAnonymousSessionFromCookieStore } from "@/lib/shop/anonymous-session";
 import { getWishlistProductIdsForSession } from "@/lib/shop/wishlist-store";
 import { getPublishedProductListItems } from "@/lib/shop";
 
 export const metadata: Metadata = {
   description: "찜한 도자 상품을 한곳에서 확인합니다.",
+  robots: noIndexRobots,
   title: "찜 목록",
 };
 

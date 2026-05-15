@@ -3,8 +3,11 @@ import { PageShell } from "@/components/site/primitives";
 import { siteConfig } from "@/lib/config/site";
 
 export const metadata: Metadata = {
-  title: "배송·교환·환불정책",
+  alternates: {
+    canonical: "/shipping-returns",
+  },
   description: `${siteConfig.name}의 배송, 교환, 반품, 환불 기준을 안내합니다.`,
+  title: "배송·교환·환불정책",
 };
 
 const policySections = [

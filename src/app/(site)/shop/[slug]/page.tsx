@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ShopBackButton } from "@/components/navigation/shop-back-button";
+import { JsonLd } from "@/components/seo/json-ld";
 import { PageShell } from "@/components/site/primitives";
 import { RichTextRenderer } from "@/components/content/rich-text-renderer";
 import { ProductBadge } from "@/components/shop/product-badge";
@@ -23,10 +24,16 @@ import {
   getProductCta,
   getProductGalleryImages,
   getProductPurchaseLimitQuantity,
+  getProductPrimaryImage,
   getProductSlugs,
   getPublishedProductListItems,
   type ProductGalleryImage,
 } from "@/lib/shop";
+import {
+  createBreadcrumbJsonLd,
+  createProductJsonLd,
+} from "@/lib/seo/json-ld";
+import { createPageMetadata, normalizeDescription } from "@/lib/seo/site";
 
 type ShopDetailPageProps = {
   params: Promise<{
@@ -49,9 +56,36 @@ export async function generateMetadata({
     return {};
   }
 
-  return {
-    description: product.shortDescription,
+  const primaryImage = getProductPrimaryImage(product);
+  const metadata = createPageMetadata({
+    description: normalizeDescription(
+      `${product.shortDescription} 경기 광주 능평동 공방에서 만든 수공예 도자 작업물입니다.`,
+    ),
+    image: primaryImage?.src
+      ? {
+          alt: primaryImage.alt,
+          height: primaryImage.height,
+          src: primaryImage.src,
+          width: primaryImage.width,
+        }
+      : null,
+    path: `/shop/${product.slug}`,
     title: product.titleKo,
+  });
+  const other: NonNullable<Metadata["other"]> = {
+    "product:availability": getProductOpenGraphAvailability(
+      product.commerce.availabilityStatus,
+    ),
+  };
+
+  if (product.commerce.price !== null) {
+    other["product:price:amount"] = String(product.commerce.price);
+    other["product:price:currency"] = product.commerce.currency;
+  }
+
+  return {
+    ...metadata,
+    other,
   };
 }
 
@@ -82,145 +116,156 @@ export default async function ShopDetailPage({
   const relatedProducts = productListItems
     .filter((item) => item.slug !== product.slug)
     .slice(0, 3);
+  const productJsonLd = [
+    createProductJsonLd(product),
+    createBreadcrumbJsonLd([
+      { name: "홈", path: "/" },
+      { name: "소장하기", path: "/shop" },
+      { name: product.titleKo, path: `/shop/${product.slug}` },
+    ]),
+  ];
 
   return (
-    <PageShell className="product-detail-shell">
-      <nav className="product-detail-backbar" aria-label="상품 상세 탐색">
-        <ShopBackButton fallbackHref="/shop" />
-      </nav>
+    <>
+      <JsonLd data={productJsonLd} id={`product-${product.id}-json-ld`} />
+      <PageShell className="product-detail-shell">
+        <nav className="product-detail-backbar" aria-label="상품 상세 탐색">
+          <ShopBackButton fallbackHref="/shop" />
+        </nav>
 
-      <div className="product-detail-layout">
-        <div className="product-detail-media">
-          <ProductImageGallery
-            images={galleryImages}
-            productTitle={product.titleKo}
-          />
-        </div>
-
-        <article className="product-detail-info">
-          <div className="product-detail-heading">
-            <div className="product-detail-heading-copy">
-              <h1 className="product-detail-title">{product.titleKo}</h1>
-              <p className="product-detail-lead">{product.shortDescription}</p>
-            </div>
-            <ProductTitleActions
-              productSlug={product.slug}
+        <div className="product-detail-layout">
+          <div className="product-detail-media">
+            <ProductImageGallery
+              images={galleryImages}
               productTitle={product.titleKo}
             />
           </div>
-          <div className="product-detail-price-row">
-            <div className="product-badge-row">
-              {getProductBadges(product).map((badge) => (
-                <ProductBadge key={badge} kind={badge} />
+
+          <article className="product-detail-info">
+            <div className="product-detail-heading">
+              <div className="product-detail-heading-copy">
+                <h1 className="product-detail-title">{product.titleKo}</h1>
+                <p className="product-detail-lead">{product.shortDescription}</p>
+              </div>
+              <ProductTitleActions
+                productSlug={product.slug}
+                productTitle={product.titleKo}
+              />
+            </div>
+            <div className="product-detail-price-row">
+              <div className="product-badge-row">
+                {getProductBadges(product).map((badge) => (
+                  <ProductBadge key={badge} kind={badge} />
+                ))}
+              </div>
+              <p className="product-detail-price">{formatProductPrice(product)}</p>
+            </div>
+            <ProductPurchasePanel
+              availabilityLabel={cta.label}
+              currency={product.commerce.currency}
+              isPurchasable={cta.kind === "buy" || isMadeToOrderPurchase}
+              madeToOrder={{
+                ...product.madeToOrder,
+                enabled: isMadeToOrderPurchase,
+              }}
+              maxQuantity={
+                isMadeToOrderPurchase
+                  ? null
+                  : getProductPurchaseLimitQuantity(product)
+              }
+              plantOption={product.plantOption}
+              price={product.commerce.price}
+              productSlug={product.slug}
+            />
+          </article>
+        </div>
+
+        <section
+          className="product-detail-section product-detail-story-section"
+          id="product-detail-description"
+        >
+          <div className="product-section-header product-detail-story-head">
+            <h2>작업 이야기</h2>
+          </div>
+          <div className="product-detail-story-body">
+            {product.storyBody ? (
+              <RichTextRenderer body={product.storyBody} />
+            ) : (
+              <p className="body-copy">
+                {product.story ?? product.shortDescription}
+              </p>
+            )}
+          </div>
+        </section>
+
+        {relatedGalleryEntries.length > 0 ? (
+          <section className="product-linked-content">
+            <div>
+              <p className="small-caps">작업물 기록</p>
+              <h2>이어지는 작업 기록</h2>
+            </div>
+            <div className="product-linked-content-list">
+              {relatedGalleryEntries.map((entry) => (
+                <Link
+                  className="product-linked-content-card"
+                  href={`/gallery/${entry.slug}`}
+                  key={entry.id}
+                  prefetch={false}
+                >
+                  <span>{entry.displayDate ?? entry.publishedAt ?? "작업물"}</span>
+                  <strong>{entry.title}</strong>
+                  {entry.summary ? <p>{entry.summary}</p> : null}
+                </Link>
               ))}
             </div>
-            <p className="product-detail-price">{formatProductPrice(product)}</p>
-          </div>
-          <ProductPurchasePanel
-            availabilityLabel={cta.label}
-            currency={product.commerce.currency}
-            isPurchasable={cta.kind === "buy" || isMadeToOrderPurchase}
-            madeToOrder={{
-              ...product.madeToOrder,
-              enabled: isMadeToOrderPurchase,
-            }}
-            maxQuantity={
-              isMadeToOrderPurchase
-                ? null
-                : getProductPurchaseLimitQuantity(product)
-            }
-            plantOption={product.plantOption}
-            price={product.commerce.price}
-            productSlug={product.slug}
-          />
-        </article>
-      </div>
+          </section>
+        ) : null}
 
-      <section
-        className="product-detail-section product-detail-story-section"
-        id="product-detail-description"
-      >
-        <div className="product-section-header product-detail-story-head">
-          <h2>작업 이야기</h2>
-        </div>
-        <div className="product-detail-story-body">
-          {product.storyBody ? (
-            <RichTextRenderer body={product.storyBody} />
-          ) : (
-            <p className="body-copy">
-              {product.story ?? product.shortDescription}
-            </p>
-          )}
-        </div>
-      </section>
+        <ProductSpecList
+          items={[
+            { label: "크기", value: product.size },
+            { label: "소재", value: product.material },
+            { label: "유약", value: product.glaze },
+            { label: "안내", value: buildProductNotice(product.usageNote) },
+            { label: "배송", value: product.shippingNote },
+            {
+              label: "식물 옵션",
+              value: product.plantOption.enabled
+                ? [
+                    product.plantOption.species,
+                    product.plantOption.careNotice,
+                    product.plantOption.shippingRestrictionNotice,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")
+                : undefined,
+            },
+            {
+              label: "추가 제작",
+              value: product.madeToOrder.available
+                ? `결제 또는 입금 확인일 기준 약 ${product.madeToOrder.daysMin}~${product.madeToOrder.daysMax}일`
+                : undefined,
+            },
+          ]}
+        />
 
-      {relatedGalleryEntries.length > 0 ? (
-        <section className="product-linked-content">
-          <div>
-            <p className="small-caps">작업물 기록</p>
-            <h2>이어지는 작업 기록</h2>
-          </div>
-          <div className="product-linked-content-list">
-            {relatedGalleryEntries.map((entry) => (
-              <Link
-                className="product-linked-content-card"
-                href={`/gallery/${entry.slug}`}
-                key={entry.id}
-                prefetch={false}
-              >
-                <span>{entry.displayDate ?? entry.publishedAt ?? "작업물"}</span>
-                <strong>{entry.title}</strong>
-                {entry.summary ? <p>{entry.summary}</p> : null}
-              </Link>
-            ))}
-          </div>
-        </section>
-      ) : null}
+        <DeferredProductFeedbackPanel
+          productId={product.id}
+          productSlug={product.slug}
+        />
 
-      <ProductSpecList
-        items={[
-          { label: "크기", value: product.size },
-          { label: "소재", value: product.material },
-          { label: "유약", value: product.glaze },
-          { label: "안내", value: buildProductNotice(product.usageNote) },
-          { label: "배송", value: product.shippingNote },
-          {
-            label: "식물 옵션",
-            value: product.plantOption.enabled
-              ? [
-                  product.plantOption.species,
-                  product.plantOption.careNotice,
-                  product.plantOption.shippingRestrictionNotice,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")
-              : undefined,
-          },
-          {
-            label: "추가 제작",
-            value: product.madeToOrder.available
-              ? `결제 또는 입금 확인일 기준 약 ${product.madeToOrder.daysMin}~${product.madeToOrder.daysMax}일`
-              : undefined,
-          },
-        ]}
-      />
-
-      <DeferredProductFeedbackPanel
-        productId={product.id}
-        productSlug={product.slug}
-      />
-
-      {relatedProducts.length > 0 ? (
-        <section className="product-related-section" aria-label="연관 상품">
-          <h2>함께 보기</h2>
-          <div className="product-related-grid">
-            {relatedProducts.map((relatedProduct) => (
-              <ProductCard key={relatedProduct.id} product={relatedProduct} />
-            ))}
-          </div>
-        </section>
-      ) : null}
-    </PageShell>
+        {relatedProducts.length > 0 ? (
+          <section className="product-related-section" aria-label="연관 상품">
+            <h2>함께 보기</h2>
+            <div className="product-related-grid">
+              {relatedProducts.map((relatedProduct) => (
+                <ProductCard key={relatedProduct.id} product={relatedProduct} />
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </PageShell>
+    </>
   );
 }
 
@@ -241,4 +286,22 @@ function getPlaceholderGalleryImages(title: string): ProductGalleryImage[] {
       width: artworkPlaceholderImage.width,
     },
   ];
+}
+
+function getProductOpenGraphAvailability(
+  status: "archive" | "available" | "sold_out" | "upcoming",
+) {
+  if (status === "available") {
+    return "instock";
+  }
+
+  if (status === "sold_out") {
+    return "oos";
+  }
+
+  if (status === "upcoming") {
+    return "pending";
+  }
+
+  return "discontinued";
 }

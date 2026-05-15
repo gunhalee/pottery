@@ -1,7 +1,9 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { HomeSubscribeLinksSection } from "@/components/home/home-subscribe-links-section";
-import { PageShell } from "@/components/site/primitives";
+import { PageIntro, PageShell } from "@/components/site/primitives";
+import { siteConfig } from "@/lib/config/site";
 import { getContentListThumbnailImage } from "@/lib/content-manager/content-images";
 import type { ContentEntryListItem } from "@/lib/content-manager/content-model";
 import { getPublishedContentListEntries } from "@/lib/content-manager/content-store";
@@ -15,12 +17,24 @@ type NewsFeedItem = {
   href: string;
   id: string;
   linkLabel?: string;
-  previewLabel?: string;
-  sourceLabel: string;
   summary: string;
   thumbnailUrl?: string;
   timestamp: number;
   title: string;
+};
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/news",
+  },
+  description:
+    "콩새와 도자기공방의 클래스 일정, 작업물 입고, 애견동반 방문 안내와 공방 소식을 전합니다.",
+  openGraph: {
+    description:
+      "경기 광주 능평동 도자기 공방의 클래스 일정, 작업물 소식, 방문 안내.",
+    title: `공방 소식 | ${siteConfig.name}`,
+  },
+  title: "공방 소식과 클래스 일정",
 };
 
 export default async function NewsPage() {
@@ -34,7 +48,11 @@ export default async function NewsPage() {
   return (
     <>
       <PageShell className="listing-page-shell listing-page-shell-with-subscribe">
-        <h1 className="sr-only">소식</h1>
+        <PageIntro
+          subtitle="경기 광주 능평동 공방의 클래스 일정, 작업물 입고, 애견동반 방문 안내와 계절의 기록을 전합니다."
+          title="소식"
+          variant="compact"
+        />
         <div className="news-layout">
           <div>
             {feedItems.length > 0 ? (
@@ -84,14 +102,6 @@ export default async function NewsPage() {
                       )
                     ) : null}
                     <div className="news-copy">
-                      <div className="news-meta">
-                        <span className="tag">{item.sourceLabel}</span>
-                        {item.previewLabel ? (
-                          <span className="news-preview-label">
-                            {item.previewLabel}
-                          </span>
-                        ) : null}
-                      </div>
                       <h3>
                         {item.external ? (
                           <a
@@ -139,7 +149,6 @@ export default async function NewsPage() {
               <article className="news-item">
                 <div className="news-date">Soon</div>
                 <div>
-                  <div className="tag">소식</div>
                   <h3>준비 중입니다</h3>
                   <p className="news-preview">공개된 소식이 아직 없습니다.</p>
                 </div>
@@ -192,7 +201,6 @@ function toLocalNewsFeedItem(item: ContentEntryListItem): NewsFeedItem {
     external: false,
     href: `/news/${item.slug}`,
     id: item.id,
-    sourceLabel: "소식",
     summary: item.summary || item.bodyText,
     thumbnailUrl: thumbnailImage?.src,
     timestamp: readTimestamp(item.displayDate, item.publishedAt, item.createdAt),
@@ -207,8 +215,6 @@ function toNaverBlogFeedItem(item: NaverBlogPost): NewsFeedItem {
     href: item.link,
     id: `naver-blog-${item.id}`,
     linkLabel: "네이버 블로그에서 보기",
-    previewLabel: "원문 미리보기",
-    sourceLabel: item.category || "블로그",
     summary: item.summary,
     thumbnailUrl: item.thumbnailUrl,
     timestamp: readTimestamp(item.publishedAt, item.createdAt),

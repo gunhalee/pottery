@@ -3,8 +3,11 @@ import { PageShell } from "@/components/site/primitives";
 import { siteConfig } from "@/lib/config/site";
 
 export const metadata: Metadata = {
-  title: "개인정보처리방침",
+  alternates: {
+    canonical: "/privacy",
+  },
   description: `${siteConfig.name} 개인정보처리방침입니다.`,
+  title: "개인정보처리방침",
 };
 
 const privacySections = [

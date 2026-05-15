@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ClassCardGrid } from "@/components/site/class-card-grid";
 import { ClassReviewPanel } from "@/components/site/class-review-panel";
 import { PageBottomCtaSection } from "@/components/site/page-bottom-cta-section";
@@ -12,6 +13,20 @@ import { classItems } from "@/lib/content/site-content";
 import { siteConfig } from "@/lib/config/site";
 import { getPublishedClassSessions } from "@/lib/shop/class-sessions";
 import { getPublishedClassReviews } from "@/lib/shop/class-reviews";
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/class",
+  },
+  description:
+    "경기 광주 능평동에서 참여할 수 있는 도자기 클래스입니다. 원데이, 커플, 정규반 수업과 애견동반 가능 공방 경험을 안내합니다.",
+  openGraph: {
+    description:
+      "경기 광주 능평동 도자기 원데이 클래스와 정규반, 애견동반 가능 공방 경험.",
+    title: `도자기 클래스 | ${siteConfig.name}`,
+  },
+  title: "경기 광주 능평동 도자기 클래스",
+};
 
 export default async function ClassPage() {
   const [publishedClassReviews, classSessions] = await Promise.all([
@@ -33,7 +48,7 @@ export default async function ClassPage() {
               예약하기
             </a>
           }
-          subtitle="결과물보다 손의 속도와 형태가 자라는 시간을 중요하게 여깁니다."
+          subtitle="경기 광주 능평동에서 흙을 만지는 시간입니다. 결과물보다 손의 속도와 형태가 자라는 과정을 중요하게 여기며, 반려견 동반 방문은 예약 전 문의로 함께 조율합니다."
           title="클래스"
           variant="compact"
         />
@@ -42,6 +57,32 @@ export default async function ClassPage() {
           actionHref={siteConfig.naverReservationUrl}
           items={classItems}
         />
+
+        <section className="class-pet-section" aria-label="반려견 동반 안내">
+          <div className="class-section-head">
+            <MetaLabel>애견동반</MetaLabel>
+            <SectionTitle>함께 방문하고 싶다면</SectionTitle>
+            <p className="body-copy">
+              반려견과 함께 도자기 클래스를 경험하고 싶은 분은 예약 전
+              문의해 주세요. 수업 인원, 작업 내용, 공방 상황을 확인한 뒤
+              함께 머무를 수 있는 시간을 조율합니다.
+            </p>
+          </div>
+          <dl className="product-spec-list">
+            <div className="product-spec-row">
+              <dt>확인</dt>
+              <dd>네이버예약 전후로 카카오채널 또는 문의 채널에서 동반 가능 여부를 확인합니다.</dd>
+            </div>
+            <div className="product-spec-row">
+              <dt>안전</dt>
+              <dd>흙, 유약, 도구, 건조 중인 작품이 있는 공간이므로 현장 안내를 따라주세요.</dd>
+            </div>
+            <div className="product-spec-row">
+              <dt>배려</dt>
+              <dd>다른 참여자와 반려견의 컨디션을 함께 살피며 조용히 머무는 것을 기준으로 합니다.</dd>
+            </div>
+          </dl>
+        </section>
 
         <section
           className="class-curriculum-section"

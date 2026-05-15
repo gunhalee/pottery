@@ -2,7 +2,7 @@ export const siteConfig = {
   name: "콩새와 도자기공방",
   businessName: "크룬프로젝트",
   description:
-    "차분한 도자 작업과 수업, 작업물 소식을 전하는 공방 웹사이트입니다.",
+    "경기도 광주시 능평동에서 도자기 클래스와 수공예 도자 작업물을 소개하는 애견동반 가능 공방입니다.",
   email: "consepot@gmail.com",
   phone: "0507-0177-5929",
   privacyOfficer: "하지영",

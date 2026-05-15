@@ -57,7 +57,7 @@ export type HomeStoryContent = {
 
 export const homeHero = {
   taglines: [
-    "화분, 그릇, 작은 기물 속에 사람과 식물, 동물의 이야기를 녹여냅니다.",
+    "경기도 광주시 능평동의 공방에서 화분과 그릇, 작은 기물 속에 사람과 식물, 동물의 이야기를 녹여냅니다.",
   ],
   title: "초록을 담은 흙의 형태",
 } as const satisfies {
@@ -103,8 +103,6 @@ export const homeStory = {
   title: "초록을 담은 도자",
   titleEmphasis: "",
 } as const satisfies HomeStoryContent;
-
-export const paletteLabels = ["백색", "회색", "흙색", "그늘", "먹색"] as const;
 
 export const classItems = [
   {

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { DeferredGalleryInstagramSection } from "@/components/gallery/deferred-gallery-instagram-section";
 import { DeferredGalleryYoutubeSection } from "@/components/gallery/deferred-gallery-youtube-section";
@@ -10,6 +11,20 @@ import { getContentListImage } from "@/lib/content-manager/content-images";
 import { getPublishedContentListEntries } from "@/lib/content-manager/content-store";
 import { mediaImageSizes } from "@/lib/media/media-image-sizes";
 
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/gallery",
+  },
+  description:
+    "콩새와 도자기공방의 도자 화분, 그릇, 오브제 작업 기록입니다. 경기 광주 능평동 공방에서 만든 초록을 담는 수공예 도자를 소개합니다.",
+  openGraph: {
+    description:
+      "초록을 담는 형태와 흙의 질감을 따라 완성한 수공예 도자 작업 기록.",
+    title: `작업물 | ${siteConfig.name}`,
+  },
+  title: "수공예 도자 작업물",
+};
+
 export default async function GalleryPage() {
   const galleryItems = await getPublishedContentListEntries("gallery");
 
@@ -17,7 +32,7 @@ export default async function GalleryPage() {
     <>
       <PageShell className="listing-page-shell">
         <PageIntro
-          subtitle="초록을 담는 형태, 흙의 질감, 작은 생명이 머무는 장면을 따라 완성된 도자 작업을 모았습니다."
+          subtitle="경기 광주 능평동 공방에서 초록을 담는 형태, 흙의 질감, 작은 생명이 머무는 장면을 따라 완성한 도자 작업을 모았습니다."
           title="작업물"
           variant="compact"
         />

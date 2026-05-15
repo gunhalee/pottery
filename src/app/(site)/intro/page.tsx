@@ -1,4 +1,5 @@
 import Image from "next/image";
+import type { Metadata } from "next";
 import type { StaticImageData } from "next/image";
 import {
   MetaLabel,
@@ -13,16 +14,30 @@ import { NaverPlaceMap } from "@/components/site/naver-place-map";
 import dogImage from "../../../../public/asset/dog.webp";
 import greenPotImage from "../../../../public/asset/green-pot.webp";
 import { potOnForestFourthImage } from "@/lib/content/brand-assets";
-import { paletteLabels } from "@/lib/content/site-content";
-import { studioLocation } from "@/lib/config/site";
+import { siteConfig, studioLocation } from "@/lib/config/site";
 
 type IntroImageSource = StaticImageData | string;
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/intro",
+  },
+  description:
+    "경기도 광주시 능평동에 있는 콩새와 도자기공방의 작업관과 위치를 소개합니다. 초록을 담는 도자, 클래스, 애견동반 방문 안내를 확인하세요.",
+  openGraph: {
+    description:
+      "경기 광주 능평동의 애견동반 가능 도자기 공방 소개와 오시는 길.",
+    title: `공방 소개 | ${siteConfig.name}`,
+  },
+  title: "경기 광주 능평동 도자기 공방 소개",
+};
 
 export default function IntroPage() {
   return (
     <>
       <PageShell className="intro-page-header">
         <PageIntro
+          subtitle="경기도 광주시 능평동에서 초록과 흙, 사람과 동물이 함께 머무는 도자기 공방입니다."
           title="초록을 담은 도자"
           variant="editorial"
         />
@@ -81,14 +96,6 @@ export default function IntroPage() {
         </div>
       </Section>
 
-      <div className="palette-grid">
-        {paletteLabels.map((label) => (
-          <div className="palette-cell" key={label}>
-            <span>{label}</span>
-          </div>
-        ))}
-      </div>
-
       <Section className="split">
         <IntroImage
           alt="화분 흙 위에 놓인 흙으로 만든 작은 강아지 기물"
@@ -104,6 +111,37 @@ export default function IntroPage() {
             천천히 겹쳐집니다.
           </p>
         </div>
+      </Section>
+
+      <Section className="split reverse" id="pet-friendly">
+        <div>
+          <MetaLabel>애견동반</MetaLabel>
+          <SectionTitle>반려견과 함께 머무는 공방</SectionTitle>
+          <p className="body-copy">
+            공방은 사람과 식물, 동물이 함께 머무는 장면을 소중하게
+            생각합니다. 반려견과 함께 방문하고 싶다면 예약 전 카카오채널이나
+            예약 문의로 동반 가능 여부를 먼저 확인해 주세요.
+          </p>
+          <p className="body-copy">
+            수업 중에는 다른 참여자와 작업물, 공방 도구가 함께 있는 만큼
+            반려견의 컨디션과 현장 상황을 살펴 조용하고 안전하게 머무를 수
+            있도록 안내합니다.
+          </p>
+        </div>
+        <dl className="studio-location-details">
+          <div>
+            <dt>문의</dt>
+            <dd>예약 전 반려견 동반 가능 여부를 확인해 주세요.</dd>
+          </div>
+          <div>
+            <dt>배려</dt>
+            <dd>다른 수강생과 작업물의 안전을 함께 살핍니다.</dd>
+          </div>
+          <div>
+            <dt>현장</dt>
+            <dd>동반 기준은 수업 일정과 공방 상황에 따라 달라질 수 있습니다.</dd>
+          </div>
+        </dl>
       </Section>
 
       <Section className="studio-location-section" id="location">

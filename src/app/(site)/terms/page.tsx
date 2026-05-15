@@ -3,8 +3,11 @@ import { PageShell } from "@/components/site/primitives";
 import { siteConfig } from "@/lib/config/site";
 
 export const metadata: Metadata = {
-  title: "이용약관",
+  alternates: {
+    canonical: "/terms",
+  },
   description: `${siteConfig.name} 이용약관입니다.`,
+  title: "이용약관",
 };
 
 const termsSections = [
