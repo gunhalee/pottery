@@ -36,7 +36,7 @@
 .product-linked-content h2 {
   margin: 0;
   color: var(--tx);
-  font-size: 18px;
+  font-size: var(--type-card-heading);
   font-weight: 300;
   line-height: 1.45;
   word-break: keep-all;
@@ -57,12 +57,12 @@
 
 .product-linked-content-card span {
   color: var(--tx3);
-  font-size: 11px;
+  font-size: var(--type-meta-label);
 }
 
 .product-linked-content-card strong {
   color: var(--tx);
-  font-size: 16px;
+  font-size: var(--type-card-heading-small);
   font-weight: 300;
   line-height: 1.45;
 }
@@ -71,7 +71,7 @@
   max-width: 560px;
   margin: 0;
   color: var(--tx2);
-  font-size: 13px;
+  font-size: var(--type-supporting-copy);
   line-height: 1.8;
 }
 
@@ -230,9 +230,10 @@
   min-width: 0;
   margin: 0 0 10px;
   font-family: var(--font-sans);
-  font-size: 30px;
+  font-size: var(--type-shop-detail-title);
   font-weight: 400;
-  line-height: 1.36;
+  line-height: 1.32;
+  overflow-wrap: anywhere;
   word-break: keep-all;
 }
 
@@ -251,13 +252,13 @@
 }
 
 .product-detail-info .product-badge {
-  min-height: 22px;
+  min-height: 21px;
   padding: 3px 7px;
   border: 0;
   border-radius: 4px;
   background: #8bd284;
   color: #050505;
-  font-size: 12px;
+  font-size: var(--type-badge);
   font-weight: 500;
   line-height: 1;
 }
@@ -266,7 +267,7 @@
   flex: 0 0 auto;
   margin: 0;
   color: #22242a;
-  font-size: 28px;
+  font-size: var(--type-shop-detail-price);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.18;
@@ -276,8 +277,9 @@
 .product-detail-lead {
   margin: 0;
   color: #6d737c;
-  font-size: 16px;
-  line-height: 1.8;
+  font-size: var(--type-shop-detail-lead);
+  line-height: 1.75;
+  overflow-wrap: anywhere;
   word-break: keep-all;
 }
 
@@ -349,7 +351,7 @@
 .product-commerce-row dt {
   margin: 0;
   color: #68707b;
-  font-size: 13px;
+  font-size: var(--type-data-label);
   font-weight: 700;
   line-height: 1.6;
 }
@@ -362,8 +364,10 @@
   gap: 5px;
   margin: 0;
   color: #111827;
-  font-size: 13px;
+  font-size: var(--type-data-value);
   line-height: 1.6;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .product-commerce-row dd strong {
@@ -394,7 +398,7 @@
   color: #111827;
   cursor: pointer;
   font: inherit;
-  font-size: 13px;
+  font-size: var(--type-shop-control);
 }
 
 .product-option-toggle button[aria-pressed="true"] {
@@ -407,7 +411,7 @@
 .product-commerce-notice p {
   margin: 0;
   color: #68707b;
-  font-size: 12px;
+  font-size: var(--type-meta-copy);
   line-height: 1.7;
 }
 
@@ -421,7 +425,7 @@
 
 .product-commerce-notice strong {
   color: #111827;
-  font-size: 13px;
+  font-size: var(--type-list-heading);
 }
 
 .product-shipping-method-row {
@@ -457,7 +461,7 @@
   color: #111827;
   cursor: pointer;
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--type-shop-control);
   line-height: 1;
   text-align: left;
 }
@@ -513,7 +517,7 @@
   color: #111827;
   cursor: pointer;
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--type-shop-control);
   padding: 0 10px;
   text-align: left;
 }
@@ -536,8 +540,8 @@
   min-width: 0;
   max-width: 100%;
   white-space: normal;
-  overflow-wrap: normal;
-  word-break: keep-all;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .product-shipping-copy strong {
@@ -549,7 +553,7 @@
   width: fit-content;
   justify-self: start;
   color: #3f4650;
-  font-size: 12px;
+  font-size: var(--type-action);
   font-weight: 700;
   text-decoration: underline;
   text-underline-offset: 4px;
@@ -578,12 +582,12 @@
 
 .product-quantity-copy span {
   color: #111827;
-  font-size: 16px;
+  font-size: var(--type-shop-control);
 }
 
 .product-quantity-copy strong {
   color: #6f7782;
-  font-size: 12px;
+  font-size: var(--type-meta-copy);
   font-weight: 500;
   line-height: 1.35;
   overflow-wrap: normal;
@@ -606,7 +610,7 @@
   background: transparent;
   color: #111827;
   font: inherit;
-  font-size: 18px;
+  font-size: var(--type-card-heading);
   text-align: center;
 }
 
@@ -622,7 +626,7 @@
 .product-quantity-stepper input {
   border-right: 1px solid #cfd2d7;
   border-left: 1px solid #cfd2d7;
-  font-size: 16px;
+  font-size: var(--type-card-heading-small);
   font-weight: 700;
   appearance: textfield;
 }
@@ -643,7 +647,7 @@
 
 .product-total-row > span {
   color: #3f4650;
-  font-size: 16px;
+  font-size: var(--type-shop-control);
 }
 
 .product-total-amount {
@@ -655,14 +659,14 @@
 
 .product-total-amount strong {
   color: #111827;
-  font-size: 30px;
+  font-size: var(--type-shop-total);
   font-weight: 700;
   line-height: 1.1;
 }
 
 .product-total-amount span {
   color: #8b929d;
-  font-size: 13px;
+  font-size: var(--type-meta-label);
   font-weight: 500;
   line-height: 1.35;
 }
@@ -690,7 +694,7 @@
   color: #111827;
   cursor: pointer;
   font-family: var(--font-sans);
-  font-size: 16px;
+  font-size: var(--type-action-large);
   font-weight: 500;
   line-height: 1.2;
   white-space: nowrap;
@@ -748,7 +752,7 @@
   min-height: 22px;
   margin: 8px 0 0;
   color: #68707b;
-  font-size: 13px;
+  font-size: var(--type-supporting-copy);
   line-height: 1.5;
 }
 
@@ -780,7 +784,7 @@
 .product-related-section h2 {
   margin: 0;
   color: #3f4650;
-  font-size: 18px;
+  font-size: var(--type-card-heading);
   font-weight: 500;
   line-height: 1.35;
 }
@@ -790,10 +794,15 @@
   padding: 28px 0 0;
 }
 
+.product-detail-story-body .rich-text {
+  font-size: var(--type-shop-story-copy);
+  line-height: 1.84;
+}
+
 .product-detail-section .body-copy {
   color: var(--tx);
-  font-size: 20px;
-  line-height: 1.76;
+  font-size: var(--type-shop-story-copy);
+  line-height: 1.82;
 }
 
 .product-detail-story-lead {
@@ -822,14 +831,14 @@
   max-width: 620px;
   margin: 0;
   color: #68707b;
-  font-size: 13px;
+  font-size: var(--type-supporting-copy);
   line-height: 1.7;
 }
 
 .product-policy-summary a {
   flex: 0 0 auto;
   color: #3f4650;
-  font-size: 13px;
+  font-size: var(--type-action);
   font-weight: 700;
   text-decoration: underline;
   text-underline-offset: 4px;
@@ -855,7 +864,7 @@
   }
 
   .product-detail-title {
-    font-size: 26px;
+    font-size: var(--type-shop-detail-title-mobile);
   }
 }
 
@@ -940,7 +949,7 @@
 
   .product-detail-title {
     margin-bottom: 9px;
-    font-size: 30px;
+    font-size: var(--type-shop-detail-title-mobile);
     line-height: 1.35;
   }
 
@@ -975,13 +984,13 @@
   .product-detail-price {
     min-width: 0;
     width: auto;
-    font-size: 28px;
+    font-size: var(--type-shop-detail-price-mobile);
     text-align: left;
   }
 
   .product-detail-lead {
     margin-bottom: 0;
-    font-size: 15px;
+    font-size: var(--type-list-heading);
   }
 
   .product-commerce-panel {
@@ -999,16 +1008,16 @@
 
   .product-commerce-row dt,
   .product-commerce-row dd {
-    font-size: 13px;
+    font-size: var(--type-meta-copy);
   }
 
   .product-shipping-select-trigger {
     height: 44px;
-    font-size: 13px;
+    font-size: var(--type-shop-control);
   }
 
   .product-shipping-option {
-    font-size: 13px;
+    font-size: var(--type-shop-control);
   }
 
   .product-shipping-copy {
@@ -1017,8 +1026,8 @@
 
   .product-shipping-copy span,
   .product-shipping-copy strong {
-    overflow-wrap: normal;
-    word-break: keep-all;
+    overflow-wrap: anywhere;
+    word-break: break-all;
   }
 
   .product-quantity-head {
@@ -1037,7 +1046,7 @@
   }
 
   .product-total-amount strong {
-    font-size: 28px;
+    font-size: var(--type-shop-detail-price-mobile);
   }
 
   .product-action-grid {
@@ -1055,7 +1064,7 @@
   .product-npay-button,
   .product-wish-button {
     height: 52px;
-    font-size: 15px;
+    font-size: var(--type-action);
   }
 
   .product-secondary-button {
@@ -1147,7 +1156,7 @@
     background: #12a7d8;
     color: var(--white);
     padding: 0 12px;
-    font-size: 16px;
+    font-size: var(--type-action-large);
     font-weight: 500;
   }
 
@@ -1170,8 +1179,12 @@
     padding-top: 24px;
   }
 
+  .product-detail-story-body .rich-text {
+    font-size: var(--type-shop-story-copy-mobile);
+  }
+
   .product-detail-section .body-copy {
-    font-size: 18px;
+    font-size: var(--type-shop-story-copy-mobile);
   }
 
   .product-section-header {
@@ -1180,7 +1193,7 @@
 
   .product-section-header h2,
   .product-related-section h2 {
-    font-size: 17px;
+    font-size: var(--type-card-heading-small);
   }
 
   .product-related-grid {
@@ -1197,7 +1210,7 @@
   }
 
   .product-related-grid .product-card-title {
-    font-size: 18px;
+    font-size: var(--type-shop-card-title);
   }
 
   .product-related-grid .product-card-description,
@@ -1208,7 +1221,7 @@
 
   .product-related-grid .product-card-price {
     color: #333840;
-    font-size: 18px;
+    font-size: var(--type-shop-card-title);
     font-weight: 700;
   }
 }

@@ -34,13 +34,13 @@
 .checkout-summary-list dt,
 .checkout-form label span {
   color: var(--tx3);
-  font-size: 11px;
+  font-size: var(--type-data-label);
   line-height: 1.5;
 }
 
 .checkout-summary-head strong {
   color: var(--tx);
-  font-size: 18px;
+  font-size: var(--type-card-heading);
   font-weight: 300;
   line-height: 1.55;
 }
@@ -63,7 +63,7 @@
 .checkout-summary-list dd {
   margin: 0;
   color: var(--tx);
-  font-size: 13px;
+  font-size: var(--type-data-value);
   line-height: 1.7;
 }
 
@@ -74,7 +74,7 @@
 .checkout-error {
   margin: 0;
   color: var(--tx2);
-  font-size: 12px;
+  font-size: var(--type-meta-copy);
   line-height: 1.85;
 }
 
@@ -97,7 +97,7 @@
   grid-column: 1 / -1;
   margin-bottom: 2px;
   color: var(--tx);
-  font-size: 15px;
+  font-size: var(--type-form-heading);
   font-weight: 300;
   line-height: 1.55;
 }
@@ -126,7 +126,7 @@
   background: transparent;
   color: var(--tx);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--type-form-control);
 }
 
 .checkout-choice-row {
@@ -143,6 +143,12 @@
   align-items: center;
   gap: 8px;
   justify-content: flex-start;
+}
+
+.checkout-choice-row label span,
+.checkout-form .checkout-checkbox span {
+  color: var(--tx);
+  font-size: var(--type-form-control);
 }
 
 .checkout-choice-row input,
@@ -190,13 +196,13 @@
 
 .checkout-result span {
   color: var(--tx3);
-  font-size: 11px;
+  font-size: var(--type-meta-label);
 }
 
 .checkout-result strong,
 .checkout-empty strong {
   color: var(--tx);
-  font-size: 22px;
+  font-size: var(--type-panel-heading);
   font-weight: 300;
   line-height: 1.45;
 }
@@ -217,7 +223,7 @@
 .checkout-bank-result dd {
   margin: 0;
   color: var(--tx2);
-  font-size: 13px;
+  font-size: var(--type-data-value);
   line-height: 1.7;
 }
 

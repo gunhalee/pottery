@@ -85,7 +85,7 @@ export function ProductMobilePurchaseBarLoader({
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        setIsVisible(!entry.isIntersecting);
+        setIsVisible(!entry.isIntersecting && entry.boundingClientRect.top < 0);
       },
       { threshold: 0.01 },
     );

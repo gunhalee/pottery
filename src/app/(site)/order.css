@@ -42,7 +42,7 @@
 
 .order-lookup-form span {
   color: var(--tx3);
-  font-size: 11px;
+  font-size: var(--type-form-label);
 }
 
 .order-lookup-form input {
@@ -52,7 +52,7 @@
   background: transparent;
   color: var(--tx);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--type-form-control);
 }
 
 .order-lookup-form .button-primary {
@@ -82,7 +82,7 @@
 .order-lookup-empty p {
   margin: 0;
   color: var(--tx2);
-  font-size: 12px;
+  font-size: var(--type-meta-copy);
   line-height: 1.8;
 }
 
@@ -102,7 +102,7 @@
 .order-lookup-items span,
 .order-lookup-shipments span {
   color: var(--tx3);
-  font-size: 11px;
+  font-size: var(--type-data-label);
 }
 
 .order-lookup-result dl,
@@ -127,12 +127,12 @@
 .order-lookup-result dd {
   margin: 0;
   color: var(--tx);
-  font-size: 13px;
+  font-size: var(--type-data-value);
 }
 
 .order-lookup-shipments a {
   color: var(--tx2);
-  font-size: 11px;
+  font-size: var(--type-action);
   text-decoration: underline;
   text-underline-offset: 4px;
 }
@@ -191,7 +191,7 @@
   display: block;
   margin: 0;
   color: var(--tx);
-  font-size: 15px;
+  font-size: var(--type-form-heading);
   font-weight: 400;
 }
 
@@ -200,7 +200,7 @@
 .order-lookup-privacy-note {
   margin: 0;
   color: var(--tx2);
-  font-size: 12px;
+  font-size: var(--type-meta-copy);
   line-height: 1.8;
 }
 
@@ -210,7 +210,7 @@
   display: grid;
   gap: 7px;
   color: var(--tx3);
-  font-size: 11px;
+  font-size: var(--type-form-label);
   line-height: 1.5;
 }
 
@@ -226,6 +226,7 @@
   background: transparent;
   color: var(--tx);
   font: inherit;
+  font-size: var(--type-form-control);
   min-height: 42px;
   padding: 8px 0;
 }

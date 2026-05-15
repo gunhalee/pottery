@@ -20,14 +20,14 @@
 
 .class-card .card-title {
   margin: 0 0 14px;
-  font-size: clamp(19px, 1.5vw, 24px);
+  font-size: var(--type-class-card-title);
   line-height: 1.45;
   overflow-wrap: normal;
   word-break: keep-all;
 }
 
 .class-card .body-copy {
-  font-size: 13px;
+  font-size: var(--type-class-card-copy);
   overflow-wrap: normal;
   text-wrap: pretty;
   word-break: keep-all;
@@ -35,7 +35,7 @@
 
 .class-card .detail-list li {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-columns: minmax(48px, max-content) minmax(0, 1fr);
   align-items: baseline;
   gap: 8px 14px;
 }
@@ -44,8 +44,8 @@
   justify-self: end;
   min-width: 0;
   text-align: right;
-  overflow-wrap: normal;
-  word-break: keep-all;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .class-card .detail-list {
@@ -54,7 +54,7 @@
 
 .class-reservation-top-link {
   color: var(--tx);
-  font-size: 12px;
+  font-size: var(--type-action);
   font-weight: 400;
   line-height: 1.45;
   white-space: nowrap;
@@ -91,7 +91,7 @@
   margin-bottom: 22px;
   text-align: center;
   font-family: var(--font-sans);
-  font-size: 20px;
+  font-size: var(--type-subsection-heading);
   font-style: normal;
   font-weight: 300;
 }
@@ -116,7 +116,7 @@
   display: block;
   margin-bottom: 12px;
   color: var(--tx2);
-  font-size: 13px;
+  font-size: var(--type-list-heading);
   font-style: italic;
   line-height: 1.9;
   quotes: none;
@@ -124,7 +124,7 @@
 
 .review cite {
   color: var(--tx3);
-  font-size: 11px;
+  font-size: var(--type-meta-label);
   font-style: normal;
 }
 
@@ -187,11 +187,11 @@
   }
 
   .class-reservation-top-link {
-    font-size: 11px;
+    font-size: var(--type-action);
   }
 
   .class-card .card-title {
-    font-size: clamp(14px, 4vw, 17px);
+    font-size: var(--type-card-heading-small);
     line-height: 1.5;
   }
 }
@@ -226,6 +226,22 @@
   margin-bottom: 28px;
 }
 
+.class-pet-section .product-spec-row dd,
+.class-curriculum-section .product-spec-row dd,
+.class-policy-spec-section .product-spec-row dd {
+  overflow-wrap: anywhere;
+}
+
+.class-review-head h2 {
+  color: var(--tx);
+  font-size: var(--type-class-review-heading);
+  font-weight: 400;
+}
+
+.class-review-head button {
+  font-size: var(--type-action);
+}
+
 .together-record-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -253,7 +269,7 @@
 .together-record-card h3 {
   margin: 0;
   color: var(--tx);
-  font-size: 18px;
+  font-size: var(--type-class-record-title);
   font-weight: 400;
   line-height: 1.5;
 }
@@ -271,30 +287,41 @@
 .together-record-card dt {
   margin-bottom: 4px;
   color: var(--tx3);
-  font-size: 11px;
+  font-size: var(--type-data-label);
   line-height: 1.5;
 }
 
 .together-record-card dd {
   margin: 0;
   color: var(--tx2);
-  font-size: 13px;
+  font-size: var(--type-class-record-copy);
   line-height: 1.85;
-  word-break: keep-all;
-  overflow-wrap: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .class-review-form {
   margin: 18px 0 24px;
 }
 
+.class-review-form .product-feedback-field {
+  font-size: var(--type-class-form-label);
+}
+
 .class-review-grid {
   margin-top: 22px;
+}
+
+.class-review-card q {
+  font-size: var(--type-class-review-copy);
+  line-height: 1.85;
 }
 
 .class-review-card cite {
   display: grid;
   gap: 4px;
+  font-size: var(--type-meta-copy);
+  line-height: 1.55;
 }
 
 .class-review-image-grid {
@@ -319,5 +346,40 @@
 
   .class-review-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+
+  .class-nowrap {
+    white-space: normal;
+  }
+
+  .class-card .detail-list li {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 8px 12px;
+  }
+
+  .class-card .detail-list span,
+  .class-pet-section .product-spec-row dd,
+  .class-curriculum-section .product-spec-row dd,
+  .class-policy-spec-section .product-spec-row dd {
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  .class-review-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .class-review-head .product-feedback-title {
+    grid-column: 1;
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .class-review-head button {
+    grid-column: 2;
+    min-width: 96px;
   }
 }

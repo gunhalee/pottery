@@ -58,7 +58,7 @@
 .cart-item-main h2 {
   margin: 0 0 8px;
   font-family: var(--font-sans);
-  font-size: 18px;
+  font-size: var(--type-card-heading);
   font-weight: 500;
   line-height: 1.45;
 }
@@ -71,7 +71,7 @@
 .cart-summary p {
   margin: 0;
   color: var(--tx2);
-  font-size: 12px;
+  font-size: var(--type-list-copy);
   line-height: 1.7;
 }
 
@@ -113,13 +113,13 @@
   border-right: 1px solid #d7d8dc;
   border-left: 1px solid #d7d8dc;
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--type-data-value);
 }
 
 .cart-remove-button {
   min-height: 28px;
   padding: 0;
-  font-size: 12px;
+  font-size: var(--type-action);
 }
 
 .cart-item-total {
@@ -132,7 +132,7 @@
 .cart-item-total strong {
   color: var(--tx);
   font-family: var(--font-sans);
-  font-size: 16px;
+  font-size: var(--type-card-heading-small);
   line-height: 1.35;
 }
 
@@ -154,7 +154,7 @@
 .cart-summary h2 {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: 22px;
+  font-size: var(--type-panel-heading);
   font-weight: 500;
   line-height: 1.35;
 }
@@ -170,7 +170,7 @@
   justify-content: space-between;
   gap: 18px;
   color: var(--tx2);
-  font-size: 13px;
+  font-size: var(--type-data-value);
   line-height: 1.6;
 }
 

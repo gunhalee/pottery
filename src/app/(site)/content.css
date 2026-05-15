@@ -59,13 +59,13 @@
   min-width: 64px;
   color: var(--tx3);
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: var(--type-meta-label);
   font-style: normal;
 }
 
 .news-item h3 {
   margin: 0 0 5px;
-  font-size: 14px;
+  font-size: var(--type-list-heading);
   font-weight: 400;
   line-height: 1.5;
 }
@@ -81,7 +81,7 @@
   overflow: hidden;
   margin: 0;
   color: var(--tx2);
-  font-size: 12px;
+  font-size: var(--type-list-copy);
   line-height: 1.8;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
@@ -92,7 +92,7 @@
   margin-top: 10px;
   color: var(--tx3);
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: var(--type-action);
   text-decoration: none;
   transition: color 0.2s ease;
 }
@@ -123,18 +123,18 @@
   margin-bottom: 4px;
   color: var(--tx3);
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: var(--type-meta-label);
   font-style: normal;
 }
 
 .schedule-title {
   margin-bottom: 2px;
-  font-size: 13px;
+  font-size: var(--type-list-heading);
 }
 
 .schedule-place {
   color: var(--tx3);
-  font-size: 11px;
+  font-size: var(--type-meta-label);
 }
 
 .news-inline-cta {
@@ -183,7 +183,7 @@
   background: linear-gradient(transparent, rgba(251, 251, 250, 0.86));
   color: var(--tx);
   content: attr(data-title);
-  font-size: 11px;
+  font-size: var(--type-list-copy);
   opacity: 0;
   transition: opacity 0.2s ease;
 }
@@ -219,7 +219,7 @@
   z-index: 2;
   padding: 16px;
   background: linear-gradient(transparent, rgba(251, 251, 250, 0.9));
-  font-size: 12px;
+  font-size: var(--type-list-copy);
   opacity: 0;
   transition: opacity 0.2s ease;
 }
@@ -254,7 +254,7 @@
   margin: 0;
   color: var(--tx);
   font-family: var(--font-sans);
-  font-size: 22px;
+  font-size: var(--type-panel-heading);
   font-weight: 400;
   line-height: 1.2;
 }
@@ -262,7 +262,7 @@
 .gallery-instagram-head a {
   color: var(--tx2);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: var(--type-action);
   text-decoration: none;
   text-transform: lowercase;
   transition: color 0.2s ease;
@@ -287,7 +287,7 @@
   border-top: 0.5px solid var(--brd);
   border-bottom: 0.5px solid var(--brd);
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-supporting-copy);
   line-height: 1.7;
 }
 
@@ -330,7 +330,7 @@
   padding: 12px;
   background: linear-gradient(transparent, rgba(251, 251, 250, 0.92));
   color: var(--tx);
-  font-size: 11px;
+  font-size: var(--type-list-copy);
   line-height: 1.45;
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -359,7 +359,7 @@
   margin: 0;
   color: var(--tx);
   font-family: var(--font-sans);
-  font-size: 22px;
+  font-size: var(--type-panel-heading);
   font-weight: 400;
   line-height: 1.2;
 }
@@ -367,7 +367,7 @@
 .gallery-youtube-head a {
   color: var(--tx2);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: var(--type-action);
   text-decoration: none;
   text-transform: lowercase;
   transition: color 0.2s ease;
@@ -400,7 +400,7 @@
   color: var(--tx);
   cursor: pointer;
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: var(--type-action);
   letter-spacing: 0;
   line-height: 1;
   transition:
@@ -485,7 +485,7 @@
   overflow: hidden;
   color: var(--tx);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--type-list-heading);
   font-weight: 500;
   line-height: 1.45;
   -webkit-box-orient: vertical;
@@ -495,7 +495,7 @@
 .gallery-youtube-body time {
   color: var(--tx3);
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: var(--type-meta-label);
 }
 
 .gallery-youtube-overlay {
@@ -532,7 +532,7 @@
   color: #fbfbfa;
   cursor: pointer;
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: var(--type-action);
   letter-spacing: 0;
   line-height: 1;
   transition:
@@ -570,7 +570,7 @@
   margin: 0;
   color: #fbfbfa;
   font-family: var(--font-sans);
-  font-size: 16px;
+  font-size: var(--type-card-heading-small);
   font-weight: 500;
   line-height: 1.45;
 }
@@ -578,7 +578,7 @@
 .gallery-youtube-modal-meta time {
   color: rgba(251, 251, 250, 0.68);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: var(--type-meta-copy);
 }
 
 .tag {
@@ -588,7 +588,7 @@
   border: 0.5px solid var(--line-subtle);
   color: var(--tx3);
   font-family: var(--font-sans);
-  font-size: 9px;
+  font-size: var(--type-badge);
   letter-spacing: 0;
   text-transform: none;
 }
@@ -596,7 +596,7 @@
 .aside-title {
   margin-bottom: 18px;
   font-family: var(--font-sans);
-  font-size: 16px;
+  font-size: var(--type-card-heading-small);
   font-style: normal;
   font-weight: 300;
 }
@@ -620,7 +620,7 @@
   margin: 0 0 12px;
   color: var(--tx3);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: var(--type-meta-copy);
   font-style: normal;
 }
 
@@ -628,7 +628,7 @@
   max-width: 18ch;
   margin: 0;
   font-family: var(--font-sans);
-  font-size: clamp(28px, 4.5vw, 58px);
+  font-size: var(--type-detail-heading-editorial);
   font-weight: 300;
   line-height: 1.12;
 }
@@ -637,7 +637,7 @@
   max-width: 640px;
   margin-top: 22px;
   color: var(--tx2);
-  font-size: var(--copy-size);
+  font-size: var(--type-detail-lead);
   line-height: 1.9;
   word-break: keep-all;
 }
@@ -659,7 +659,7 @@
 .content-detail-image-strip figcaption {
   margin-top: 9px;
   color: var(--tx3);
-  font-size: 12px;
+  font-size: var(--type-meta-copy);
   line-height: 1.6;
 }
 
@@ -687,12 +687,12 @@
   display: block;
   margin-bottom: 10px;
   color: var(--tx3);
-  font-size: 11px;
+  font-size: var(--type-meta-label);
 }
 
 .content-related-product h2 {
   margin: 0 0 8px;
-  font-size: 20px;
+  font-size: var(--type-subsection-heading);
   font-weight: 400;
 }
 
@@ -700,7 +700,7 @@
   max-width: 520px;
   margin: 0;
   color: var(--tx2);
-  font-size: 14px;
+  font-size: var(--type-list-heading);
   line-height: 1.8;
 }
 
@@ -812,12 +812,12 @@
   }
 
   .gallery-youtube-body strong {
-    font-size: 11px;
+    font-size: var(--type-meta-label);
     line-height: 1.35;
   }
 
   .gallery-youtube-body time {
-    font-size: 10px;
+    font-size: var(--type-badge);
   }
 
   .gallery-youtube-overlay {
@@ -837,7 +837,7 @@
   }
 
   .gallery-youtube-modal-meta h3 {
-    font-size: 14px;
+    font-size: var(--type-list-heading);
   }
 
   .gallery-instagram-item span {
